@@ -89,4 +89,16 @@ describe('CLI end-to-end', () => {
     expect(result.stdout).toMatch(/Army 2 Breakdown:/i);
     expect(result.stdout).toMatch(/Crossbowman: raw 1440\.00 -> adjusted/i);
   });
+
+  it('parse command summarizes a local game file', () => {
+    const samplePath = path.resolve(__dirname, '..', 'fixtures', 'sampleGameSummary.json');
+    const result = runCli(['parse', samplePath]);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toMatch(/Game ID: 123456/i);
+    expect(result.stdout).toMatch(/Map: Dry Arabia/i);
+    expect(result.stdout).toMatch(/Player 1: .*PlayerOne .*English/i);
+    expect(result.stdout).toMatch(/Player 2: .*PlayerTwo .*French/i);
+    expect(result.stdout).toMatch(/Successfully parsed .*build order entries/i);
+  });
 });

@@ -9,6 +9,7 @@ export interface Unit {
   id: string;
   name: string;
   baseId: string;
+  pbgid?: number;
   civs: string[];
   costs: ResourceCosts;
   classes: string[];
@@ -20,8 +21,11 @@ export interface Unit {
 export interface Building {
   id: string;
   name: string;
+  baseId?: string;
+  pbgid?: number;
   civs: string[];
   costs: ResourceCosts;
+  classes?: string[];
   age: number;
   icon: string;
 }
@@ -29,11 +33,14 @@ export interface Building {
 export interface Technology {
   id: string;
   name: string;
+  baseId?: string;
+  pbgid?: number;
   civs: string[];
   costs: ResourceCosts;
+  classes?: string[];
   age: number;
   icon: string;
-  effects: string[];
+  effects?: string[];
 }
 
 export interface StaticDataCache {

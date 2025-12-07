@@ -4,6 +4,8 @@ import chalk from 'chalk';
 import { forceRefreshStaticData, loadStaticData } from './data/fetchStaticData';
 import { calculateValueAdjustedMatchup, classifyUnit, formatValueAdjustedMatchup } from './data/counterMatrix';
 import { getUpgradeEffect, parseUnitTierFromIcon } from './data/upgradeMappings';
+import { fetchGameSummaryFromApi, loadGameSummaryFromFile, parseGameSummary } from './parser/gameSummaryParser';
+import { resolveAllBuildOrders, validateAllItemsResolved } from './parser/buildOrderResolver';
 import { Unit, UnitWithValue } from './types';
 
 function createRng(seed: string): () => number {
@@ -123,6 +125,192 @@ export async function runCli(argv = process.argv): Promise<void> {
       });
 
       console.log(chalk.gray(`\nSeed used: ${options.seed ?? 'demo-seed'}`));
+    });
+
+  program
+    .command('parse')
+    .argument('<json-file>', 'Path to game summary JSON file')
+    .description('Parse a local AoE4World game summary JSON file')
+    .action((jsonFile: string) => {
+      try {
+        const summary = loadGameSummaryFromFile(jsonFile);
+        const players = summary.players.slice(0, 2);
+        console.log(chalk.blue(`Game ID: ${summary.gameId}`));
+        console.log(chalk.blue(`Map: ${summary.mapName} (${summary.mapBiome})`));
+        console.log(chalk.blue(`Duration: ${summary.duration}s`));
+        players.forEach((player, idx) => {
+          console.log(
+            chalk.cyan(
+              `Player ${idx + 1}: ${player.name} (${player.civilization}) - ${player.result.toUpperCase()}`
+            )
+          );
+        });
+        const boCounts = players.map((p) => p.buildOrder.length);
+        console.log(
+          chalk.green(
+            `Successfully parsed build order entries: Player 1 (${boCounts[0] ?? 0}), Player 2 (${boCounts[1] ?? 0})`
+          )
+        );
+      } catch (error) {
+        console.error(chalk.red(`Failed to parse summary: ${(error as Error).message}`));
+        process.exitCode = 1;
+      }
+    });
+
+  program
+    .command('fetch-game')
+    .argument('<profileId>', 'Profile ID or slug (e.g., 8097972-steam)')
+    .argument('<gameId>', 'Game ID')
+    .option('--sig <sig>', 'Signature token for private games')
+    .description('Fetch a game summary from AoE4World')
+    .action(async (profileIdStr: string, gameIdStr: string, opts: { sig?: string }) => {
+      try {
+        const gameId = Number(gameIdStr);
+        const summary = await fetchGameSummaryFromApi(profileIdStr, gameId, opts.sig);
+        const players = summary.players.slice(0, 2);
+        console.log(chalk.blue(`Game ID: ${summary.gameId}`));
+        console.log(chalk.blue(`Map: ${summary.mapName} (${summary.mapBiome})`));
+        console.log(chalk.blue(`Duration: ${summary.duration}s`));
+        players.forEach((player, idx) => {
+          console.log(
+            chalk.cyan(
+              `Player ${idx + 1}: ${player.name} (${player.civilization}) - ${player.result.toUpperCase()}`
+            )
+          );
+        });
+        const boCounts = players.map((p) => p.buildOrder.length);
+        console.log(
+          chalk.green(
+            `Successfully parsed build order entries: Player 1 (${boCounts[0] ?? 0}), Player 2 (${boCounts[1] ?? 0})`
+          )
+        );
+      } catch (error) {
+        console.error(chalk.red(`Failed to fetch summary: ${(error as Error).message}`));
+        process.exitCode = 1;
+      }
+    });
+
+  program
+    .command('resolve-build-order')
+    .argument('<json-file>', 'Path to game summary JSON file')
+    .option('-v, --verbose', 'Show detailed resolution for each build order item')
+    .description('Parse a game and resolve all build order items to their costs')
+    .action(async (jsonFile: string, opts: { verbose?: boolean }) => {
+      try {
+        const summary = loadGameSummaryFromFile(jsonFile);
+        const staticData = await loadStaticData();
+        const players = summary.players.slice(0, 2);
+
+        let hasErrors = false;
+
+        // Format timestamp as mm:ss
+        const formatTime = (seconds: number): string => {
+          const mins = Math.floor(seconds / 60);
+          const secs = seconds % 60;
+          return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        };
+
+        // Format cost string
+        const formatCost = (cost: { food: number; wood: number; gold: number; stone: number }): string => {
+          const parts: string[] = [];
+          if (cost.food > 0) parts.push(`${cost.food}F`);
+          if (cost.wood > 0) parts.push(`${cost.wood}W`);
+          if (cost.gold > 0) parts.push(`${cost.gold}G`);
+          if (cost.stone > 0) parts.push(`${cost.stone}S`);
+          return parts.length > 0 ? parts.join('/') : 'free';
+        };
+
+        players.forEach((player, idx) => {
+          const resolved = resolveAllBuildOrders(player, staticData);
+          const totalItems = resolved.startingAssets.length + resolved.resolved.length + resolved.unresolved.length;
+
+          if (resolved.unresolved.length > 0) {
+            console.log(
+              chalk.yellow(
+                `Resolved ${resolved.startingAssets.length + resolved.resolved.length} of ${totalItems} items for ${player.name}`
+              )
+            );
+            try {
+              validateAllItemsResolved(resolved);
+            } catch (err) {
+              console.error(chalk.red((err as Error).message));
+              hasErrors = true;
+            }
+          } else {
+            // Show starting assets summary
+            const startingCount = resolved.startingAssets.reduce((sum, item) => sum + item.produced.length, 0);
+            console.log(
+              chalk.green(`${player.name}: ${startingCount} starting assets, ${resolved.resolved.length} build order items`)
+            );
+
+            // Show summary of build order items by type
+            const byType: Record<string, number> = {};
+            let totalCost = 0;
+            for (const item of resolved.resolved) {
+              byType[item.type] = (byType[item.type] ?? 0) + item.produced.length;
+              totalCost += item.cost.total * item.produced.length;
+            }
+            const typeBreakdown = Object.entries(byType)
+              .map(([type, count]) => `${count} ${type}${count > 1 ? 's' : ''}`)
+              .join(', ');
+            console.log(chalk.gray(`  Build order: ${typeBreakdown}`));
+            console.log(chalk.gray(`  Total resource cost: ${totalCost}`));
+          }
+
+          // Verbose output
+          if (opts.verbose) {
+            // Show starting assets first
+            console.log(chalk.magenta(`\n  Starting assets for ${player.name}:`));
+            for (const item of resolved.startingAssets) {
+              const countStr = item.produced.length > 1 ? ` x${item.produced.length}` : '';
+              console.log(
+                chalk.gray(`    ${item.type.padEnd(8)} `) +
+                chalk.white(`${item.name}${countStr}`)
+              );
+            }
+
+            // Show chronological build order
+            console.log(chalk.cyan(`\n  Build order for ${player.name} (chronological):`));
+
+            // Flatten all production events with timestamps
+            interface ProductionEvent {
+              timestamp: number;
+              item: typeof resolved.resolved[0];
+            }
+            const events: ProductionEvent[] = [];
+
+            for (const item of resolved.resolved) {
+              for (const ts of item.produced) {
+                events.push({ timestamp: ts, item });
+              }
+            }
+
+            // Sort by timestamp
+            events.sort((a, b) => a.timestamp - b.timestamp);
+
+            for (const event of events) {
+              const { timestamp, item } = event;
+              const costStr = formatCost(item.cost);
+              const tierStr = item.tier > 1 ? ` [T${item.tier}]` : '';
+
+              console.log(
+                chalk.blue(`    ${formatTime(timestamp)} `) +
+                chalk.white(`${item.type.padEnd(8)} `) +
+                chalk.yellow(`${item.name}${tierStr}`.padEnd(28)) +
+                chalk.gray(`${costStr.padEnd(12)}`) +
+                chalk.gray(`${item.originalEntry.icon}`)
+              );
+            }
+          }
+        });
+
+        if (hasErrors) {
+          process.exitCode = 1;
+        }
+      } catch (error) {
+        console.error(chalk.red(`Failed to resolve build order: ${(error as Error).message}`));
+        process.exitCode = 1;
+      }
     });
 
   program

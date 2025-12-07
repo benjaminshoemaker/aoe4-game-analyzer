@@ -1,0 +1,158 @@
+{
+  "gameId": 123456,
+  "winReason": "elimination",
+  "mapName": "Dry Arabia",
+  "mapBiome": "desert",
+  "leaderboard": "rm_1v1",
+  "duration": 900,
+  "startedAt": 1710000000,
+  "finishedAt": 1710000900,
+  "players": [
+    {
+      "profileId": 111,
+      "name": "PlayerOne",
+      "civilization": "English",
+      "team": 1,
+      "apm": 90,
+      "result": "win",
+      "_stats": {
+        "ekills": 20,
+        "edeaths": 10,
+        "sqprod": 50,
+        "sqlost": 5,
+        "bprod": 10,
+        "upg": 8,
+        "totalcmds": 1000
+      },
+      "actions": {
+        "age_up": [200, 500],
+        "upgrade_something": [300]
+      },
+      "scores": {
+        "total": 1000,
+        "military": 400,
+        "economy": 300,
+        "technology": 200,
+        "society": 100
+      },
+      "totalResourcesGathered": {
+        "food": 5000,
+        "gold": 3000,
+        "stone": 1000,
+        "wood": 4000,
+        "total": 13000
+      },
+      "totalResourcesSpent": {
+        "food": 4800,
+        "gold": 2900,
+        "stone": 900,
+        "wood": 3800,
+        "total": 12400
+      },
+      "resources": {
+        "timestamps": [0, 300, 600, 900],
+        "food": [0, 1000, 2500, 5000],
+        "gold": [0, 800, 1800, 3000],
+        "stone": [0, 100, 400, 1000],
+        "wood": [0, 900, 2500, 4000],
+        "foodPerMin": [0, 200, 300, 350],
+        "goldPerMin": [0, 160, 200, 220],
+        "stonePerMin": [0, 20, 40, 60],
+        "woodPerMin": [0, 180, 250, 260],
+        "total": [0, 200, 600, 1000],
+        "military": [0, 80, 240, 400],
+        "economy": [0, 60, 180, 300],
+        "technology": [0, 40, 120, 200],
+        "society": [0, 20, 60, 100]
+      },
+      "buildOrder": [
+        {
+          "id": "villager",
+          "icon": "villager.png",
+          "pbgid": 1,
+          "type": "Unit",
+          "finished": [30, 60, 90],
+          "constructed": [10, 40, 70],
+          "destroyed": []
+        },
+        {
+          "id": "town_center",
+          "icon": "tc.png",
+          "pbgid": 2,
+          "type": "Building",
+          "finished": [400],
+          "constructed": [350],
+          "destroyed": []
+        }
+      ]
+    },
+    {
+      "profileId": 222,
+      "name": "PlayerTwo",
+      "civilization": "French",
+      "team": 2,
+      "apm": 80,
+      "result": "loss",
+      "_stats": {
+        "ekills": 10,
+        "edeaths": 20,
+        "sqprod": 40,
+        "sqlost": 6,
+        "bprod": 9,
+        "upg": 7,
+        "totalcmds": 900
+      },
+      "actions": {
+        "age_up": [250, 600]
+      },
+      "scores": {
+        "total": 800,
+        "military": 300,
+        "economy": 250,
+        "technology": 150,
+        "society": 100
+      },
+      "totalResourcesGathered": {
+        "food": 4500,
+        "gold": 2500,
+        "stone": 800,
+        "wood": 3500,
+        "total": 11300
+      },
+      "totalResourcesSpent": {
+        "food": 4300,
+        "gold": 2400,
+        "stone": 750,
+        "wood": 3300,
+        "total": 10750
+      },
+      "resources": {
+        "timestamps": [0, 300, 600, 900],
+        "food": [0, 900, 2200, 4500],
+        "gold": [0, 700, 1500, 2500],
+        "stone": [0, 80, 300, 800],
+        "wood": [0, 800, 2200, 3500],
+        "foodPerMin": [0, 180, 250, 320],
+        "goldPerMin": [0, 140, 180, 200],
+        "stonePerMin": [0, 16, 30, 50],
+        "woodPerMin": [0, 160, 220, 240],
+        "total": [0, 150, 500, 800],
+        "military": [0, 60, 180, 300],
+        "economy": [0, 50, 150, 250],
+        "technology": [0, 30, 90, 150],
+        "society": [0, 10, 30, 50]
+      },
+      "buildOrder": [
+        {
+          "id": "villager",
+          "icon": "villager.png",
+          "pbgid": 1,
+          "type": "Unit",
+          "finished": [25, 55, 85],
+          "constructed": [5, 35, 65],
+          "destroyed": []
+        }
+      ]
+    }
+  ]
+}
