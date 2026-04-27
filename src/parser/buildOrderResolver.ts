@@ -3,6 +3,9 @@ import { BuildOrderEntry, PlayerSummary } from './gameSummaryParser';
 import { parseUnitTierFromIcon, tierMultipliers } from '../data/upgradeMappings';
 import { manualMappings, ManualMapping } from '../data/manualMappings';
 
+const MALIAN_CATTLE_PBGID = 2059966;
+const MALIAN_CATTLE_PRODUCED_UNKNOWN_BUCKET = '14';
+
 export interface ItemCost {
   food: number;
   wood: number;
@@ -124,6 +127,25 @@ function normalizeCost(costs: { food?: number; wood?: number; gold?: number; sto
   return { food, wood, gold, stone, total };
 }
 
+function mergeTimestamps(...groups: number[][]): number[] {
+  return groups
+    .flat()
+    .filter(value => Number.isFinite(value))
+    .sort((a, b) => a - b);
+}
+
+function getProducedTimestamps(entry: BuildOrderEntry, type: ResolvedBuildItem['type']): number[] {
+  if (entry.pbgid === MALIAN_CATTLE_PBGID) {
+    return mergeTimestamps(entry.finished, entry.unknown?.[MALIAN_CATTLE_PRODUCED_UNKNOWN_BUCKET] ?? []);
+  }
+
+  if (type === 'building') {
+    return entry.constructed;
+  }
+
+  return entry.finished;
+}
+
 function resolveFromManualMapping(entry: BuildOrderEntry): ResolvedBuildItem | null {
   const mapping = manualMappings.find(m => m.pbgid === entry.pbgid);
   if (!mapping) return null;
@@ -144,7 +166,7 @@ function resolveFromManualMapping(entry: BuildOrderEntry): ResolvedBuildItem | n
     tier,
     tierMultiplier: multiplier,
     classes: mapping.classes ?? [],
-    produced: [...entry.finished, ...entry.constructed],
+    produced: getProducedTimestamps(entry, entryType),
     destroyed: entry.destroyed,
     civs: mapping.civs ?? []
   };
@@ -220,7 +242,7 @@ export function resolveBuildOrderItem(
         tier,
         tierMultiplier: multiplier,
         classes: unit.classes ?? [],
-        produced: entry.finished,
+        produced: getProducedTimestamps(entry, 'unit'),
         destroyed: entry.destroyed,
         civs: unit.civs
       };
@@ -278,7 +300,7 @@ export function resolveBuildOrderItem(
       tier,
       tierMultiplier: multiplier,
       classes: (item as Unit).classes ?? (item as Building).classes ?? [],
-      produced: type === 'building' ? entry.constructed : entry.finished,
+      produced: getProducedTimestamps(entry, type),
       destroyed: entry.destroyed,
       civs: item.civs
     };
@@ -309,12 +331,29 @@ export function resolveAllBuildOrders(
     // Separate starting assets (timestamp 0) from build order
     const startingTimestamps = result.produced.filter(ts => ts === 0);
     const buildOrderTimestamps = result.produced.filter(ts => ts > 0);
+    const hasStarting = startingTimestamps.length > 0;
+    const hasBuildOrder = buildOrderTimestamps.length > 0;
+
+    const firstBuildOrderTimestamp = hasBuildOrder
+      ? Math.min(...buildOrderTimestamps)
+      : Number.POSITIVE_INFINITY;
+    const startingDestroyed = hasStarting && hasBuildOrder
+      ? result.destroyed.filter(ts => ts < firstBuildOrderTimestamp)
+      : hasStarting
+        ? result.destroyed
+        : [];
+    const buildOrderDestroyed = hasStarting && hasBuildOrder
+      ? result.destroyed.filter(ts => ts >= firstBuildOrderTimestamp)
+      : hasBuildOrder
+        ? result.destroyed
+        : [];
 
     if (startingTimestamps.length > 0) {
       // Create a copy for starting assets
       startingAssets.push({
         ...result,
-        produced: startingTimestamps
+        produced: startingTimestamps,
+        destroyed: startingDestroyed
       });
     }
 
@@ -322,7 +361,8 @@ export function resolveAllBuildOrders(
       // Only include in build order if there are non-zero timestamps
       resolved.push({
         ...result,
-        produced: buildOrderTimestamps
+        produced: buildOrderTimestamps,
+        destroyed: buildOrderDestroyed
       });
     }
   }

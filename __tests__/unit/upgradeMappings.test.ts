@@ -1,4 +1,9 @@
-import { getUpgradeEffect, parseUnitTierFromIcon, tierMultipliers } from '../../src/data/upgradeMappings';
+import {
+  getUpgradeEffect,
+  getUpgradeEffectFromIcon,
+  parseUnitTierFromIcon,
+  tierMultipliers
+} from '../../src/data/upgradeMappings';
 
 describe('upgradeMappings', () => {
   describe('parseUnitTierFromIcon', () => {
@@ -42,6 +47,28 @@ describe('upgradeMappings', () => {
 
     it('returns null for unknown upgrade', () => {
       expect(getUpgradeEffect('unknownUpgradeKey')).toBeNull();
+    });
+  });
+
+  describe('getUpgradeEffectFromIcon', () => {
+    it('extracts ranged armor tier from common blacksmith icon paths', () => {
+      expect(getUpgradeEffectFromIcon('icons/races/common/upgrades/ranged_armor_technology_2')).toMatchObject({
+        type: 'ranged_armor',
+        bonus: 0.06,
+        level: 2
+      });
+    });
+
+    it('extracts melee attack tier from common blacksmith icon paths', () => {
+      expect(getUpgradeEffectFromIcon('icons/races/common/upgrades/melee_damage_technology_1')).toMatchObject({
+        type: 'melee_attack',
+        bonus: 0.05,
+        level: 1
+      });
+    });
+
+    it('returns null for non-combat icon paths', () => {
+      expect(getUpgradeEffectFromIcon('icons/races/common/upgrades/wheelbarrow')).toBeNull();
     });
   });
 });

@@ -1,6 +1,8 @@
 import fs from 'fs';
 import axios from 'axios';
 
+const SUMMARY_USER_AGENT = 'aoe4-game-analyzer/0.1 resource-flow-cli';
+
 export interface GameSummary {
   gameId: number;
   winReason: string;
@@ -52,6 +54,7 @@ export interface ResourceTotals {
   gold: number;
   stone: number;
   wood: number;
+  oliveoil?: number;
   total: number;
 }
 
@@ -70,6 +73,13 @@ export interface TimeSeriesResources {
   economy: number[];
   technology: number[];
   society: number[];
+  oliveoil?: number[];
+  oliveoilPerMin?: number[];
+  foodGathered?: number[];
+  goldGathered?: number[];
+  stoneGathered?: number[];
+  woodGathered?: number[];
+  oliveoilGathered?: number[];
 }
 
 export interface BuildOrderEntry {
@@ -80,6 +90,7 @@ export interface BuildOrderEntry {
   finished: number[];
   constructed: number[];
   destroyed: number[];
+  unknown?: Record<string, number[]>;
 }
 
 function assertObject(value: unknown, name: string): Record<string, unknown> {
@@ -96,11 +107,20 @@ function assertNumber(value: unknown, name: string): number {
   return value;
 }
 
+function parseNumberOrZero(value: unknown, name: string): number {
+  if (value === null || value === undefined) return 0;
+  return assertNumber(value, name);
+}
+
 function assertString(value: unknown, name: string): string {
   if (typeof value !== 'string') {
     throw new Error(`Expected ${name} to be a string`);
   }
   return value;
+}
+
+function parseNullableString(value: unknown, fallback: string): string {
+  return typeof value === 'string' ? value : fallback;
 }
 
 function assertArray<T>(value: unknown, name: string): T[] {
@@ -110,13 +130,27 @@ function assertArray<T>(value: unknown, name: string): T[] {
   return value as T[];
 }
 
+function parseUnknownTimestampBuckets(value: unknown, name: string): Record<string, number[]> | undefined {
+  if (value === undefined) return undefined;
+  const obj = assertObject(value, name);
+  const result: Record<string, number[]> = {};
+
+  Object.entries(obj).forEach(([key, bucketValue]) => {
+    result[key] = assertArray<number>(bucketValue, `${name}.${key}`);
+  });
+
+  return result;
+}
+
 function parseResourceTotals(raw: unknown, name: string): ResourceTotals {
   const obj = assertObject(raw, name);
+  const oliveoil = typeof obj.oliveoil === 'number' ? obj.oliveoil : undefined;
   return {
     food: assertNumber(obj.food, `${name}.food`),
     gold: assertNumber(obj.gold, `${name}.gold`),
     stone: assertNumber(obj.stone, `${name}.stone`),
     wood: assertNumber(obj.wood, `${name}.wood`),
+    ...(oliveoil !== undefined ? { oliveoil } : {}),
     total: assertNumber(obj.total, `${name}.total`)
   };
 }
@@ -135,13 +169,13 @@ function parseScores(raw: unknown): ScoreBreakdown {
 function parseStats(raw: unknown): PlayerStats {
   const obj = assertObject(raw, '_stats');
   return {
-    ekills: assertNumber(obj.ekills, '_stats.ekills'),
-    edeaths: assertNumber(obj.edeaths, '_stats.edeaths'),
-    sqprod: assertNumber(obj.sqprod, '_stats.sqprod'),
-    sqlost: assertNumber(obj.sqlost, '_stats.sqlost'),
-    bprod: assertNumber(obj.bprod, '_stats.bprod'),
-    upg: assertNumber(obj.upg, '_stats.upg'),
-    totalcmds: assertNumber(obj.totalcmds, '_stats.totalcmds')
+    ekills: parseNumberOrZero(obj.ekills, '_stats.ekills'),
+    edeaths: parseNumberOrZero(obj.edeaths, '_stats.edeaths'),
+    sqprod: parseNumberOrZero(obj.sqprod, '_stats.sqprod'),
+    sqlost: parseNumberOrZero(obj.sqlost, '_stats.sqlost'),
+    bprod: parseNumberOrZero(obj.bprod, '_stats.bprod'),
+    upg: parseNumberOrZero(obj.upg, '_stats.upg'),
+    totalcmds: parseNumberOrZero(obj.totalcmds, '_stats.totalcmds')
   };
 }
 
@@ -169,6 +203,22 @@ function parseTimeSeries(raw: unknown): TimeSeriesResources {
     result[field] = assertArray<number>(obj[field], `resources.${field}`);
   });
 
+  const optionalFields = [
+    'oliveoil',
+    'oliveoilPerMin',
+    'foodGathered',
+    'goldGathered',
+    'stoneGathered',
+    'woodGathered',
+    'oliveoilGathered'
+  ] as const;
+
+  optionalFields.forEach((field) => {
+    const value = obj[field];
+    if (value === undefined) return;
+    result[field] = assertArray<number>(value, `resources.${field}`);
+  });
+
   return result as TimeSeriesResources;
 }
 
@@ -193,7 +243,8 @@ function parseBuildOrder(raw: unknown): BuildOrderEntry[] {
       type,
       finished: assertArray<number>(obj.finished, `buildOrder[${index}].finished`),
       constructed: assertArray<number>(obj.constructed, `buildOrder[${index}].constructed`),
-      destroyed: assertArray<number>(obj.destroyed, `buildOrder[${index}].destroyed`)
+      destroyed: assertArray<number>(obj.destroyed, `buildOrder[${index}].destroyed`),
+      unknown: parseUnknownTimestampBuckets(obj.unknown, `buildOrder[${index}].unknown`)
     };
   });
 }
@@ -233,7 +284,7 @@ export function parseGameSummary(json: unknown): GameSummary {
     gameId: assertNumber(obj.gameId, 'gameId'),
     winReason: assertString(obj.winReason, 'winReason'),
     mapName: assertString(obj.mapName, 'mapName'),
-    mapBiome: assertString(obj.mapBiome, 'mapBiome'),
+    mapBiome: parseNullableString(obj.mapBiome, 'unknown'),
     leaderboard: assertString(obj.leaderboard, 'leaderboard'),
     duration: assertNumber(obj.duration, 'duration'),
     startedAt: assertNumber(obj.startedAt, 'startedAt'),
@@ -256,7 +307,10 @@ export async function fetchGameSummaryFromApi(profileId: number | string, gameId
   }
 
   const url = `https://aoe4world.com/players/${profileSlug}/games/${gameId}/summary`;
-  const headers = { Accept: 'application/json' };
+  const headers = {
+    Accept: 'application/json',
+    'User-Agent': SUMMARY_USER_AGENT
+  };
 
   try {
     const response = await axios.get(url, { params, headers });

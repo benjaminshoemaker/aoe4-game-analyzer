@@ -35,6 +35,15 @@ export interface ManualMapping {
  * }
  */
 export const manualMappings: ManualMapping[] = [
+  // Malians - cattle are emitted in AoE4World summaries with nonstandard timestamp buckets.
+  {
+    pbgid: 2059966,
+    name: 'Cattle',
+    id: 'cattle',
+    cost: { food: 0, wood: 0, gold: 90, stone: 0, total: 90 },
+    classes: ['cattle'],
+    civs: ['ma', 'malians']
+  },
   // Sengoku Daimyo (Japanese variant) - clan selection widgets (no cost, UI elements)
   {
     pbgid: 9003595,

@@ -9,3 +9,8 @@ npm-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 src/data/staticData.json
+reports/resource-flow/
+tmp/
+
+# Claude Code local settings
+.claude/settings.local.json

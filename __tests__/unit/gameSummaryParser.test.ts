@@ -19,4 +19,72 @@ describe('gameSummaryParser', () => {
   it('throws when required fields are missing', () => {
     expect(() => parseGameSummary({})).toThrow(/players/);
   });
+
+  it('normalizes nullable mapBiome to "unknown"', () => {
+    const json = loadGameSummaryFromFile(fixturePath);
+    const withNullBiome = {
+      ...json,
+      mapBiome: null,
+    };
+
+    const parsed = parseGameSummary(withNullBiome);
+    expect(parsed.mapBiome).toBe('unknown');
+  });
+
+  it('coerces nullable _stats counters to zero', () => {
+    const json = loadGameSummaryFromFile(fixturePath);
+    const withNullableStats = {
+      ...json,
+      players: json.players.map((player: any, index: number) =>
+        index === 0
+          ? {
+            ...player,
+            _stats: {
+              ...player._stats,
+              ekills: null,
+              edeaths: null,
+            },
+          }
+          : player
+      ),
+    };
+
+    const parsed = parseGameSummary(withNullableStats);
+    expect(parsed.players[0]._stats.ekills).toBe(0);
+    expect(parsed.players[0]._stats.edeaths).toBe(0);
+  });
+
+  it('preserves unknown build-order timestamp buckets for nonstandard unit events', () => {
+    const json = loadGameSummaryFromFile(fixturePath);
+    const withCattleUnknownBucket = {
+      ...json,
+      players: json.players.map((player: any, index: number) =>
+        index === 0
+          ? {
+            ...player,
+            buildOrder: [
+              ...player.buildOrder,
+              {
+                id: '11216283',
+                icon: 'icons/races/malian/units/cattle',
+                pbgid: 2059966,
+                type: 'Unit',
+                finished: [],
+                constructed: [],
+                destroyed: [],
+                unknown: {
+                  '14': [120, 180],
+                },
+              },
+            ],
+          }
+          : player
+      ),
+    };
+
+    const parsed = parseGameSummary(withCattleUnknownBucket);
+    const cattle = parsed.players[0].buildOrder.find(entry => entry.pbgid === 2059966);
+
+    expect(cattle?.unknown?.['14']).toEqual([120, 180]);
+  });
 });

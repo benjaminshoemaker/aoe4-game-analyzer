@@ -34,3 +34,20 @@
   
   Ask the human whether additional patterns should be added, and suggest any that you think are important given the project. 
 
+---
+
+## AoE4World API global considerations
+- Treat API docs as guidance, not a strict contract; always verify behavior against live responses.
+- Always send a descriptive non-browser User-Agent for automated calls.
+- Prefer incremental sync patterns (`since` / `updated_since`) and local caching over broad polling.
+- For strict RM 1v1 global feed usage, call `/api/v0/games?leaderboard=rm_1v1` (not `rm_solo`).
+- On leaderboard-style endpoints, `rm_1v1` can redirect to `rm_solo`; normalize aliases in code.
+- Expect response-shape differences:
+  - `/api/v0/games` uses `teams[][i].player`
+  - player-scoped games endpoints use `teams[][i]` directly
+- Expect nullable fields in ongoing/recent games (`rating`, `mmr`, diffs may be null).
+- Respect pagination/volume constraints and guardrails:
+  - `/api/v0/games` page max is 20
+  - profile id batch limits may be enforced on some endpoints
+- Avoid high-volume use of dynamically analyzed summary endpoints (`/players/:id/games/:id/summary`) unless explicitly needed; these can rate limit (`429`) and are CPU-expensive.
+- Use `/dumps` for historical backfills; use APIs for near-real-time deltas.

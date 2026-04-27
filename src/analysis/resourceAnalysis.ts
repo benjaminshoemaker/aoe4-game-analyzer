@@ -1,5 +1,6 @@
 import { PlayerSummary, ResourceTotals } from '../parser/gameSummaryParser';
 import { ResolvedBuildItem } from '../parser/buildOrderResolver';
+import { isVillagerResolvedItem } from './villagerClassifier';
 
 export interface SpendingItem {
   name: string;
@@ -49,18 +50,8 @@ function isLandmark(item: ResolvedBuildItem): boolean {
   return false;
 }
 
-function isVillager(item: ResolvedBuildItem): boolean {
-  const nameLower = item.name.toLowerCase();
-  const classesLower = item.classes.map(c => c.toLowerCase());
-
-  // Check for villager-specific identifiers
-  if (nameLower.includes('villager')) return true;
-  if (classesLower.includes('worker')) return true;
-  if (classesLower.includes('villager')) return true;
-
-  // Check icon path
-  const iconLower = item.originalEntry.icon.toLowerCase();
-  return iconLower.includes('villager');
+export function isVillager(item: ResolvedBuildItem): boolean {
+  return isVillagerResolvedItem(item);
 }
 
 function createEmptyTotals(): ResourceTotals {

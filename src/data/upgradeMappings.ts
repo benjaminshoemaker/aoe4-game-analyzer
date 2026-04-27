@@ -71,3 +71,48 @@ export function parseUnitTierFromIcon(iconPath: string): number {
 export function getUpgradeEffect(upgradeKey: string): UpgradeEffect | null {
   return globalCombatUpgrades[upgradeKey] ?? null;
 }
+
+function parseBlacksmithLevel(iconPath: string): number | null {
+  const match = iconPath.match(/_(\d)(?:\.[^/.]+)?$/);
+  if (!match) return null;
+
+  const level = Number(match[1]);
+  if (!Number.isFinite(level) || level < 1 || level > 3) return null;
+  return level;
+}
+
+function levelBonusByType(type: UpgradeEffect['type'], level: number): UpgradeEffect | null {
+  if (type === 'melee_attack' || type === 'ranged_attack') {
+    return { type, level, bonus: level === 1 ? 0.05 : level === 2 ? 0.10 : 0.15 };
+  }
+
+  if (type === 'melee_armor' || type === 'ranged_armor') {
+    return { type, level, bonus: level === 1 ? 0.03 : level === 2 ? 0.06 : 0.09 };
+  }
+
+  return null;
+}
+
+export function getUpgradeEffectFromIcon(iconPath: string): UpgradeEffect | null {
+  const normalized = iconPath.toLowerCase();
+  const level = parseBlacksmithLevel(normalized);
+  if (level === null) return null;
+
+  if (normalized.includes('melee_damage_technology_')) {
+    return levelBonusByType('melee_attack', level);
+  }
+
+  if (normalized.includes('ranged_damage_technology_')) {
+    return levelBonusByType('ranged_attack', level);
+  }
+
+  if (normalized.includes('melee_armor_technology_')) {
+    return levelBonusByType('melee_armor', level);
+  }
+
+  if (normalized.includes('ranged_armor_technology_')) {
+    return levelBonusByType('ranged_armor', level);
+  }
+
+  return null;
+}

@@ -53,7 +53,11 @@ describe('CLI end-to-end', () => {
     const result = runCli(['check-data']);
 
     expect(result.status).toBe(0);
-    expect(result.stdout).toMatch(/Data cached at .*?, 1 units, 1 buildings, 1 technologies/);
+    expect(result.stdout).toMatch(
+      new RegExp(
+        `Data cached at .*?, ${sampleUnits.length} units, ${sampleBuildings.length} buildings, ${sampleTechnologies.length} technologies`
+      )
+    );
   });
 
   it('test-upgrade-parsing outputs tier and upgrade info', () => {
@@ -100,5 +104,50 @@ describe('CLI end-to-end', () => {
     expect(result.stdout).toMatch(/Player 1: .*PlayerOne .*English/i);
     expect(result.stdout).toMatch(/Player 2: .*PlayerTwo .*French/i);
     expect(result.stdout).toMatch(/Successfully parsed .*build order entries/i);
+  });
+
+  it('generate-unit-counter-matrix outputs a unit-level matrix where crossbow differs from archer vs heavy', () => {
+    const catalogPath = path.resolve(__dirname, '..', 'fixtures', 'unitCounterCatalog.json');
+    const outPath = path.resolve(projectRoot, 'tmp', 'e2e-unit-counter-matrix.tsv');
+    const profilesPath = path.resolve(projectRoot, 'tmp', 'e2e-unit-counter-profiles.tsv');
+
+    if (fs.existsSync(outPath)) fs.unlinkSync(outPath);
+    if (fs.existsSync(profilesPath)) fs.unlinkSync(profilesPath);
+
+    const result = runCli([
+      'generate-unit-counter-matrix',
+      '--catalog',
+      catalogPath,
+      '--out',
+      outPath,
+      '--profiles-out',
+      profilesPath
+    ]);
+
+    expect(result.status).toBe(0);
+    expect(fs.existsSync(outPath)).toBe(true);
+    expect(fs.existsSync(profilesPath)).toBe(true);
+
+    const matrixLines = fs.readFileSync(outPath, 'utf-8').trim().split('\n');
+    const header = matrixLines[0].split('\t');
+    const body = matrixLines.slice(1).map(line => line.split('\t'));
+
+    const attackerCol = 0;
+    const maaCol = header.indexOf('man-at-arms-4');
+    expect(maaCol).toBeGreaterThan(0);
+
+    const crossbowRow = body.find(row => row[attackerCol] === 'crossbowman-4');
+    const archerRow = body.find(row => row[attackerCol] === 'archer-3');
+    expect(crossbowRow).toBeDefined();
+    expect(archerRow).toBeDefined();
+
+    const crossbowVsMaa = Number(crossbowRow?.[maaCol] ?? '0');
+    const archerVsMaa = Number(archerRow?.[maaCol] ?? '0');
+    expect(crossbowVsMaa).toBeGreaterThan(archerVsMaa);
+
+    const profiles = fs.readFileSync(profilesPath, 'utf-8');
+    expect(profiles).toContain('unit_id\tunit_name\tcivs\tbonus_targets\tweaknesses');
+    expect(profiles).toContain('class:heavy');
+    expect(profiles).toContain('horsemen');
   });
 });

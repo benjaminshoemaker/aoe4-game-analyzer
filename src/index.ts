@@ -1,12 +1,23 @@
 #!/usr/bin/env node
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local', quiet: true });
+dotenv.config({ quiet: true });
+
+import fs from 'fs';
+import path from 'path';
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { forceRefreshStaticData, loadStaticData } from './data/fetchStaticData';
 import { calculateValueAdjustedMatchup, classifyUnit, formatValueAdjustedMatchup } from './data/counterMatrix';
+import { parseUnitCatalogFromJson, writeUnitCounterMatrixArtifacts } from './data/unitCounterMatrix';
 import { getUpgradeEffect, parseUnitTierFromIcon } from './data/upgradeMappings';
 import { fetchGameSummaryFromApi, loadGameSummaryFromFile, parseGameSummary } from './parser/gameSummaryParser';
 import { resolveAllBuildOrders, validateAllItemsResolved } from './parser/buildOrderResolver';
 import { Unit, UnitWithValue } from './types';
+import { analyzeGame } from './analysis/gameAnalysis';
+import { formatGameAnalysis } from './formatters/analyzeFormatter';
+import { buildPostMatchViewModel } from './analysis/postMatchViewModel';
+import { renderPostMatchHtml } from './formatters/postMatchHtml';
 
 function createRng(seed: string): () => number {
   let state = 0;
@@ -430,6 +441,108 @@ export async function runCli(argv = process.argv): Promise<void> {
       });
       console.log('');
       console.log(formatValueAdjustedMatchup(valueMatchup, 'Army 1', 'Army 2'));
+    });
+
+  program
+    .command('generate-unit-counter-matrix')
+    .option('--catalog <path>', 'Path to unit catalog JSON (array or wrapped with units[])')
+    .option('--out <path>', 'Output path for the unit counter matrix TSV', 'tmp/updated_unit_counter_matrix.tsv')
+    .option('--profiles-out <path>', 'Output path for per-unit bonus/weakness profiles TSV', 'tmp/updated_unit_counter_profiles.tsv')
+    .option('--include-noncombat', 'Include non-combat units in the matrix', false)
+    .description('Generate a unit-level counter matrix TSV using per-unit bonuses and weaknesses')
+    .action(async (opts: { catalog?: string; out?: string; profilesOut?: string; includeNoncombat?: boolean }) => {
+      try {
+        let units: Unit[] = [];
+        if (opts.catalog) {
+          const catalogPath = path.resolve(opts.catalog);
+          const raw = await fs.promises.readFile(catalogPath, 'utf-8');
+          units = parseUnitCatalogFromJson(JSON.parse(raw));
+        } else {
+          const staticData = await loadStaticData();
+          units = staticData.units;
+        }
+
+        const outPath = path.resolve(opts.out ?? 'tmp/updated_unit_counter_matrix.tsv');
+        const profilesOutPath = path.resolve(opts.profilesOut ?? 'tmp/updated_unit_counter_profiles.tsv');
+        const matrix = writeUnitCounterMatrixArtifacts({
+          units,
+          outPath,
+          profilesOutPath,
+          includeNonCombat: opts.includeNoncombat === true,
+        });
+
+        console.log(chalk.green(`Unit counter matrix written: ${outPath}`));
+        console.log(chalk.green(`Unit bonus/weakness profiles written: ${profilesOutPath}`));
+        console.log(chalk.gray(`Units included: ${matrix.units.length}`));
+      } catch (error) {
+        console.error(chalk.red(`Failed to generate unit counter matrix: ${(error as Error).message}`));
+        process.exitCode = 1;
+      }
+    });
+
+  program
+    .command('analyze')
+    .argument('<profileId>', 'Profile ID or slug')
+    .argument('<gameId>', 'Game ID')
+    .option('--sig <sig>', 'Signature for private games')
+    .option('--json', 'Output raw JSON')
+    .option('--no-narrative', 'Skip LLM narrative')
+    .description('Analyze why a player won a game')
+    .action(async (profileIdStr: string, gameIdStr: string, opts: { sig?: string; json?: boolean; narrative?: boolean }) => {
+      try {
+        const gameId = Number(gameIdStr);
+        const analysis = await analyzeGame(profileIdStr, gameId, {
+          sig: opts.sig,
+          skipNarrative: opts.narrative === false,
+        });
+
+        if (opts.json) {
+          console.log(JSON.stringify(analysis, null, 2));
+        } else {
+          console.log(formatGameAnalysis(analysis));
+        }
+      } catch (error) {
+        console.error(chalk.red(`Failed to analyze game: ${(error as Error).message}`));
+        process.exitCode = 1;
+      }
+    });
+
+  program
+    .command('render-post-match')
+    .argument('<profileId>', 'Profile ID or slug')
+    .argument('<gameId>', 'Game ID')
+    .option('--sig <sig>', 'Signature for private games')
+    .option('--out <path>', 'Output HTML path')
+    .description('Render single-page post-match HTML view')
+    .action(async (profileIdStr: string, gameIdStr: string, opts: { sig?: string; out?: string }) => {
+      try {
+        const gameId = Number(gameIdStr);
+        const summary = await fetchGameSummaryFromApi(profileIdStr, gameId, opts.sig);
+        const analysis = await analyzeGame(profileIdStr, gameId, {
+          sig: opts.sig,
+          skipNarrative: true,
+          summary
+        });
+
+        const model = buildPostMatchViewModel({
+          summary,
+          analysis,
+          perspectiveProfileId: profileIdStr,
+          summarySig: opts.sig,
+        });
+        const html = renderPostMatchHtml(model);
+
+        const outputPath = opts.out
+          ? path.resolve(opts.out)
+          : path.resolve(process.cwd(), `reports/resource-flow/match-${gameId}.html`);
+
+        await fs.promises.mkdir(path.dirname(outputPath), { recursive: true });
+        await fs.promises.writeFile(outputPath, html, 'utf-8');
+        console.log(chalk.green(`Post-match view written: ${outputPath}`));
+      } catch (error) {
+        console.error(chalk.red(`Failed to render post-match view: ${(error as Error).message}`));
+        process.exitCode = 1;
+      }
     });
 
   await program.parseAsync(argv);

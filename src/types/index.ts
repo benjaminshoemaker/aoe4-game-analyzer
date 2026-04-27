@@ -16,6 +16,28 @@ export interface Unit {
   displayClasses: string[];
   age: number;
   icon: string;
+  description?: string;
+  hitpoints?: number;
+  armor?: Array<{ type: string; value: number }>;
+  weapons?: Array<{
+    name: string;
+    type: string;
+    attribName?: string;
+    damage: number;
+    speed: number;
+    range?: { min?: number; max?: number };
+    modifiers?: Array<{
+      property: string;
+      target?: {
+        class?: string[][];
+        id?: string[];
+      };
+      effect: 'change' | 'multiply' | string;
+      value: number;
+      type?: string;
+    }>;
+  }>;
+  movement?: { speed?: number };
 }
 
 export interface Building {
@@ -40,7 +62,21 @@ export interface Technology {
   classes?: string[];
   age: number;
   icon: string;
-  effects?: string[];
+  description?: string;
+  effects?: Array<string | {
+    property: string;
+    select?: {
+      id?: string[];
+      class?: string[][];
+    };
+    target?: {
+      id?: string[];
+      class?: string[][];
+    };
+    effect: 'change' | 'multiply' | string;
+    value: number;
+    type?: string;
+  }>;
 }
 
 export interface StaticDataCache {
