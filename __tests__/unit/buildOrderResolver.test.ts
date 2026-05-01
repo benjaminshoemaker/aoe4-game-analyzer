@@ -9,6 +9,59 @@ import {
 } from '../helpers/splitVillagerDeathsFixture';
 
 describe('buildOrderResolver', () => {
+  it('resolves Knights Templar unknown commanderie age-up choices by PBGID', () => {
+    const staticData: StaticDataCache = {
+      fetchedAt: new Date().toISOString(),
+      units: [],
+      buildings: [],
+      technologies: [
+        {
+          id: 'knights-hospitaller-1',
+          name: 'Knights Hospitaller',
+          baseId: 'knights-hospitaller',
+          pbgid: 5000201,
+          civs: ['kt'],
+          costs: { food: 400, gold: 200 },
+          classes: ['age_up_upgrade', 'scar_dark_age_upgrade'],
+          age: 1,
+          icon: 'icons/races/templar/technologies/knights-hospitaller-1',
+        },
+      ],
+    };
+    const fixture = makeSplitVillagerDeathsFixture();
+    fixture.players[1].civilization = 'knights_templar';
+    fixture.players[1].buildOrder = [{
+      id: '11265377',
+      icon: 'icons/races/templar/commanderieflags/civ_icon_medium_knight_hospitalier',
+      pbgid: 5000201,
+      type: 'Unknown',
+      finished: [264],
+      constructed: [],
+      destroyed: [],
+    }];
+
+    const summary = parseGameSummary(fixture);
+    const player = summary.players[1];
+    const resolved = resolveAllBuildOrders(player, staticData);
+    const pool = buildPlayerDeployedPoolSeries(player, resolved, summary.duration);
+
+    expect(resolved.unresolved).toEqual([]);
+    expect(resolved.resolved[0]).toEqual(expect.objectContaining({
+      type: 'upgrade',
+      name: 'Knights Hospitaller',
+      produced: [264],
+    }));
+    expect(pool.series.find(point => point.timestamp === 264)?.advancement).toBe(600);
+    expect(pool.bandItemDeltas).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        timestamp: 264,
+        band: 'advancement',
+        itemLabel: 'Knights Hospitaller',
+        deltaValue: 600,
+      }),
+    ]));
+  });
+
   it('does not duplicate destroyed events when splitting starting and later production', () => {
     const summary = parseGameSummary(makeSplitVillagerDeathsFixture());
     const player = summary.players[1];
