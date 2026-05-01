@@ -844,13 +844,6 @@ function significantEventTitle(event: SignificantTimelineEvent | null): string {
   return `${event.victimLabel} ${event.label}`;
 }
 
-function significantEventTopLossesText(event: SignificantTimelineEvent | null): string {
-  if (!event || event.topLosses.length === 0) return 'No itemized losses';
-  return event.topLosses
-    .map(item => `${item.label} x${formatNumber(item.count)} (${formatNumber(item.value)})`)
-    .join(' · ');
-}
-
 function significantEventLossRowsHtml(items: SignificantTimelineEvent['encounterLosses']['player1']): string {
   if (items.length === 0) {
     return '<li class="event-impact-loss-row event-impact-loss-row-empty">No losses</li>';
@@ -863,6 +856,16 @@ function significantEventLossRowsHtml(items: SignificantTimelineEvent['encounter
             <span class="event-impact-loss-value">${formatNumber(item.value)}</span>
           </li>`)
     .join('');
+}
+
+function significantEventArmyRowsHtml(
+  units: NonNullable<SignificantTimelineEvent['preEncounterArmies']>['player1']['units'] | undefined
+): string {
+  if (!units || units.length === 0) {
+    return '<li class="event-impact-loss-row event-impact-loss-row-empty">No active military</li>';
+  }
+
+  return significantEventLossRowsHtml(units);
 }
 
 function significantEventLossValue(
@@ -923,6 +926,56 @@ function significantEventLossesHtml(event: SignificantTimelineEvent | null): str
         </div>`;
 }
 
+function significantEventArmyValue(event: SignificantTimelineEvent | null, playerKey: SignificantEventPlayerKey): number {
+  return event?.preEncounterArmies?.[playerKey]?.totalValue ?? 0;
+}
+
+function significantEventUnderdogNoteHtml(event: SignificantTimelineEvent | null): string {
+  const context = event?.favorableUnderdogFight;
+  const hiddenAttr = context ? '' : ' hidden';
+  return `
+        <div class="event-impact-underdog-note" data-significant-event-underdog-note${hiddenAttr}>
+          <span data-significant-event-underdog-summary>${escapeHtml(context?.summary ?? '')}</span>
+          <button type="button" class="event-impact-help-button" data-significant-event-underdog-toggle aria-controls="event-impact-underdog-details" aria-label="Why did the smaller army win this fight?" title="Why did the smaller army win this fight?">?</button>
+        </div>`;
+}
+
+function significantEventPreEncounterArmiesHtml(event: SignificantTimelineEvent | null): string {
+  const player1Label = event?.player1Civilization ?? 'Player 1';
+  const player2Label = event?.player2Civilization ?? 'Player 2';
+  const hiddenAttr = event?.kind === 'fight' && event.preEncounterArmies ? '' : ' hidden';
+  return `
+        <div class="event-impact-loss-detail event-impact-army-detail" data-significant-event-armies${hiddenAttr}>
+          <div class="event-impact-loss-detail-title">Pre-encounter armies</div>
+          <div class="event-impact-loss-columns">
+            <div class="event-impact-loss-column">
+              <div class="event-impact-loss-column-heading" data-significant-event-army-heading="player1">${escapeHtml(player1Label)} army before fight</div>
+              <dl class="event-impact-loss-summary">
+                <div><dt>Active military</dt><dd data-significant-event-army-total="player1">${event ? formatNumber(significantEventArmyValue(event, 'player1')) : ''}</dd></div>
+              </dl>
+              <ul class="event-impact-loss-list" data-significant-event-army-list="player1">${significantEventArmyRowsHtml(event?.preEncounterArmies?.player1.units)}</ul>
+            </div>
+            <div class="event-impact-loss-column">
+              <div class="event-impact-loss-column-heading" data-significant-event-army-heading="player2">${escapeHtml(player2Label)} army before fight</div>
+              <dl class="event-impact-loss-summary">
+                <div><dt>Active military</dt><dd data-significant-event-army-total="player2">${event ? formatNumber(significantEventArmyValue(event, 'player2')) : ''}</dd></div>
+              </dl>
+              <ul class="event-impact-loss-list" data-significant-event-army-list="player2">${significantEventArmyRowsHtml(event?.preEncounterArmies?.player2.units)}</ul>
+            </div>
+          </div>
+        </div>`;
+}
+
+function significantEventUnderdogDetailsHtml(event: SignificantTimelineEvent | null): string {
+  const context = event?.favorableUnderdogFight;
+  const hiddenAttr = context ? '' : ' hidden';
+  return `
+        <details id="event-impact-underdog-details" class="event-impact-underdog-details" data-significant-event-underdog-details${hiddenAttr}>
+          <summary>Why this fight is notable</summary>
+          <p data-significant-event-underdog-details-text>${escapeHtml(context?.details ?? '')}</p>
+        </details>`;
+}
+
 function significantEventAriaLabel(event: SignificantTimelineEvent): string {
   return `${event.label} at ${event.timeLabel}: ${event.headline || event.description}`;
 }
@@ -943,12 +996,10 @@ function buildSignificantEventImpactHtml(event: SignificantTimelineEvent | null)
       <section class="event-impact" data-significant-event${hiddenAttr}>
         <div class="event-impact-heading">Event impact</div>
         <div class="event-impact-title" data-hover-field="significantEvent.label">${escapeHtml(significantEventTitle(event))}</div>
+        ${significantEventUnderdogNoteHtml(event)}
+        ${significantEventPreEncounterArmiesHtml(event)}
         ${significantEventLossesHtml(event)}
-        <p class="event-impact-description" data-hover-field="significantEvent.description">${escapeHtml(event?.description ?? '')}</p>
-        <dl class="event-impact-metrics">
-          <div><dt>Gross impact</dt><dd data-hover-field="significantEvent.grossLoss">${event ? formatNumber(event.grossImpact ?? event.grossLoss) : ''}</dd></div>
-        </dl>
-        <div class="event-impact-losses" data-hover-field="significantEvent.topLosses">${escapeHtml(significantEventTopLossesText(event))}</div>
+        ${significantEventUnderdogDetailsHtml(event)}
       </section>`;
 }
 
@@ -2637,15 +2688,6 @@ function buildHoverInteractionScript(hoverSnapshots: HoverSnapshot[]): string {
         return sign + rounded.toFixed(1) + 'pp';
       }
 
-      function significantTopLossesText(event) {
-        if (!event || !Array.isArray(event.topLosses) || event.topLosses.length === 0) {
-          return 'No itemized losses';
-        }
-        return event.topLosses.map(function (item) {
-          return (item.label || 'Loss') + ' x' + formatNumber(item.count) + ' (' + formatNumber(item.value) + ')';
-        }).join(' · ');
-      }
-
       function significantEventLossRowsHtml(items) {
         if (!Array.isArray(items) || items.length === 0) {
           return '<li class="event-impact-loss-row event-impact-loss-row-empty">No losses</li>';
@@ -2656,6 +2698,36 @@ function buildHoverInteractionScript(hoverSnapshots: HoverSnapshot[]): string {
             '<span class="event-impact-loss-value">' + formatNumber(item.value || 0) + '</span>' +
             '</li>';
         }).join('');
+      }
+
+      function significantEventArmyRowsHtml(items) {
+        if (!Array.isArray(items) || items.length === 0) {
+          return '<li class="event-impact-loss-row event-impact-loss-row-empty">No active military</li>';
+        }
+        return significantEventLossRowsHtml(items);
+      }
+
+      function significantEventArmyValue(event, playerKey) {
+        var armies = event && event.preEncounterArmies ? event.preEncounterArmies : null;
+        var army = armies ? armies[playerKey] : null;
+        return army && Number.isFinite(Number(army.totalValue)) ? Number(army.totalValue) : 0;
+      }
+
+      function updateSignificantEventUnderdog(event) {
+        var context = event && event.favorableUnderdogFight ? event.favorableUnderdogFight : null;
+        document.querySelectorAll('[data-significant-event-underdog-note]').forEach(function (el) {
+          el.hidden = !context;
+        });
+        document.querySelectorAll('[data-significant-event-underdog-summary]').forEach(function (el) {
+          el.textContent = context ? context.summary || '' : '';
+        });
+        document.querySelectorAll('[data-significant-event-underdog-details]').forEach(function (el) {
+          el.hidden = !context;
+          if (!context) el.open = false;
+        });
+        document.querySelectorAll('[data-significant-event-underdog-details-text]').forEach(function (el) {
+          el.textContent = context ? context.details || '' : '';
+        });
       }
 
       function significantEventLossValue(event, playerKey, metric) {
@@ -2717,6 +2789,33 @@ function buildHoverInteractionScript(hoverSnapshots: HoverSnapshot[]): string {
         updateSignificantEventLossSummary(event, 'player2', player2Label);
       }
 
+      function updateSignificantEventArmies(event) {
+        var showArmies = !!(event && event.kind === 'fight' && event.preEncounterArmies);
+        var player1Label = event && event.player1Civilization ? event.player1Civilization : 'Player 1';
+        var player2Label = event && event.player2Civilization ? event.player2Civilization : 'Player 2';
+        document.querySelectorAll('[data-significant-event-armies]').forEach(function (el) {
+          el.hidden = !showArmies;
+        });
+        document.querySelectorAll('[data-significant-event-army-heading="player1"]').forEach(function (el) {
+          el.textContent = player1Label + ' army before fight';
+        });
+        document.querySelectorAll('[data-significant-event-army-heading="player2"]').forEach(function (el) {
+          el.textContent = player2Label + ' army before fight';
+        });
+        document.querySelectorAll('[data-significant-event-army-total="player1"]').forEach(function (el) {
+          el.textContent = event ? formatNumber(significantEventArmyValue(event, 'player1')) : '';
+        });
+        document.querySelectorAll('[data-significant-event-army-total="player2"]').forEach(function (el) {
+          el.textContent = event ? formatNumber(significantEventArmyValue(event, 'player2')) : '';
+        });
+        document.querySelectorAll('[data-significant-event-army-list="player1"]').forEach(function (el) {
+          el.innerHTML = significantEventArmyRowsHtml(event && event.preEncounterArmies ? event.preEncounterArmies.player1.units : []);
+        });
+        document.querySelectorAll('[data-significant-event-army-list="player2"]').forEach(function (el) {
+          el.innerHTML = significantEventArmyRowsHtml(event && event.preEncounterArmies ? event.preEncounterArmies.player2.units : []);
+        });
+      }
+
       function updateSignificantEvent(point) {
         var event = point.significantEvent || null;
         document.querySelectorAll('[data-significant-event]').forEach(function (el) {
@@ -2724,17 +2823,15 @@ function buildHoverInteractionScript(hoverSnapshots: HoverSnapshot[]): string {
         });
         if (!event) {
           setField('significantEvent.label', '');
-          setField('significantEvent.description', '');
-          setField('significantEvent.grossLoss', '');
-          setField('significantEvent.topLosses', '');
+          updateSignificantEventUnderdog(null);
+          updateSignificantEventArmies(null);
           updateSignificantEventLosses(null);
           return;
         }
 
         setField('significantEvent.label', event.headline || ((event.victimLabel ? event.victimLabel + ' ' : '') + (event.label || 'Event')));
-        setField('significantEvent.description', event.description || '');
-        setField('significantEvent.grossLoss', formatNumber(event.grossImpact ?? event.grossLoss));
-        setField('significantEvent.topLosses', significantTopLossesText(event));
+        updateSignificantEventUnderdog(event);
+        updateSignificantEventArmies(event);
         updateSignificantEventLosses(event);
       }
 
@@ -2880,6 +2977,16 @@ function buildHoverInteractionScript(hoverSnapshots: HoverSnapshot[]): string {
             wrap.scrollLeft -= 40;
             event.preventDefault();
           }
+        });
+      });
+
+      document.querySelectorAll('[data-significant-event-underdog-toggle]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          document.querySelectorAll('[data-significant-event-underdog-details]').forEach(function (details) {
+            if (details.hidden) return;
+            details.open = true;
+            if (details.scrollIntoView) details.scrollIntoView({ block: 'nearest' });
+          });
         });
       });
 
@@ -3419,11 +3526,47 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       color: #253226;
     }
 
-    .event-impact-description {
-      margin: 4px 0 8px;
+    .event-impact-underdog-note {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-top: 6px;
       color: #465447;
       font-size: 12px;
       line-height: 1.35;
+    }
+
+    .event-impact-help-button {
+      width: 18px;
+      height: 18px;
+      border: 1px solid #d8bdae;
+      border-radius: 999px;
+      background: #fff;
+      color: #7b3f32;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .event-impact-underdog-details {
+      margin-top: 8px;
+      padding-top: 7px;
+      border-top: 1px solid #eadbd4;
+      color: #465447;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .event-impact-underdog-details summary {
+      color: #7b3f32;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .event-impact-underdog-details p {
+      margin: 6px 0 0;
     }
 
     .event-impact-loss-detail {
@@ -3528,39 +3671,6 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       .event-impact-loss-columns {
         grid-template-columns: 1fr;
       }
-    }
-
-    .event-impact-metrics {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 6px 10px;
-      margin: 0;
-    }
-
-    .event-impact-metrics div {
-      min-width: 0;
-    }
-
-    .event-impact-metrics dt {
-      color: var(--color-muted);
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-
-    .event-impact-metrics dd {
-      margin: 1px 0 0;
-      color: #253226;
-      font-size: 13px;
-      font-weight: 800;
-    }
-
-    .event-impact-losses {
-      margin-top: 7px;
-      color: var(--color-muted);
-      font-size: 12px;
-      line-height: 1.35;
-      overflow-wrap: anywhere;
     }
 
     .inspector-table-wrap {

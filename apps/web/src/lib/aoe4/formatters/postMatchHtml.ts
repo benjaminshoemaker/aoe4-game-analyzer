@@ -1,4 +1,4 @@
-import { AgeMarker, PostMatchViewModel, SignificantTimelineEvent } from '../analysis/postMatchViewModel';
+import { AgeMarker, PostMatchPlayerDisplay, PostMatchViewModel, SignificantTimelineEvent } from '../analysis/postMatchViewModel';
 import { GatherRatePoint, PoolSeriesPoint } from '../analysis/resourcePool';
 import { evaluateUnitPairCounterComputation } from '../data/combatValueEngine';
 import type { PairCounterComputation } from '../data/counterMatrix';
@@ -141,6 +141,8 @@ const MATRIX_WEAK_THRESHOLD = 0.85;
 const significantVillagerOpportunityTooltip =
   'Scale-adjusted future missed gathering from killed villagers in this event window. The model removes those deaths, measures the future villager death-loss avoided, then discounts each future increment by event-time deployed resources divided by deployed resources at that later time.';
 const MAX_CLIENT_BAND_BREAKDOWN_ENTRIES = 12;
+
+type RenderPlayerLabels = Record<'you' | 'opponent', PostMatchPlayerDisplay>;
 
 interface HoverBandValues {
   economic: number;
@@ -304,6 +306,32 @@ function formatSigned(value: number): string {
 
 function formatNumber(value: number): string {
   return Math.round(value).toLocaleString('en-US');
+}
+
+function fallbackPlayerDisplay(
+  name: string,
+  civilization: string,
+  color: string
+): PostMatchPlayerDisplay {
+  const safeName = name.trim() || 'Player';
+  const safeCivilization = civilization.trim() || 'Unknown civilization';
+  return {
+    name: safeName,
+    civilization: safeCivilization,
+    label: `${safeName} · ${safeCivilization}`,
+    shortLabel: safeName,
+    color,
+  };
+}
+
+function renderPlayerLabels(header: PostMatchViewModel['header']): RenderPlayerLabels {
+  const partialHeader = header as Partial<PostMatchViewModel['header']>;
+  return {
+    you: partialHeader.youPlayer
+      ?? fallbackPlayerDisplay('Player 1', header.youCivilization, '#378ADD'),
+    opponent: partialHeader.opponentPlayer
+      ?? fallbackPlayerDisplay('Player 2', header.opponentCivilization, '#D85A30'),
+  };
 }
 
 function formatPrecise(value: number, decimals = 2): string {
@@ -617,11 +645,11 @@ function fallbackAccountingSnapshot(
   };
 }
 
-function totalPoolTooltipText(allocation: AllocationComparison): string {
+function totalPoolTooltipText(allocation: AllocationComparison, labels: RenderPlayerLabels): string {
   return [
     'Economic + Technology + Military + Other - Destroyed = Total pool',
-    `You: ${formatNumber(allocation.economic.you)} + ${formatNumber(allocation.technology.you)} + ${formatNumber(allocation.military.you)} + ${formatNumber(allocation.other.you)} - ${formatNumber(allocation.destroyed.you)} = ${formatNumber(allocation.overall.you)}`,
-    `Opp: ${formatNumber(allocation.economic.opponent)} + ${formatNumber(allocation.technology.opponent)} + ${formatNumber(allocation.military.opponent)} + ${formatNumber(allocation.other.opponent)} - ${formatNumber(allocation.destroyed.opponent)} = ${formatNumber(allocation.overall.opponent)}`,
+    `${labels.you.label}: ${formatNumber(allocation.economic.you)} + ${formatNumber(allocation.technology.you)} + ${formatNumber(allocation.military.you)} + ${formatNumber(allocation.other.you)} - ${formatNumber(allocation.destroyed.you)} = ${formatNumber(allocation.overall.you)}`,
+    `${labels.opponent.label}: ${formatNumber(allocation.economic.opponent)} + ${formatNumber(allocation.technology.opponent)} + ${formatNumber(allocation.military.opponent)} + ${formatNumber(allocation.other.opponent)} - ${formatNumber(allocation.destroyed.opponent)} = ${formatNumber(allocation.overall.opponent)}`,
   ].join(' | ');
 }
 
@@ -830,7 +858,7 @@ function adjustedMilitaryAtOrBefore(
   return candidate;
 }
 
-function buildHoverSnapshots(model: PostMatchViewModel): HoverSnapshot[] {
+function buildHoverSnapshots(model: PostMatchViewModel, labels: RenderPlayerLabels): HoverSnapshot[] {
   const duration = model.trajectory.durationSeconds;
   const villagerDuration = Math.max(
     1,
@@ -870,7 +898,7 @@ function buildHoverSnapshots(model: PostMatchViewModel): HoverSnapshot[] {
       delta: snapshot.delta,
       accounting,
       allocation,
-      totalPoolTooltip: totalPoolTooltipText(allocation),
+      totalPoolTooltip: totalPoolTooltipText(allocation, labels),
       strategy: buildStrategySnapshot(accounting.you, accounting.opponent),
       gather: snapshot.gather,
       villagerOpportunity: snapshot.villagerOpportunity,
@@ -939,7 +967,8 @@ function buildClientHoverSnapshots(hoverSnapshots: HoverSnapshot[]): ClientHover
 }
 
 export function buildPostMatchHoverPayload(model: PostMatchViewModel): ClientHoverSnapshot[] {
-  return buildClientHoverSnapshots(buildHoverSnapshots(model));
+  const labels = renderPlayerLabels(model.header);
+  return buildClientHoverSnapshots(buildHoverSnapshots(model, labels));
 }
 
 function escapeJsonForScript(value: unknown): string {
@@ -965,13 +994,6 @@ function significantEventTitle(event: SignificantTimelineEvent | null): string {
   return `${event.victimLabel} ${event.label}`;
 }
 
-function significantEventTopLossesText(event: SignificantTimelineEvent | null): string {
-  if (!event || event.topLosses.length === 0) return 'No itemized losses';
-  return event.topLosses
-    .map(item => `${item.label} x${formatNumber(item.count)} (${formatNumber(item.value)})`)
-    .join(' · ');
-}
-
 function significantEventLossRowsHtml(items: SignificantTimelineEvent['encounterLosses']['player1']): string {
   if (items.length === 0) {
     return '<li class="event-impact-loss-row event-impact-loss-row-empty">No losses</li>';
@@ -984,6 +1006,16 @@ function significantEventLossRowsHtml(items: SignificantTimelineEvent['encounter
                 <span class="event-impact-loss-value">${formatNumber(item.value)}</span>
               </li>`)
     .join('');
+}
+
+function significantEventArmyRowsHtml(
+  units: NonNullable<SignificantTimelineEvent['preEncounterArmies']>['player1']['units'] | undefined
+): string {
+  if (!units || units.length === 0) {
+    return '<li class="event-impact-loss-row event-impact-loss-row-empty">No active military</li>';
+  }
+
+  return significantEventLossRowsHtml(units);
 }
 
 function significantEventLossValue(
@@ -1024,8 +1056,8 @@ function significantEventLossSummaryHtml(
 }
 
 function significantEventLossesHtml(event: SignificantTimelineEvent | null): string {
-  const player1Label = event?.player1Civilization ?? 'Player 1';
-  const player2Label = event?.player2Civilization ?? 'Player 2';
+  const player1Label = event?.player1Label ?? event?.player1Civilization ?? 'Player 1';
+  const player2Label = event?.player2Label ?? event?.player2Civilization ?? 'Player 2';
   return `
             <div class="event-impact-loss-detail" data-significant-event-losses>
               <div class="event-impact-loss-detail-title">Encounter losses</div>
@@ -1042,6 +1074,56 @@ function significantEventLossesHtml(event: SignificantTimelineEvent | null): str
                 </div>
               </div>
             </div>`;
+}
+
+function significantEventArmyValue(event: SignificantTimelineEvent | null, playerKey: SignificantEventPlayerKey): number {
+  return event?.preEncounterArmies?.[playerKey]?.totalValue ?? 0;
+}
+
+function significantEventUnderdogNoteHtml(event: SignificantTimelineEvent | null): string {
+  const context = event?.favorableUnderdogFight;
+  const hiddenAttr = context ? '' : ' hidden';
+  return `
+            <div class="event-impact-underdog-note" data-significant-event-underdog-note${hiddenAttr}>
+              <span data-significant-event-underdog-summary>${escapeHtml(context?.summary ?? '')}</span>
+              <button type="button" class="event-impact-help-button" data-significant-event-underdog-toggle aria-controls="event-impact-underdog-details" aria-label="Why did the smaller army win this fight?" title="Why did the smaller army win this fight?">?</button>
+            </div>`;
+}
+
+function significantEventPreEncounterArmiesHtml(event: SignificantTimelineEvent | null): string {
+  const player1Label = event?.player1Label ?? event?.player1Civilization ?? 'Player 1';
+  const player2Label = event?.player2Label ?? event?.player2Civilization ?? 'Player 2';
+  const hiddenAttr = event?.kind === 'fight' && event.preEncounterArmies ? '' : ' hidden';
+  return `
+            <div class="event-impact-loss-detail event-impact-army-detail" data-significant-event-armies${hiddenAttr}>
+              <div class="event-impact-loss-detail-title">Pre-encounter armies</div>
+              <div class="event-impact-loss-columns">
+                <div class="event-impact-loss-column">
+                  <div class="event-impact-loss-column-heading" data-significant-event-army-heading="player1">${escapeHtml(player1Label)} army before fight</div>
+                  <dl class="event-impact-loss-summary">
+                    <div><dt>Active military</dt><dd data-significant-event-army-total="player1">${event ? formatNumber(significantEventArmyValue(event, 'player1')) : ''}</dd></div>
+                  </dl>
+                  <ul class="event-impact-loss-list" data-significant-event-army-list="player1">${significantEventArmyRowsHtml(event?.preEncounterArmies?.player1.units)}</ul>
+                </div>
+                <div class="event-impact-loss-column">
+                  <div class="event-impact-loss-column-heading" data-significant-event-army-heading="player2">${escapeHtml(player2Label)} army before fight</div>
+                  <dl class="event-impact-loss-summary">
+                    <div><dt>Active military</dt><dd data-significant-event-army-total="player2">${event ? formatNumber(significantEventArmyValue(event, 'player2')) : ''}</dd></div>
+                  </dl>
+                  <ul class="event-impact-loss-list" data-significant-event-army-list="player2">${significantEventArmyRowsHtml(event?.preEncounterArmies?.player2.units)}</ul>
+                </div>
+              </div>
+            </div>`;
+}
+
+function significantEventUnderdogDetailsHtml(event: SignificantTimelineEvent | null): string {
+  const context = event?.favorableUnderdogFight;
+  const hiddenAttr = context ? '' : ' hidden';
+  return `
+            <details id="event-impact-underdog-details" class="event-impact-underdog-details" data-significant-event-underdog-details${hiddenAttr}>
+              <summary>Why this fight is notable</summary>
+              <p data-significant-event-underdog-details-text>${escapeHtml(context?.details ?? '')}</p>
+            </details>`;
 }
 
 function significantEventAriaLabel(event: SignificantTimelineEvent): string {
@@ -1064,36 +1146,39 @@ function buildSignificantEventImpactHtml(event: SignificantTimelineEvent | null)
           <section class="event-impact" data-significant-event${hiddenAttr}>
             <div class="event-impact-heading">Event impact</div>
             <div class="event-impact-title" data-hover-field="significantEvent.label">${escapeHtml(significantEventTitle(event))}</div>
+            ${significantEventUnderdogNoteHtml(event)}
+            ${significantEventPreEncounterArmiesHtml(event)}
             ${significantEventLossesHtml(event)}
-            <p class="event-impact-description" data-hover-field="significantEvent.description">${escapeHtml(event?.description ?? '')}</p>
-            <dl class="event-impact-metrics">
-              <div><dt>Gross impact</dt><dd data-hover-field="significantEvent.grossLoss">${event ? formatNumber(event.grossImpact ?? event.grossLoss) : ''}</dd></div>
-            </dl>
-            <div class="event-impact-losses" data-hover-field="significantEvent.topLosses">${escapeHtml(significantEventTopLossesText(event))}</div>
+            ${significantEventUnderdogDetailsHtml(event)}
           </section>`;
 }
 
-function mobileSummaryDetail(row: AllocationComparisonRow): string {
-  return `You ${formatNumber(row.you)} · Opp ${formatNumber(row.opponent)}`;
+function mobileSummaryDetail(row: AllocationComparisonRow, labels: RenderPlayerLabels): string {
+  return `${labels.you.shortLabel} ${formatNumber(row.you)} · ${labels.opponent.shortLabel} ${formatNumber(row.opponent)}`;
 }
 
-function buildMobileSummaryCard(key: AllocationGraphKey, label: string, row: AllocationComparisonRow): string {
+function buildMobileSummaryCard(
+  key: AllocationGraphKey,
+  label: string,
+  row: AllocationComparisonRow,
+  labels: RenderPlayerLabels
+): string {
   return `
         <article class="mobile-summary-card" data-mobile-summary="${key}">
           <span class="mobile-summary-label">${escapeHtml(label)}</span>
           <strong data-mobile-summary-value="${key}">${formatSigned(row.delta)}</strong>
-          <small data-mobile-summary-detail="${key}">${escapeHtml(mobileSummaryDetail(row))}</small>
+          <small data-mobile-summary-detail="${key}">${escapeHtml(mobileSummaryDetail(row, labels))}</small>
         </article>`;
 }
 
-function buildMobileSelectedSummaryHtml(snapshot: HoverSnapshot): string {
+function buildMobileSelectedSummaryHtml(snapshot: HoverSnapshot, labels: RenderPlayerLabels): string {
   const allocation = snapshot.allocation ?? buildAllocationComparison(snapshot.you, snapshot.opponent);
   return `
       <div class="mobile-selected-summary" aria-label="Selected timestamp summary">
-        ${buildMobileSummaryCard('overall', 'Total pool', allocation.overall)}
-        ${buildMobileSummaryCard('technology', 'Technology', allocation.technology)}
-        ${buildMobileSummaryCard('military', 'Military', allocation.military)}
-        ${buildMobileSummaryCard('destroyed', 'Destroyed', allocation.destroyed)}
+        ${buildMobileSummaryCard('overall', 'Total pool', allocation.overall, labels)}
+        ${buildMobileSummaryCard('technology', 'Technology', allocation.technology, labels)}
+        ${buildMobileSummaryCard('military', 'Military', allocation.military, labels)}
+        ${buildMobileSummaryCard('destroyed', 'Destroyed', allocation.destroyed, labels)}
       </div>`;
 }
 
@@ -1127,7 +1212,7 @@ function buildMobileTimelineControlHtml(hoverSnapshots: HoverSnapshot[], default
           </div>`;
 }
 
-function buildHoverInspectorHtml(snapshot: HoverSnapshot): string {
+function buildHoverInspectorHtml(snapshot: HoverSnapshot, labels: RenderPlayerLabels): string {
   function renderBreakdownList(entries: BandBreakdownEntry[], bandKey: BreakdownKey): string {
     if (entries.length === 0) {
       return '<li class="band-breakdown-empty">No active items</li>';
@@ -1180,6 +1265,10 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot): string {
     opponent: snapshot.opponent.economic,
     delta: snapshot.you.economic - snapshot.opponent.economic,
   };
+  const youLabel = labels.you.label;
+  const opponentLabel = labels.opponent.label;
+  const youShortLabel = labels.you.shortLabel;
+  const opponentShortLabel = labels.opponent.shortLabel;
 
   const renderBandRow = (band: BandDef, categoryKey: AllocationCategoryKey, collapsed: boolean): string => {
       const isSelected = band.key === 'economic';
@@ -1193,8 +1282,8 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot): string {
               <span class="legend-dot" style="background:${band.color}"></span>${escapeHtml(band.label)}
             </button>
           </th>
-          <td data-cell-label="You" data-hover-field="you.${band.key}">${formatNumber(snapshot.you[band.key])}</td>
-          <td data-cell-label="Opp" data-hover-field="opponent.${band.key}">${formatNumber(snapshot.opponent[band.key])}</td>
+          <td data-cell-label="${escapeHtml(youLabel)}" data-hover-field="you.${band.key}">${formatNumber(snapshot.you[band.key])}</td>
+          <td data-cell-label="${escapeHtml(opponentLabel)}" data-hover-field="opponent.${band.key}">${formatNumber(snapshot.opponent[band.key])}</td>
           <td data-cell-label="Delta" data-hover-field="delta.${band.key}">${formatSigned(snapshot.delta[band.key])}</td>
         </tr>
         ${subRow}
@@ -1209,8 +1298,8 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot): string {
               <span class="legend-dot destroyed-dot"></span>Destroyed
             </button>
           </th>
-          <td data-cell-label="You" data-hover-field="allocation.destroyed.you">${formatNumber(row.you)}</td>
-          <td data-cell-label="Opp" data-hover-field="allocation.destroyed.opponent">${formatNumber(row.opponent)}</td>
+          <td data-cell-label="${escapeHtml(youLabel)}" data-hover-field="allocation.destroyed.you">${formatNumber(row.you)}</td>
+          <td data-cell-label="${escapeHtml(opponentLabel)}" data-hover-field="allocation.destroyed.opponent">${formatNumber(row.opponent)}</td>
           <td data-cell-label="Delta" data-hover-field="allocation.destroyed.delta">${formatSigned(row.delta)}</td>
         </tr>
       `;
@@ -1225,8 +1314,8 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot): string {
               <span class="legend-dot opportunity-lost-dot"></span><span data-opportunity-lost-tooltip title="${escapeHtml(tooltip)}">Opportunity lost</span>
             </button>
           </th>
-          <td data-cell-label="You" data-hover-field="allocation.opportunityLost.you">${formatNumber(row.you)}</td>
-          <td data-cell-label="Opp" data-hover-field="allocation.opportunityLost.opponent">${formatNumber(row.opponent)}</td>
+          <td data-cell-label="${escapeHtml(youLabel)}" data-hover-field="allocation.opportunityLost.you">${formatNumber(row.you)}</td>
+          <td data-cell-label="${escapeHtml(opponentLabel)}" data-hover-field="allocation.opportunityLost.opponent">${formatNumber(row.opponent)}</td>
           <td data-cell-label="Delta" data-hover-field="allocation.opportunityLost.delta">${formatSigned(row.delta)}</td>
         </tr>
       `;
@@ -1250,8 +1339,8 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot): string {
               <span class="category-caret" aria-hidden="true"></span>${escapeHtml(category.label)}
             </button>
           </th>
-          <td data-cell-label="You" data-hover-field="allocation.${category.key}.you">${formatNumber(row.you)}</td>
-          <td data-cell-label="Opp" data-hover-field="allocation.${category.key}.opponent">${formatNumber(row.opponent)}</td>
+          <td data-cell-label="${escapeHtml(youLabel)}" data-hover-field="allocation.${category.key}.you">${formatNumber(row.you)}</td>
+          <td data-cell-label="${escapeHtml(opponentLabel)}" data-hover-field="allocation.${category.key}.opponent">${formatNumber(row.opponent)}</td>
           <td data-cell-label="Delta" data-hover-field="allocation.${category.key}.delta">${formatSigned(row.delta)}</td>
         </tr>
         ${children}
@@ -1269,7 +1358,7 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot): string {
       <div class="inspector-eyebrow">Selected time</div>
       <div class="inspector-time" data-hover-field="timeLabel">${escapeHtml(snapshot.timeLabel)}</div>
       <div class="inspector-context" data-hover-context>${escapeHtml(inspectorContext)}</div>
-      ${buildMobileSelectedSummaryHtml(snapshot)}
+      ${buildMobileSelectedSummaryHtml(snapshot, labels)}
       <details class="mobile-detail-panel" data-mobile-details open>
         <summary class="mobile-detail-summary">Allocation details</summary>
         <div class="mobile-detail-content">
@@ -1280,8 +1369,8 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot): string {
               <thead>
                 <tr>
                   <th>Category / band</th>
-                  <th>You</th>
-                  <th>Opp</th>
+                  <th>${escapeHtml(youLabel)}</th>
+                  <th>${escapeHtml(opponentLabel)}</th>
                   <th>Delta</th>
                 </tr>
               </thead>
@@ -1290,21 +1379,21 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot): string {
                 ${renderDestroyedRow()}
                 <tr class="inspector-total-row">
                   <th><span data-total-pool-tooltip title="${escapeHtml(snapshot.totalPoolTooltip)}">Total Pool</span></th>
-                  <td data-cell-label="You" data-hover-field="allocation.overall.you">${formatNumber(allocation.overall.you)}</td>
-                  <td data-cell-label="Opp" data-hover-field="allocation.overall.opponent">${formatNumber(allocation.overall.opponent)}</td>
+                  <td data-cell-label="${escapeHtml(youLabel)}" data-hover-field="allocation.overall.you">${formatNumber(allocation.overall.you)}</td>
+                  <td data-cell-label="${escapeHtml(opponentLabel)}" data-hover-field="allocation.overall.opponent">${formatNumber(allocation.overall.opponent)}</td>
                   <td data-cell-label="Delta" data-hover-field="allocation.overall.delta">${formatSigned(allocation.overall.delta)}</td>
                 </tr>
                 <tr class="inspector-float-row">
                   <th>Float (not deployed)</th>
-                  <td data-cell-label="You" data-hover-field="allocation.float.you">${formatNumber(allocation.float.you)}</td>
-                  <td data-cell-label="Opp" data-hover-field="allocation.float.opponent">${formatNumber(allocation.float.opponent)}</td>
+                  <td data-cell-label="${escapeHtml(youLabel)}" data-hover-field="allocation.float.you">${formatNumber(allocation.float.you)}</td>
+                  <td data-cell-label="${escapeHtml(opponentLabel)}" data-hover-field="allocation.float.opponent">${formatNumber(allocation.float.opponent)}</td>
                   <td data-cell-label="Delta" data-hover-field="allocation.float.delta">${formatSigned(allocation.float.delta)}</td>
                 </tr>
                 ${renderOpportunityLostRow()}
                 <tr>
                   <th>Gather/min</th>
-                  <td data-cell-label="You" data-hover-field="gather.you">${formatNumber(snapshot.gather.you)}</td>
-                  <td data-cell-label="Opp" data-hover-field="gather.opponent">${formatNumber(snapshot.gather.opponent)}</td>
+                  <td data-cell-label="${escapeHtml(youLabel)}" data-hover-field="gather.you">${formatNumber(snapshot.gather.you)}</td>
+                  <td data-cell-label="${escapeHtml(opponentLabel)}" data-hover-field="gather.opponent">${formatNumber(snapshot.gather.opponent)}</td>
                   <td data-cell-label="Delta" data-hover-field="gather.delta">${formatSigned(snapshot.gather.delta)}</td>
                 </tr>
               </tbody>
@@ -1314,17 +1403,17 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot): string {
             <div class="band-breakdown-head" data-band-breakdown-title>Economic composition</div>
             <div class="band-breakdown-summary" data-band-breakdown-summary>
               <span class="band-summary-label" data-band-summary-label>${escapeHtml(selectedBandSummary.label)}</span>
-              <span>You <strong data-band-summary-you>${formatNumber(selectedBandSummary.you)}</strong></span>
-              <span>Opp <strong data-band-summary-opponent>${formatNumber(selectedBandSummary.opponent)}</strong></span>
+              <span>${escapeHtml(youShortLabel)} <strong data-band-summary-you>${formatNumber(selectedBandSummary.you)}</strong></span>
+              <span>${escapeHtml(opponentShortLabel)} <strong data-band-summary-opponent>${formatNumber(selectedBandSummary.opponent)}</strong></span>
               <span>Delta <strong data-band-summary-delta>${formatSigned(selectedBandSummary.delta)}</strong></span>
             </div>
             <div class="band-breakdown-cols">
               <section>
-                <h4>You</h4>
+                <h4>${escapeHtml(youLabel)}</h4>
                 <ul class="band-breakdown-list" data-band-breakdown-list="you">${renderBreakdownList(defaultBand.you, 'economic')}</ul>
               </section>
               <section>
-                <h4>Opponent</h4>
+                <h4>${escapeHtml(opponentLabel)}</h4>
                 <ul class="band-breakdown-list" data-band-breakdown-list="opponent">${renderBreakdownList(defaultBand.opponent, 'economic')}</ul>
               </section>
             </div>
@@ -1958,7 +2047,8 @@ function allocationLaneMaxY(
 
 function buildAllocationLeaderStripSvg(
   hoverSnapshots: HoverSnapshot[],
-  duration: number
+  duration: number,
+  labels: RenderPlayerLabels
 ): string {
   const width = svgWidth;
   const padding = strategyPadding;
@@ -1976,7 +2066,7 @@ function buildAllocationLeaderStripSvg(
           const startX = x(segment.start);
           const endX = x(segment.end);
           const widthPx = Math.max(1, endX - startX);
-          const title = `${category.label} ${formatTime(segment.start)}-${formatTime(segment.end)}: You ${formatNumber(segment.you)}, Opp ${formatNumber(segment.opponent)}`;
+          const title = `${category.label} ${formatTime(segment.start)}-${formatTime(segment.end)}: ${labels.you.label} ${formatNumber(segment.you)}, ${labels.opponent.label} ${formatNumber(segment.opponent)}`;
           return `<rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="${category.key}" data-leader="${segment.leader}" data-hover-timestamp="${segment.hoverTimestamp}" x="${startX.toFixed(2)}" y="${rowTop.toFixed(2)}" width="${widthPx.toFixed(2)}" height="${leaderStripRowHeight}" fill="${leaderColor(segment.leader)}" pointer-events="all"><title>${escapeHtml(title)}</title></rect>`;
         })
         .join('');
@@ -2025,7 +2115,8 @@ function buildAllocationLeaderStripSvg(
 function buildStrategyAllocationSvg(
   hoverSnapshots: HoverSnapshot[],
   duration: number,
-  ageMarkers: AgeMarker[]
+  ageMarkers: AgeMarker[],
+  labels: RenderPlayerLabels
 ): string {
   const width = svgWidth;
   const height = strategyHeight;
@@ -2069,9 +2160,9 @@ function buildStrategyAllocationSvg(
         .map(graph => {
           const row = snapshot.allocation[graph.key];
           if (graph.mode === 'absolute') {
-            return `${graph.label}: You ${formatNumber(row.you)}, Opp ${formatNumber(row.opponent)}, Delta ${formatSigned(row.delta)}`;
+            return `${graph.label}: ${labels.you.label} ${formatNumber(row.you)}, ${labels.opponent.label} ${formatNumber(row.opponent)}, Delta ${formatSigned(row.delta)}`;
           }
-          return `${graph.label}: You ${formatStrategyShare(row.youShare)}, Opp ${formatStrategyShare(row.opponentShare)}, Delta ${formatSignedPercentagePoints(row.shareDelta)}`;
+          return `${graph.label}: ${labels.you.label} ${formatStrategyShare(row.youShare)}, ${labels.opponent.label} ${formatStrategyShare(row.opponentShare)}, Delta ${formatSignedPercentagePoints(row.shareDelta)}`;
         })
         .join(' | ');
 
@@ -2855,15 +2946,6 @@ function buildHoverInteractionScript(
         return sign + rounded.toFixed(1) + 'pp';
       }
 
-      function significantTopLossesText(event) {
-        if (!event || !Array.isArray(event.topLosses) || event.topLosses.length === 0) {
-          return 'No itemized losses';
-        }
-        return event.topLosses.map(function (item) {
-          return (item.label || 'Loss') + ' x' + formatNumber(item.count) + ' (' + formatNumber(item.value) + ')';
-        }).join(' · ');
-      }
-
       function significantEventLossRowsHtml(items) {
         if (!Array.isArray(items) || items.length === 0) {
           return '<li class="event-impact-loss-row event-impact-loss-row-empty">No losses</li>';
@@ -2874,6 +2956,36 @@ function buildHoverInteractionScript(
             '<span class="event-impact-loss-value">' + formatNumber(item.value || 0) + '</span>' +
             '</li>';
         }).join('');
+      }
+
+      function significantEventArmyRowsHtml(items) {
+        if (!Array.isArray(items) || items.length === 0) {
+          return '<li class="event-impact-loss-row event-impact-loss-row-empty">No active military</li>';
+        }
+        return significantEventLossRowsHtml(items);
+      }
+
+      function significantEventArmyValue(event, playerKey) {
+        var armies = event && event.preEncounterArmies ? event.preEncounterArmies : null;
+        var army = armies ? armies[playerKey] : null;
+        return army && Number.isFinite(Number(army.totalValue)) ? Number(army.totalValue) : 0;
+      }
+
+      function updateSignificantEventUnderdog(event) {
+        var context = event && event.favorableUnderdogFight ? event.favorableUnderdogFight : null;
+        document.querySelectorAll('[data-significant-event-underdog-note]').forEach(function (el) {
+          el.hidden = !context;
+        });
+        document.querySelectorAll('[data-significant-event-underdog-summary]').forEach(function (el) {
+          el.textContent = context ? context.summary || '' : '';
+        });
+        document.querySelectorAll('[data-significant-event-underdog-details]').forEach(function (el) {
+          el.hidden = !context;
+          if (!context) el.open = false;
+        });
+        document.querySelectorAll('[data-significant-event-underdog-details-text]').forEach(function (el) {
+          el.textContent = context ? context.details || '' : '';
+        });
       }
 
       function significantEventLossValue(event, playerKey, metric) {
@@ -2935,6 +3047,33 @@ function buildHoverInteractionScript(
         updateSignificantEventLossSummary(event, 'player2', player2Label);
       }
 
+      function updateSignificantEventArmies(event) {
+        var showArmies = !!(event && event.kind === 'fight' && event.preEncounterArmies);
+        var player1Label = event && event.player1Civilization ? event.player1Civilization : 'Player 1';
+        var player2Label = event && event.player2Civilization ? event.player2Civilization : 'Player 2';
+        document.querySelectorAll('[data-significant-event-armies]').forEach(function (el) {
+          el.hidden = !showArmies;
+        });
+        document.querySelectorAll('[data-significant-event-army-heading="player1"]').forEach(function (el) {
+          el.textContent = player1Label + ' army before fight';
+        });
+        document.querySelectorAll('[data-significant-event-army-heading="player2"]').forEach(function (el) {
+          el.textContent = player2Label + ' army before fight';
+        });
+        document.querySelectorAll('[data-significant-event-army-total="player1"]').forEach(function (el) {
+          el.textContent = event ? formatNumber(significantEventArmyValue(event, 'player1')) : '';
+        });
+        document.querySelectorAll('[data-significant-event-army-total="player2"]').forEach(function (el) {
+          el.textContent = event ? formatNumber(significantEventArmyValue(event, 'player2')) : '';
+        });
+        document.querySelectorAll('[data-significant-event-army-list="player1"]').forEach(function (el) {
+          el.innerHTML = significantEventArmyRowsHtml(event && event.preEncounterArmies ? event.preEncounterArmies.player1.units : []);
+        });
+        document.querySelectorAll('[data-significant-event-army-list="player2"]').forEach(function (el) {
+          el.innerHTML = significantEventArmyRowsHtml(event && event.preEncounterArmies ? event.preEncounterArmies.player2.units : []);
+        });
+      }
+
       function updateSignificantEvent(point) {
         var event = point.significantEvent || null;
         document.querySelectorAll('[data-significant-event]').forEach(function (el) {
@@ -2942,17 +3081,15 @@ function buildHoverInteractionScript(
         });
         if (!event) {
           setField('significantEvent.label', '');
-          setField('significantEvent.description', '');
-          setField('significantEvent.grossLoss', '');
-          setField('significantEvent.topLosses', '');
+          updateSignificantEventUnderdog(null);
+          updateSignificantEventArmies(null);
           updateSignificantEventLosses(null);
           return;
         }
 
         setField('significantEvent.label', event.headline || ((event.victimLabel ? event.victimLabel + ' ' : '') + (event.label || 'Event')));
-        setField('significantEvent.description', event.description || '');
-        setField('significantEvent.grossLoss', formatNumber(event.grossImpact ?? event.grossLoss));
-        setField('significantEvent.topLosses', significantTopLossesText(event));
+        updateSignificantEventUnderdog(event);
+        updateSignificantEventArmies(event);
         updateSignificantEventLosses(event);
       }
 
@@ -3097,6 +3234,16 @@ function buildHoverInteractionScript(
         summary.addEventListener('click', function () {
           var details = summary.parentElement;
           if (details) details.setAttribute('data-mobile-user-toggled', 'true');
+        });
+      });
+
+      document.querySelectorAll('[data-significant-event-underdog-toggle]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          document.querySelectorAll('[data-significant-event-underdog-details]').forEach(function (details) {
+            if (details.hidden) return;
+            details.open = true;
+            if (details.scrollIntoView) details.scrollIntoView({ block: 'nearest' });
+          });
         });
       });
 
@@ -3761,11 +3908,47 @@ export function renderPostMatchHtml(
       color: #253226;
     }
 
-    .event-impact-description {
-      margin: 4px 0 8px;
+    .event-impact-underdog-note {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-top: 6px;
       color: #465447;
       font-size: 12px;
       line-height: 1.35;
+    }
+
+    .event-impact-help-button {
+      width: 18px;
+      height: 18px;
+      border: 1px solid #d8bdae;
+      border-radius: 999px;
+      background: #fff;
+      color: #7b3f32;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .event-impact-underdog-details {
+      margin-top: 8px;
+      padding-top: 7px;
+      border-top: 1px solid #eadbd4;
+      color: #465447;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .event-impact-underdog-details summary {
+      color: #7b3f32;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .event-impact-underdog-details p {
+      margin: 6px 0 0;
     }
 
     .event-impact-loss-detail {
@@ -3870,39 +4053,6 @@ export function renderPostMatchHtml(
       .event-impact-loss-columns {
         grid-template-columns: 1fr;
       }
-    }
-
-    .event-impact-metrics {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 6px 10px;
-      margin: 0;
-    }
-
-    .event-impact-metrics div {
-      min-width: 0;
-    }
-
-    .event-impact-metrics dt {
-      color: var(--color-muted);
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-
-    .event-impact-metrics dd {
-      margin: 1px 0 0;
-      color: #253226;
-      font-size: 13px;
-      font-weight: 800;
-    }
-
-    .event-impact-losses {
-      margin-top: 7px;
-      color: var(--color-muted);
-      font-size: 12px;
-      line-height: 1.35;
-      overflow-wrap: anywhere;
     }
 
     .mobile-selected-summary {

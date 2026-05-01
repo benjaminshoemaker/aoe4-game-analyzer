@@ -68,6 +68,11 @@ export interface AgeMarker {
   timeLabel: string;
 }
 
+export interface FavorableUnderdogFightContext {
+  summary: string;
+  details: string;
+}
+
 export interface SignificantTimelineEvent extends Omit<SignificantResourceLossEvent, 'victimPlayer' | 'kind'> {
   victim: PostMatchPlayerKey;
   victimLabel: string;
@@ -82,6 +87,7 @@ export interface SignificantTimelineEvent extends Omit<SignificantResourceLossEv
   kind: SignificantResourceLossKind;
   timeLabel: string;
   headline: string;
+  favorableUnderdogFight?: FavorableUnderdogFightContext;
 }
 
 export interface AdjustedMilitarySeriesPoint {
@@ -644,6 +650,10 @@ function buildSignificantTimelineEvents(
       const victim: PostMatchPlayerKey = victimSummaryIndex === youIndex ? 'you' : 'opponent';
       const victimCivilization = event.victimPlayer === 1 ? player1Civilization : player2Civilization;
       const actorCivilization = event.victimPlayer === 1 ? player2Civilization : player1Civilization;
+      const favorableUnderdogFight = favorableUnderdogFightContext(event, {
+        player1Civilization,
+        player2Civilization,
+      });
       return {
         ...event,
         victim,
@@ -661,7 +671,9 @@ function buildSignificantTimelineEvents(
           youIndex,
           player1Civilization,
           player2Civilization,
+          favorableUnderdogFight,
         }),
+        ...(favorableUnderdogFight ? { favorableUnderdogFight } : {}),
       };
     })
     .sort((a, b) => a.timestamp - b.timestamp || a.victim.localeCompare(b.victim));
@@ -722,6 +734,7 @@ function significantEventHeadline(event: SignificantResourceLossEvent, context: 
   youIndex: 0 | 1;
   player1Civilization: string;
   player2Civilization: string;
+  favorableUnderdogFight?: FavorableUnderdogFightContext | null;
 }): string {
   const perspectivePlayer = (context.youIndex + 1) as 1 | 2;
   const otherPlayer = perspectivePlayer === 1 ? 2 : 1;
@@ -741,6 +754,13 @@ function significantEventHeadline(event: SignificantResourceLossEvent, context: 
   }
 
   if (event.kind === 'fight') {
+    const underdogPlayer = favorableUnderdogFightPlayer(event);
+    if (context.favorableUnderdogFight && underdogPlayer) {
+      const underdogCivilization = underdogPlayer === 1 ? context.player1Civilization : context.player2Civilization;
+      const opponentCivilization = underdogPlayer === 1 ? context.player2Civilization : context.player1Civilization;
+      return `${underdogCivilization} took a favorable fight against ${opponentCivilization}.`;
+    }
+
     if (perspectiveImpact.grossLoss > otherImpact.grossLoss) {
       return `${perspectiveCivilization} lost more value than ${otherCivilization} in a fight: ${Math.round(perspectiveImpact.grossLoss)} vs ${Math.round(otherImpact.grossLoss)}.`;
     }
@@ -753,6 +773,40 @@ function significantEventHeadline(event: SignificantResourceLossEvent, context: 
   const victimCivilization = event.victimPlayer === 1 ? context.player1Civilization : context.player2Civilization;
   const victimImpact = eventImpactForPlayer(event, event.victimPlayer);
   return `${victimCivilization} lost ${Math.round(victimImpact.grossLoss)} value in a significant loss.`;
+}
+
+function favorableUnderdogFightPlayer(event: SignificantResourceLossEvent): 1 | 2 | null {
+  if (event.kind !== 'fight' || !event.preEncounterArmies) return null;
+
+  const player1Impact = eventImpactForPlayer(event, 1);
+  const player2Impact = eventImpactForPlayer(event, 2);
+  if (player1Impact.grossLoss === player2Impact.grossLoss) return null;
+
+  const favorablePlayer: 1 | 2 = player1Impact.grossLoss < player2Impact.grossLoss ? 1 : 2;
+  const otherPlayer: 1 | 2 = favorablePlayer === 1 ? 2 : 1;
+  const favorableKey = favorablePlayer === 1 ? 'player1' : 'player2';
+  const otherKey = otherPlayer === 1 ? 'player1' : 'player2';
+  const favorableArmy = event.preEncounterArmies[favorableKey].totalValue;
+  const otherArmy = event.preEncounterArmies[otherKey].totalValue;
+
+  if (favorableArmy <= 0 || otherArmy < favorableArmy * 2) return null;
+  return favorablePlayer;
+}
+
+function favorableUnderdogFightContext(event: SignificantResourceLossEvent, context: {
+  player1Civilization: string;
+  player2Civilization: string;
+}): FavorableUnderdogFightContext | null {
+  const favorablePlayer = favorableUnderdogFightPlayer(event);
+  if (!favorablePlayer) return null;
+
+  const underdogCivilization = favorablePlayer === 1 ? context.player1Civilization : context.player2Civilization;
+  const opponentCivilization = favorablePlayer === 1 ? context.player2Civilization : context.player1Civilization;
+
+  return {
+    summary: 'Despite significantly fewer deployed military resources.',
+    details: `${underdogCivilization} won this encounter despite having significantly fewer deployed military resources than ${opponentCivilization}. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where ${underdogCivilization} found an advantage, healing, stronger micro, or a favorable unit matchup.`,
+  };
 }
 
 function formatMode(leaderboard: string): string {

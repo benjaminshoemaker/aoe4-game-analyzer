@@ -1,7 +1,7 @@
 interface HomePageProps {
-  searchParams?: {
+  searchParams?: Promise<{
     error?: string | string[];
-  };
+  }>;
 }
 
 const exampleUrl = 'https://aoe4world.com/players/111/games/123456';
@@ -13,8 +13,9 @@ function firstParam(value: string | string[] | undefined): string | null {
   return value ?? null;
 }
 
-export default function HomePage({ searchParams }: HomePageProps) {
-  const errorText = firstParam(searchParams?.error);
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const resolvedSearchParams = await searchParams;
+  const errorText = firstParam(resolvedSearchParams?.error);
 
   return (
     <main

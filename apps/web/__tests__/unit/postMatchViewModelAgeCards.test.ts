@@ -292,13 +292,27 @@ describe('buildPostMatchViewModel age investment cards', () => {
               topLosses: [],
             },
           },
+          preEncounterArmies: {
+            player1: {
+              totalValue: 1200,
+              units: [{ label: 'Longbowman', value: 1200, count: 12, band: 'militaryActive' }],
+            },
+            player2: {
+              totalValue: 450,
+              units: [{ label: 'Spearman', value: 450, count: 5, band: 'militaryActive' }],
+            },
+          },
         }),
       ]),
       perspectiveProfileId: 1,
     });
 
     expect(fightModel.trajectory.significantEvents?.[0]?.headline)
-      .toBe('English lost more value than French in a fight: 700 vs 300.');
+      .toBe('French took a favorable fight against English.');
+    expect(fightModel.trajectory.significantEvents?.[0]?.favorableUnderdogFight).toEqual({
+      summary: 'Despite significantly fewer deployed military resources.',
+      details: 'French won this encounter despite having significantly fewer deployed military resources than English. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where French found an advantage, healing, stronger micro, or a favorable unit matchup.',
+    });
   });
 
   it('builds age cards from shared age windows and includes in-progress advancement in the window delta', () => {
@@ -422,5 +436,42 @@ describe('buildPostMatchViewModel age investment cards', () => {
     expect(dark?.allocationSummary).toBe('Allocation: your edge was Technology +600, while opponent\'s edge was Military +390; Economy was similar.');
     expect(dark?.destructionSummary).toBe('Destruction: neither player destroyed measurable value.');
     expect(dark?.conversionSummary).toBe('Meaning: Opponent\'s Dark military did not convert: +390 Military destroyed 0 value and caused no major gather-rate drop.');
+  });
+
+  it('uses player and civilization labels instead of perspective labels in age summaries', () => {
+    const summary = makeSummary(600, [120, 420], [150]);
+    summary.players[0].name = 'RepleteCactus';
+    summary.players[1].name = 'Mista';
+
+    const model = buildPostMatchViewModel({
+      summary,
+      analysis: makeAnalysis(
+        600,
+        [
+          point(0, { economic: 50 }),
+          point(120, { economic: 100, research: 100 }),
+          point(420, { economic: 100, research: 100, advancement: 300 }),
+          point(600, { economic: 120, research: 100, advancement: 300 }),
+        ],
+        [
+          point(0, { economic: 50 }),
+          point(120, { economic: 80 }),
+          point(420, { economic: 100, militaryActive: 130 }),
+          point(600, { economic: 100, militaryActive: 130 }),
+        ]
+      ),
+      perspectiveProfileId: 1,
+    });
+
+    expect(model.header.youPlayer.label).toBe('RepleteCactus · English');
+    expect(model.header.opponentPlayer.label).toBe('Mista · French');
+    expect(model.trajectory.ageMarkers[0].label).toBe('RepleteCactus · English Feudal 2:00');
+
+    const visibleAgeText = model.metricCards.ageAnalyses
+      .flatMap(card => [card.gapSummary, card.allocationSummary, card.destructionSummary, card.conversionSummary])
+      .join(' ');
+    expect(visibleAgeText).toContain('RepleteCactus · English');
+    expect(visibleAgeText).toContain('Mista · French');
+    expect(visibleAgeText).not.toMatch(/\bYou\b|\byour\b|\bOpponent\b|\bopponent\b/);
   });
 });

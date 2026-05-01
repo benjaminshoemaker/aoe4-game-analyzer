@@ -18,6 +18,11 @@ export interface SignificantResourceLossItem {
   band: PoolBand;
 }
 
+export interface SignificantResourceMilitarySituation {
+  totalValue: number;
+  units: SignificantResourceLossItem[];
+}
+
 export interface SignificantResourceLossPlayerImpact {
   immediateLoss: number;
   villagerOpportunityLoss: number;
@@ -51,6 +56,10 @@ export interface SignificantResourceLossEvent {
   playerImpacts: {
     player1: SignificantResourceLossPlayerImpact;
     player2: SignificantResourceLossPlayerImpact;
+  };
+  preEncounterArmies?: {
+    player1: SignificantResourceMilitarySituation;
+    player2: SignificantResourceMilitarySituation;
   };
 }
 
@@ -88,6 +97,7 @@ interface LossContext {
   victimPlayer: 1 | 2;
   player: PlayerSummary;
   pool: PlayerDeployedPoolSeries;
+  build: ResolvedBuildOrder;
   grossLossEvents: GrossLossEvent[];
   villagerDeathTimes: number[];
   opportunityCostForWindow: (start: number, end: number, deathTimes: number[]) => number;
@@ -183,6 +193,63 @@ function buildGrossLossEvents(build: ResolvedBuildOrder): GrossLossEvent[] {
   }
 
   return events.sort((a, b) => a.timestamp - b.timestamp || a.label.localeCompare(b.label));
+}
+
+function activeCountAtWindowStart(item: ResolvedBuildItem, timestamp: number): number {
+  let activeCount = 0;
+  for (const event of buildLifecycleEvents(item)) {
+    if (event.timestamp > timestamp) break;
+    if (event.kind === 'produced') {
+      activeCount += 1;
+      continue;
+    }
+
+    if (event.timestamp < timestamp && activeCount > 0) {
+      activeCount -= 1;
+    }
+  }
+  return activeCount;
+}
+
+function buildMilitarySituationAtWindowStart(
+  context: LossContext,
+  timestamp: number
+): SignificantResourceMilitarySituation {
+  const classifierContext = { hasNavalMilitaryProduction: hasNavalMilitaryProduction(context.build) };
+  const byLabel = new Map<string, SignificantResourceLossItem>();
+
+  for (const item of [...context.build.startingAssets, ...context.build.resolved]) {
+    const band = classifyResolvedItemBand(item, classifierContext);
+    if (band !== 'militaryActive') continue;
+
+    const count = activeCountAtWindowStart(item, timestamp);
+    if (count <= 0) continue;
+
+    const value = itemMarketValue(item);
+    if (!Number.isFinite(value) || value <= 0) continue;
+
+    const existing = byLabel.get(item.name) ?? {
+      label: item.name,
+      value: 0,
+      count: 0,
+      band,
+    };
+    existing.value += value * count;
+    existing.count += count;
+    byLabel.set(item.name, existing);
+  }
+
+  const allUnits = [...byLabel.values()]
+    .map(item => ({
+      ...item,
+      value: Math.round(item.value),
+    }))
+    .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
+
+  return {
+    totalValue: allUnits.reduce((sum, item) => sum + item.value, 0),
+    units: allUnits.slice(0, 4),
+  };
 }
 
 function valueAtOrBefore(series: PlayerDeployedPoolSeries['series'], timestamp: number): number {
@@ -468,6 +535,7 @@ function buildLossContext(params: {
     victimPlayer: params.victimPlayer,
     player,
     pool: params.pool,
+    build: params.build,
     grossLossEvents,
     villagerDeathTimes,
     opportunityCostForWindow,
@@ -585,6 +653,12 @@ export function detectSignificantResourceLossEvents(params: DetectSignificantRes
     const grossImpact = player1Impact.grossLoss + player2Impact.grossLoss;
     const kind = classifyKind([player1Impact, player2Impact], grossImpact);
     const label = labelForKind(kind);
+    const preEncounterArmies = kind === 'fight'
+      ? {
+          player1: buildMilitarySituationAtWindowStart(player1Context, candidate.start),
+          player2: buildMilitarySituationAtWindowStart(player2Context, candidate.start),
+        }
+      : undefined;
     const { description, impactSummary } = describeWindow({
       kind,
       windowSeconds,
@@ -643,6 +717,7 @@ export function detectSignificantResourceLossEvents(params: DetectSignificantRes
           topLosses: player2Impact.topLosses,
         },
       },
+      ...(preEncounterArmies ? { preEncounterArmies } : {}),
     };
   });
 }

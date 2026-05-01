@@ -115,7 +115,7 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(segments.find(segment => segment.categoryKey === 'opportunityLost')).toBeUndefined();
   });
 
-  it('renders significant event markers and an inspector event impact block above allocation', () => {
+  it('renders fight army context and encounter losses in the inspector event impact block', () => {
     const model = makeMvpModelFixture();
     const significantEvent = {
       id: 'significant-loss-opponent-0',
@@ -129,43 +129,64 @@ describe('renderPostMatchHtml (web mvp)', () => {
       player2Civilization: 'French',
       victimCivilization: 'French',
       actorCivilization: 'English',
-      headline: 'English raided French and killed one villager.',
-      kind: 'raid',
-      label: 'Raid',
-      shortLabel: 'Raid',
-      description: 'Opponent lost 140 resources of villager opportunity impact.',
-      impactSummary: '140 gross impact, 20.9% of deployed pool.',
-      grossLoss: 140,
-      immediateLoss: 50,
+      headline: 'French took a favorable fight against English.',
+      kind: 'fight',
+      label: 'Fight',
+      shortLabel: 'Fight',
+      description: 'French lost more military value in the fight.',
+      impactSummary: '400 gross impact, 35.3% of deployed pool.',
+      grossImpact: 400,
+      grossLoss: 240,
+      immediateLoss: 240,
       villagerOpportunityLoss: 90,
       denominator: 670,
-      pctOfDeployed: 20.9,
-      villagerDeaths: 1,
-      topLosses: [{ label: 'Villager', value: 50, count: 1, band: 'economic' }],
+      pctOfDeployed: 35.8,
+      villagerDeaths: 0,
+      topLosses: [{ label: 'Knight', value: 240, count: 1, band: 'militaryActive' }],
+      preEncounterArmies: {
+        player1: {
+          totalValue: 640,
+          units: [
+            { label: 'Longbowman', value: 480, count: 6, band: 'militaryActive' },
+            { label: 'Spearman', value: 160, count: 2, band: 'militaryActive' },
+          ],
+        },
+        player2: {
+          totalValue: 640,
+          units: [
+            { label: 'Knight', value: 480, count: 2, band: 'militaryActive' },
+            { label: 'Archer', value: 160, count: 2, band: 'militaryActive' },
+          ],
+        },
+      },
+      favorableUnderdogFight: {
+        summary: 'Despite significantly fewer deployed military resources.',
+        details: 'French won this encounter despite having significantly fewer deployed military resources than English. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where French found an advantage, healing, stronger micro, or a favorable unit matchup.',
+      },
       encounterLosses: {
-        player1: [{ label: 'Archer', value: 80, count: 1, band: 'militaryActive' }],
-        player2: [{ label: 'Villager', value: 50, count: 1, band: 'economic' }],
+        player1: [{ label: 'Spearman', value: 160, count: 2, band: 'militaryActive' }],
+        player2: [{ label: 'Knight', value: 240, count: 1, band: 'militaryActive' }],
       },
       playerImpacts: {
         player1: {
-          immediateLoss: 80,
+          immediateLoss: 160,
           villagerOpportunityLoss: 0,
-          grossLoss: 80,
+          grossLoss: 160,
           denominator: 670,
-          pctOfDeployed: 11.9,
+          pctOfDeployed: 23.9,
           villagerDeaths: 0,
-          losses: [{ label: 'Archer', value: 80, count: 1, band: 'militaryActive' }],
-          topLosses: [{ label: 'Archer', value: 80, count: 1, band: 'militaryActive' }],
+          losses: [{ label: 'Spearman', value: 160, count: 2, band: 'militaryActive' }],
+          topLosses: [{ label: 'Spearman', value: 160, count: 2, band: 'militaryActive' }],
         },
         player2: {
-          immediateLoss: 50,
+          immediateLoss: 240,
           villagerOpportunityLoss: 90,
-          grossLoss: 140,
+          grossLoss: 330,
           denominator: 670,
-          pctOfDeployed: 20.9,
-          villagerDeaths: 1,
-          losses: [{ label: 'Villager', value: 50, count: 1, band: 'economic' }],
-          topLosses: [{ label: 'Villager', value: 50, count: 1, band: 'economic' }],
+          pctOfDeployed: 49.3,
+          villagerDeaths: 0,
+          losses: [{ label: 'Knight', value: 240, count: 1, band: 'militaryActive' }],
+          topLosses: [{ label: 'Knight', value: 240, count: 1, band: 'militaryActive' }],
         },
       },
     } as const;
@@ -175,27 +196,50 @@ describe('renderPostMatchHtml (web mvp)', () => {
 
     const html = renderPostMatchHtml(model);
     const eventIndex = html.indexOf('Event impact');
+    const underdogNoteIndex = html.indexOf('Despite significantly fewer deployed military resources.');
+    const armyIndex = html.indexOf('Pre-encounter armies');
+    const lossesIndex = html.indexOf('Encounter losses');
+    const underdogDetailsIndex = html.indexOf('Why this fight is notable');
     const allocationIndex = html.indexOf('data-inspector-section="allocation"');
 
     expect(html).toContain('data-significant-event-marker');
-    expect(html).toContain('aria-label="Raid at 0:00: English raided French and killed one villager."');
+    expect(html).toContain('aria-label="Fight at 0:00: French took a favorable fight against English."');
+    expect(html).toContain('data-significant-event-armies');
+    expect(html).toContain('data-significant-event-underdog-note');
+    expect(html).toContain('data-significant-event-underdog-toggle');
+    expect(html).toContain('aria-label="Why did the smaller army win this fight?"');
+    expect(html).toContain('data-significant-event-underdog-details');
+    expect(html).toContain('Why this fight is notable');
+    expect(html).toContain('French won this encounter despite having significantly fewer deployed military resources than English.');
+    expect(html).toContain('Pre-encounter armies');
+    expect(html).toContain('English army before fight');
+    expect(html).toContain('French army before fight');
+    expect(html).toContain('data-significant-event-army-total="player1">640</dd>');
+    expect(html).toContain('data-significant-event-army-total="player2">640</dd>');
+    expect(html).toContain('Longbowman x6');
+    expect(html).toContain('Knight x2');
     expect(html).toContain('Encounter losses');
     expect(html).toContain('data-significant-event-losses');
     expect(html).toContain('English losses');
     expect(html).toContain('French losses');
-    expect(html).toContain('Archer x1');
-    expect(html).toContain('Villager x1');
+    expect(html).toContain('Spearman x2');
+    expect(html).toContain('Knight x1');
     expect(html).toContain('data-significant-event-loss-summary="player2"');
-    expect(html).toContain('data-significant-event-loss-total="player2">140</dd>');
-    expect(html).toContain('data-significant-event-loss-immediate="player2">50</dd>');
+    expect(html).toContain('data-significant-event-loss-total="player2">330</dd>');
+    expect(html).toContain('data-significant-event-loss-immediate="player2">240</dd>');
     expect(html).toContain('data-significant-event-loss-villager-opportunity="player2">90</dd>');
     expect(html).toContain('data-significant-event-loss-share-label="player2">Share of French deployed</dt>');
     expect(html).not.toContain('<dt>Share of deployed</dt>');
-    expect(html).toContain('data-hover-field="significantEvent.description"');
-    expect(html).toContain('data-hover-field="significantEvent.grossLoss"');
+    expect(html).not.toContain('data-hover-field="significantEvent.description"');
+    expect(html).not.toContain('data-hover-field="significantEvent.grossLoss"');
+    expect(html).not.toContain('data-hover-field="significantEvent.topLosses"');
     expect(html).toContain('data-villager-opportunity-event-tooltip');
     expect(html).toContain('future missed gathering from killed villagers');
     expect(eventIndex).toBeGreaterThanOrEqual(0);
+    expect(underdogNoteIndex).toBeGreaterThan(eventIndex);
+    expect(armyIndex).toBeGreaterThan(eventIndex);
+    expect(lossesIndex).toBeGreaterThan(armyIndex);
+    expect(underdogDetailsIndex).toBeGreaterThan(lossesIndex);
     expect(allocationIndex).toBeGreaterThan(eventIndex);
   });
 
@@ -341,5 +385,36 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).not.toContain('Where the gap came from');
     expect(html).not.toContain('One-line story');
     expect(html).not.toContain('data-open-adjusted-explainer');
+  });
+
+  it('renders neutral player and civilization labels instead of perspective headers', () => {
+    const model = makeMvpModelFixture();
+    (model.header as any).youPlayer = {
+      name: 'RepleteCactus',
+      civilization: 'English',
+      label: 'RepleteCactus · English',
+      shortLabel: 'RepleteCactus',
+      color: '#378ADD',
+    };
+    (model.header as any).opponentPlayer = {
+      name: 'Mista',
+      civilization: 'French',
+      label: 'Mista · French',
+      shortLabel: 'Mista',
+      color: '#D85A30',
+    };
+
+    const html = renderPostMatchHtml(model);
+
+    expect(html).toContain('RepleteCactus · English');
+    expect(html).toContain('Mista · French');
+    expect(html).not.toContain('You · English');
+    expect(html).not.toContain('Opponent · French');
+    expect(html).not.toContain('<th>You</th>');
+    expect(html).not.toContain('<th>Opp</th>');
+    expect(html).not.toContain('<h4>You</h4>');
+    expect(html).not.toContain('<h4>Opponent</h4>');
+    expect(html).not.toContain('You age-up');
+    expect(html).not.toContain('Opponent age-up');
   });
 });

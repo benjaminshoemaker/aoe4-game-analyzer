@@ -248,6 +248,73 @@ describe('detectSignificantResourceLossEvents', () => {
     }));
   });
 
+  it('captures fight pre-encounter armies at the detected window start', () => {
+    const longbowmen = {
+      originalEntry: {
+        id: 'longbowman',
+        icon: 'icons/races/english/units/longbowman',
+        pbgid: 6,
+        type: 'Unit' as const,
+        finished: [0, 0, 0, 0, 0, 0],
+        constructed: [],
+        destroyed: [30, 30],
+      },
+      type: 'unit' as const,
+      id: 'longbowman',
+      name: 'Longbowman',
+      cost: { food: 80, wood: 0, gold: 0, stone: 0, total: 80 },
+      tier: 1,
+      tierMultiplier: 1,
+      classes: ['archer'],
+      produced: [0, 0, 0, 0, 0, 0],
+      destroyed: [30, 30],
+      civs: ['en'],
+    };
+    const knights = {
+      originalEntry: {
+        id: 'knight',
+        icon: 'icons/races/french/units/knight',
+        pbgid: 7,
+        type: 'Unit' as const,
+        finished: [0, 0],
+        constructed: [],
+        destroyed: [35],
+      },
+      type: 'unit' as const,
+      id: 'knight',
+      name: 'Knight',
+      cost: { food: 140, wood: 0, gold: 100, stone: 0, total: 240 },
+      tier: 1,
+      tierMultiplier: 1,
+      classes: ['cavalry'],
+      produced: [0, 0],
+      destroyed: [35],
+      civs: ['fr'],
+    };
+
+    const events = detectSignificantResourceLossEvents({
+      summary: summary(300),
+      deployedResourcePools: pools(300, 480, 480),
+      player1Build: { startingAssets: [], resolved: [longbowmen], unresolved: [] },
+      player2Build: { startingAssets: [], resolved: [knights], unresolved: [] },
+    });
+
+    expect(events[0]).toEqual(expect.objectContaining({
+      kind: 'fight',
+      windowStart: 0,
+      preEncounterArmies: {
+        player1: {
+          totalValue: 480,
+          units: [expect.objectContaining({ label: 'Longbowman', value: 480, count: 6 })],
+        },
+        player2: {
+          totalValue: 480,
+          units: [expect.objectContaining({ label: 'Knight', value: 480, count: 2 })],
+        },
+      },
+    }));
+  });
+
   it('applies the absolute guard to trivial non-villager losses even when percentage is high', () => {
     const p2Build: ResolvedBuildOrder = {
       startingAssets: [],

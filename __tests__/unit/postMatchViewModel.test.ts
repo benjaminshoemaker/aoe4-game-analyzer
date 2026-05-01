@@ -342,6 +342,16 @@ describe('significant resource loss timeline events', () => {
             topLosses: [{ label: 'Villager', value: 50, count: 1, band: 'economic' }],
           },
         },
+        preEncounterArmies: {
+          player1: {
+            totalValue: 1200,
+            units: [{ label: 'Longbowman', value: 1200, count: 12, band: 'militaryActive' }],
+          },
+          player2: {
+            totalValue: 450,
+            units: [{ label: 'Spearman', value: 450, count: 5, band: 'militaryActive' }],
+          },
+        },
       }),
       significantEvent({
         id: 'fight',
@@ -383,9 +393,13 @@ describe('significant resource loss timeline events', () => {
     expect(model.trajectory.significantEvents).toHaveLength(1);
     expect(model.trajectory.significantEvents?.[0]).toEqual(expect.objectContaining({
       id: 'fight',
-      headline: 'English lost more value than French in a fight: 700 vs 300.',
+      headline: 'French took a favorable fight against English.',
       player1Civilization: 'English',
       player2Civilization: 'French',
+      favorableUnderdogFight: {
+        summary: 'Despite significantly fewer deployed military resources.',
+        details: 'French won this encounter despite having significantly fewer deployed military resources than English. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where French found an advantage, healing, stronger micro, or a favorable unit matchup.',
+      },
       encounterLosses: {
         player1: [expect.objectContaining({ label: 'Knight', count: 3, value: 700 })],
         player2: [expect.objectContaining({ label: 'Spearman', count: 4, value: 300 })],

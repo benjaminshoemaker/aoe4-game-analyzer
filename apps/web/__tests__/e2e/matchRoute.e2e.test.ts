@@ -36,43 +36,64 @@ describe('matches route e2e', () => {
       player2Civilization: 'French',
       victimCivilization: 'French',
       actorCivilization: 'English',
-      kind: 'raid',
-      label: 'Raid',
-      shortLabel: 'Raid',
-      description: 'French lost 140 resources of villager opportunity impact.',
-      impactSummary: '140 gross impact, 20.9% of deployed pool.',
-      grossImpact: 220,
-      grossLoss: 140,
-      immediateLoss: 50,
-      villagerOpportunityLoss: 90,
+      headline: 'French took a favorable fight against English.',
+      kind: 'fight',
+      label: 'Fight',
+      shortLabel: 'Fight',
+      description: 'French lost more military value in the fight.',
+      impactSummary: '400 gross impact, 35.8% of deployed pool.',
+      grossImpact: 400,
+      grossLoss: 240,
+      immediateLoss: 240,
+      villagerOpportunityLoss: 0,
       denominator: 670,
-      pctOfDeployed: 20.9,
-      villagerDeaths: 1,
-      topLosses: [{ label: 'Villager', value: 50, count: 1, band: 'economic' }],
+      pctOfDeployed: 35.8,
+      villagerDeaths: 0,
+      topLosses: [{ label: 'Knight', value: 240, count: 1, band: 'militaryActive' }],
+      preEncounterArmies: {
+        player1: {
+          totalValue: 640,
+          units: [
+            { label: 'Longbowman', value: 480, count: 6, band: 'militaryActive' },
+            { label: 'Spearman', value: 160, count: 2, band: 'militaryActive' },
+          ],
+        },
+        player2: {
+          totalValue: 640,
+          units: [
+            { label: 'Knight', value: 480, count: 2, band: 'militaryActive' },
+            { label: 'Archer', value: 160, count: 2, band: 'militaryActive' },
+          ],
+        },
+      },
+      favorableUnderdogFight: {
+        summary: 'Despite significantly fewer deployed military resources.',
+        details: 'French won this encounter despite having significantly fewer deployed military resources than English. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where French found an advantage, healing, stronger micro, or a favorable unit matchup.',
+      },
       encounterLosses: {
-        player1: [{ label: 'Archer', value: 80, count: 1, band: 'militaryActive' }],
-        player2: [{ label: 'Villager', value: 50, count: 1, band: 'economic' }],
+        player1: [{ label: 'Spearman', value: 160, count: 2, band: 'militaryActive' }],
+        player2: [{ label: 'Knight', value: 240, count: 1, band: 'militaryActive' }],
       },
       playerImpacts: {
         player1: {
-          immediateLoss: 80,
+          immediateLoss: 160,
           villagerOpportunityLoss: 0,
-          grossLoss: 80,
+          grossLoss: 160,
           denominator: 818,
-          pctOfDeployed: 9.8,
+          pctOfDeployed: 19.6,
           villagerDeaths: 0,
-          losses: [{ label: 'Archer', value: 80, count: 1, band: 'militaryActive' }],
-          topLosses: [{ label: 'Archer', value: 80, count: 1, band: 'militaryActive' }],
+          losses: [{ label: 'Spearman', value: 160, count: 2, band: 'militaryActive' }],
+          topLosses: [{ label: 'Spearman', value: 160, count: 2, band: 'militaryActive' }],
         },
         player2: {
-          immediateLoss: 50,
-          villagerOpportunityLoss: 90,
-          grossLoss: 140,
+          immediateLoss: 240,
+          villagerOpportunityLoss: 0,
+          grossLoss: 240,
           denominator: 670,
-          pctOfDeployed: 20.9,
-          villagerDeaths: 1,
-          losses: [{ label: 'Villager', value: 50, count: 1, band: 'economic' }],
-          topLosses: [{ label: 'Villager', value: 50, count: 1, band: 'economic' }],
+          pctOfDeployed: 35.8,
+          villagerDeaths: 0,
+          losses: [{ label: 'Knight', value: 240, count: 1, band: 'militaryActive' }],
+          topLosses: [{ label: 'Knight', value: 240, count: 1, band: 'militaryActive' }],
         },
       },
     } as const;
@@ -144,9 +165,21 @@ describe('matches route e2e', () => {
     expect(body).toContain('data-hover-field="allocation.opportunityLost.delta"');
     expect(body).toContain('data-significant-event-marker');
     expect(body).toContain('Event impact');
+    expect(body).toContain('Despite significantly fewer deployed military resources.');
+    expect(body).toContain('data-significant-event-underdog-toggle');
+    expect(body).toContain('Why this fight is notable');
+    expect(body).toContain('French won this encounter despite having significantly fewer deployed military resources than English.');
+    expect(body).toContain('Pre-encounter armies');
+    expect(body).toContain('data-significant-event-army-total="player1">640</dd>');
+    expect(body).toContain('data-significant-event-army-total="player2">640</dd>');
+    expect(body.indexOf('Pre-encounter armies')).toBeLessThan(body.indexOf('Encounter losses'));
+    expect(body.indexOf('Why this fight is notable')).toBeGreaterThan(body.indexOf('Encounter losses'));
     expect(body).toContain('data-significant-event-loss-summary="player2"');
-    expect(body).toContain('data-significant-event-loss-villager-opportunity="player2">90</dd>');
+    expect(body).toContain('data-significant-event-loss-immediate="player2">240</dd>');
     expect(body).toContain('data-significant-event-loss-share-label="player2">Share of French deployed</dt>');
+    expect(body).not.toContain('data-hover-field="significantEvent.description"');
+    expect(body).not.toContain('data-hover-field="significantEvent.grossLoss"');
+    expect(body).not.toContain('data-hover-field="significantEvent.topLosses"');
     expect(body).not.toContain('<dt>Share of deployed</dt>');
     expect(body).not.toContain('Deployed resource pool over time');
     expect(body).not.toContain('Strategic allocation state');

@@ -1,5 +1,10 @@
 import { analyzeGame } from './aoe4/analysis/gameAnalysis';
 import { buildPostMatchViewModel } from './aoe4/analysis/postMatchViewModel';
+import {
+  buildWinProbabilityExamples,
+  WIN_PROBABILITY_FEATURE_SCHEMA_VERSION,
+  WinProbabilityExample,
+} from './aoe4/analysis/winProbability';
 import { buildPostMatchHoverPayload, renderPostMatchHtml } from './aoe4/formatters/postMatchHtml';
 import { fetchGameSummaryFromApi, GameSummary } from './aoe4/parser/gameSummaryParser';
 
@@ -8,6 +13,16 @@ export interface MatchPageParams {
   gameId: number;
   sig?: string;
   hoverDataUrl?: string;
+  matchAverageElo?: number | null;
+}
+
+export interface MatchWinProbabilityData {
+  metadata: {
+    modelStatus: 'untrained';
+    featureSchemaVersion: typeof WIN_PROBABILITY_FEATURE_SCHEMA_VERSION;
+    exampleCount: number;
+  };
+  examples: WinProbabilityExample[];
 }
 
 const DELHI_UNSUPPORTED_MESSAGE = "This app doesn't work for Delhi yet.";
@@ -85,7 +100,7 @@ export function parseMatchRouteParams(profileSlugRaw: string, gameIdRaw: string)
   return { profileSlug, gameId };
 }
 
-async function buildMatchModel(params: MatchPageParams) {
+async function buildMatchContext(params: MatchPageParams) {
   const summary = await fetchGameSummaryFromApi(params.profileSlug, params.gameId, params.sig);
   const unsupportedMessage = getUnsupportedMatchMessage(summary);
   if (unsupportedMessage) {
@@ -98,12 +113,19 @@ async function buildMatchModel(params: MatchPageParams) {
     summary,
   });
 
-  return buildPostMatchViewModel({
+  const model = buildPostMatchViewModel({
     summary,
     analysis,
     perspectiveProfileId: params.profileSlug,
     summarySig: params.sig,
   });
+
+  return { summary, analysis, model };
+}
+
+async function buildMatchModel(params: MatchPageParams) {
+  const { model } = await buildMatchContext(params);
+  return model;
 }
 
 export async function buildMatchHtml(params: MatchPageParams): Promise<string> {
@@ -123,4 +145,23 @@ export async function buildMatchHtml(params: MatchPageParams): Promise<string> {
 export async function buildMatchHoverPayload(params: MatchPageParams) {
   const model = await buildMatchModel(params);
   return buildPostMatchHoverPayload(model);
+}
+
+export async function buildMatchWinProbabilityData(params: MatchPageParams): Promise<MatchWinProbabilityData> {
+  const { summary, model } = await buildMatchContext(params);
+  const examples = buildWinProbabilityExamples({
+    summary,
+    model,
+    perspectiveProfileId: params.profileSlug,
+    matchAverageElo: params.matchAverageElo,
+  });
+
+  return {
+    metadata: {
+      modelStatus: 'untrained',
+      featureSchemaVersion: WIN_PROBABILITY_FEATURE_SCHEMA_VERSION,
+      exampleCount: examples.length,
+    },
+    examples,
+  };
 }

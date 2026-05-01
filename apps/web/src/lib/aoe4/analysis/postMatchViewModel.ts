@@ -60,6 +60,14 @@ export type PostMatchPlayerKey = 'you' | 'opponent';
 export type AgeMarkerAge = 'Feudal' | 'Castle' | 'Imperial';
 export type AgeAnalysisAge = 'Dark' | AgeMarkerAge;
 
+export interface PostMatchPlayerDisplay {
+  name: string;
+  civilization: string;
+  label: string;
+  shortLabel: string;
+  color: string;
+}
+
 export interface AgeMarker {
   player: PostMatchPlayerKey;
   age: AgeMarkerAge;
@@ -81,13 +89,21 @@ export interface MetricAgeAnalysisCard {
   summary: string;
 }
 
+export interface FavorableUnderdogFightContext {
+  summary: string;
+  details: string;
+}
+
 export interface SignificantTimelineEvent extends Omit<SignificantResourceLossEvent, 'victimPlayer' | 'kind'> {
   victim: PostMatchPlayerKey;
   victimLabel: string;
   victimCivilization: string;
   actorCivilization: string;
+  actorLabel: string;
   player1Civilization: string;
   player2Civilization: string;
+  player1Label: string;
+  player2Label: string;
   encounterLosses: {
     player1: SignificantResourceLossItem[];
     player2: SignificantResourceLossItem[];
@@ -95,6 +111,7 @@ export interface SignificantTimelineEvent extends Omit<SignificantResourceLossEv
   kind: SignificantResourceLossKind;
   timeLabel: string;
   headline: string;
+  favorableUnderdogFight?: FavorableUnderdogFightContext;
 }
 
 export interface AdjustedMilitarySeriesPoint {
@@ -280,6 +297,10 @@ export interface PostMatchViewModel {
     summaryUrl: string;
     youCivilization: string;
     opponentCivilization: string;
+    youPlayer: PostMatchPlayerDisplay;
+    opponentPlayer: PostMatchPlayerDisplay;
+    player1: PostMatchPlayerDisplay;
+    player2: PostMatchPlayerDisplay;
     outcome: string;
   };
   deferredBanner: string | null;
@@ -605,15 +626,69 @@ function formatTime(seconds: number): string {
   return `${mins}:${String(secs).padStart(2, '0')}`;
 }
 
-export function buildAgeMarkers(summary: GameSummary, youIndex: 0 | 1): AgeMarker[] {
+const playerColors: Record<'player1' | 'player2', string> = {
+  player1: '#378ADD',
+  player2: '#D85A30',
+};
+
+function civilizationLabel(civilization: string): string {
+  const cleaned = civilization.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!cleaned) return civilization;
+  return cleaned
+    .split(' ')
+    .map(word => word.length === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+function playerDisplay(
+  player: GameSummary['players'][number] | undefined,
+  fallbackName: string,
+  color: string
+): PostMatchPlayerDisplay {
+  const name = player?.name?.trim() || fallbackName;
+  const civilization = civilizationLabel(player?.civilization ?? fallbackName);
+  return {
+    name,
+    civilization,
+    label: `${name} · ${civilization}`,
+    shortLabel: name,
+    color,
+  };
+}
+
+function buildPlayerDisplays(summary: GameSummary): {
+  player1: PostMatchPlayerDisplay;
+  player2: PostMatchPlayerDisplay;
+} {
+  return {
+    player1: playerDisplay(summary.players[0], 'Player 1', playerColors.player1),
+    player2: playerDisplay(summary.players[1], 'Player 2', playerColors.player2),
+  };
+}
+
+function perspectiveDisplays(
+  displays: { player1: PostMatchPlayerDisplay; player2: PostMatchPlayerDisplay },
+  youIndex: 0 | 1
+): Record<PostMatchPlayerKey, PostMatchPlayerDisplay> {
+  return {
+    you: youIndex === 0 ? displays.player1 : displays.player2,
+    opponent: youIndex === 0 ? displays.player2 : displays.player1,
+  };
+}
+
+export function buildAgeMarkers(
+  summary: GameSummary,
+  youIndex: 0 | 1,
+  labels = perspectiveDisplays(buildPlayerDisplays(summary), youIndex)
+): AgeMarker[] {
   const ages: AgeMarkerAge[] = ['Feudal', 'Castle', 'Imperial'];
   const playerSpecs: { player: PostMatchPlayerKey; summaryIndex: 0 | 1; label: string; shortPrefix: string }[] = [
-    { player: 'you', summaryIndex: youIndex, label: 'You', shortPrefix: 'Y' },
+    { player: 'you', summaryIndex: youIndex, label: labels.you.label, shortPrefix: labels.you.shortLabel },
     {
       player: 'opponent',
       summaryIndex: youIndex === 0 ? 1 : 0,
-      label: 'Opponent',
-      shortPrefix: 'O',
+      label: labels.opponent.label,
+      shortPrefix: labels.opponent.shortLabel,
     },
   ];
 
@@ -654,22 +729,36 @@ function buildSignificantTimelineEvents(
   youIndex: 0 | 1,
   summary: GameSummary
 ): SignificantTimelineEvent[] {
-  const player1Civilization = civilizationLabel(summary.players[0]?.civilization ?? 'Player 1');
-  const player2Civilization = civilizationLabel(summary.players[1]?.civilization ?? 'Player 2');
+  const displays = buildPlayerDisplays(summary);
+  const player1Civilization = displays.player1.civilization;
+  const player2Civilization = displays.player2.civilization;
+  const player1Label = displays.player1.label;
+  const player2Label = displays.player2.label;
   return (events ?? [])
     .map(event => {
       const victimSummaryIndex = event.victimPlayer - 1;
       const victim: PostMatchPlayerKey = victimSummaryIndex === youIndex ? 'you' : 'opponent';
       const victimCivilization = event.victimPlayer === 1 ? player1Civilization : player2Civilization;
       const actorCivilization = event.victimPlayer === 1 ? player2Civilization : player1Civilization;
+      const victimLabel = event.victimPlayer === 1 ? player1Label : player2Label;
+      const actorLabel = event.victimPlayer === 1 ? player2Label : player1Label;
+      const favorableUnderdogFight = favorableUnderdogFightContext(event, {
+        player1Civilization,
+        player2Civilization,
+        player1Label,
+        player2Label,
+      });
       return {
         ...event,
         victim,
-        victimLabel: victimCivilization,
+        victimLabel,
         victimCivilization,
         actorCivilization,
+        actorLabel,
         player1Civilization,
         player2Civilization,
+        player1Label,
+        player2Label,
         encounterLosses: {
           player1: event.playerImpacts?.player1?.losses ?? event.playerImpacts?.player1?.topLosses ?? [],
           player2: event.playerImpacts?.player2?.losses ?? event.playerImpacts?.player2?.topLosses ?? [],
@@ -679,19 +768,14 @@ function buildSignificantTimelineEvents(
           youIndex,
           player1Civilization,
           player2Civilization,
+          player1Label,
+          player2Label,
+          favorableUnderdogFight,
         }),
+        ...(favorableUnderdogFight ? { favorableUnderdogFight } : {}),
       };
     })
     .sort((a, b) => a.timestamp - b.timestamp || a.victim.localeCompare(b.victim));
-}
-
-function civilizationLabel(civilization: string): string {
-  const cleaned = civilization.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
-  if (!cleaned) return civilization;
-  return cleaned
-    .split(' ')
-    .map(word => word.length === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
 }
 
 function significantEventDisplayLimit(durationSeconds: number): number {
@@ -740,37 +824,83 @@ function significantEventHeadline(event: SignificantResourceLossEvent, context: 
   youIndex: 0 | 1;
   player1Civilization: string;
   player2Civilization: string;
+  player1Label: string;
+  player2Label: string;
+  favorableUnderdogFight?: FavorableUnderdogFightContext | null;
 }): string {
   const perspectivePlayer = (context.youIndex + 1) as 1 | 2;
   const otherPlayer = perspectivePlayer === 1 ? 2 : 1;
-  const perspectiveCivilization = perspectivePlayer === 1 ? context.player1Civilization : context.player2Civilization;
-  const otherCivilization = otherPlayer === 1 ? context.player1Civilization : context.player2Civilization;
+  const perspectiveLabel = perspectivePlayer === 1 ? context.player1Label : context.player2Label;
+  const otherLabel = otherPlayer === 1 ? context.player1Label : context.player2Label;
   const perspectiveImpact = eventImpactForPlayer(event, perspectivePlayer);
   const otherImpact = eventImpactForPlayer(event, otherPlayer);
 
   if (event.kind === 'raid') {
     const victimImpact = eventImpactForPlayer(event, event.victimPlayer);
-    const victimCivilization = event.victimPlayer === 1 ? context.player1Civilization : context.player2Civilization;
-    const actorCivilization = event.victimPlayer === 1 ? context.player2Civilization : context.player1Civilization;
+    const victimLabel = event.victimPlayer === 1 ? context.player1Label : context.player2Label;
+    const actorLabel = event.victimPlayer === 1 ? context.player2Label : context.player1Label;
     const killedText = victimImpact.villagerDeaths > 0
       ? ` and killed ${villagerCountText(victimImpact.villagerDeaths)}`
       : '';
-    return `${actorCivilization} raided ${victimCivilization}${killedText}.`;
+    return `${actorLabel} raided ${victimLabel}${killedText}.`;
   }
 
   if (event.kind === 'fight') {
+    const underdogPlayer = favorableUnderdogFightPlayer(event);
+    if (context.favorableUnderdogFight && underdogPlayer) {
+      const underdogLabel = underdogPlayer === 1 ? context.player1Label : context.player2Label;
+      const opponentLabel = underdogPlayer === 1 ? context.player2Label : context.player1Label;
+      return `${underdogLabel} took a favorable fight against ${opponentLabel}.`;
+    }
+
     if (perspectiveImpact.grossLoss > otherImpact.grossLoss) {
-      return `${perspectiveCivilization} lost more value than ${otherCivilization} in a fight: ${Math.round(perspectiveImpact.grossLoss)} vs ${Math.round(otherImpact.grossLoss)}.`;
+      return `${perspectiveLabel} lost more value than ${otherLabel} in a fight: ${Math.round(perspectiveImpact.grossLoss)} vs ${Math.round(otherImpact.grossLoss)}.`;
     }
     if (perspectiveImpact.grossLoss < otherImpact.grossLoss) {
-      return `${perspectiveCivilization} took a favorable fight against ${otherCivilization}: ${Math.round(perspectiveImpact.grossLoss)} lost vs ${Math.round(otherImpact.grossLoss)} lost.`;
+      return `${perspectiveLabel} took a favorable fight against ${otherLabel}: ${Math.round(perspectiveImpact.grossLoss)} lost vs ${Math.round(otherImpact.grossLoss)} lost.`;
     }
-    return `${perspectiveCivilization} and ${otherCivilization} traded evenly in a fight: ${Math.round(perspectiveImpact.grossLoss)} each.`;
+    return `${perspectiveLabel} and ${otherLabel} traded evenly in a fight: ${Math.round(perspectiveImpact.grossLoss)} each.`;
   }
 
-  const victimCivilization = event.victimPlayer === 1 ? context.player1Civilization : context.player2Civilization;
+  const victimLabel = event.victimPlayer === 1 ? context.player1Label : context.player2Label;
   const victimImpact = eventImpactForPlayer(event, event.victimPlayer);
-  return `${victimCivilization} lost ${Math.round(victimImpact.grossLoss)} value in a significant loss.`;
+  return `${victimLabel} lost ${Math.round(victimImpact.grossLoss)} value in a significant loss.`;
+}
+
+function favorableUnderdogFightPlayer(event: SignificantResourceLossEvent): 1 | 2 | null {
+  if (event.kind !== 'fight' || !event.preEncounterArmies) return null;
+
+  const player1Impact = eventImpactForPlayer(event, 1);
+  const player2Impact = eventImpactForPlayer(event, 2);
+  if (player1Impact.grossLoss === player2Impact.grossLoss) return null;
+
+  const favorablePlayer: 1 | 2 = player1Impact.grossLoss < player2Impact.grossLoss ? 1 : 2;
+  const otherPlayer: 1 | 2 = favorablePlayer === 1 ? 2 : 1;
+  const favorableKey = favorablePlayer === 1 ? 'player1' : 'player2';
+  const otherKey = otherPlayer === 1 ? 'player1' : 'player2';
+  const favorableArmy = event.preEncounterArmies[favorableKey].totalValue;
+  const otherArmy = event.preEncounterArmies[otherKey].totalValue;
+
+  if (favorableArmy <= 0 || otherArmy < favorableArmy * 2) return null;
+  return favorablePlayer;
+}
+
+function favorableUnderdogFightContext(event: SignificantResourceLossEvent, context: {
+  player1Civilization: string;
+  player2Civilization: string;
+  player1Label: string;
+  player2Label: string;
+}): FavorableUnderdogFightContext | null {
+  const favorablePlayer = favorableUnderdogFightPlayer(event);
+  if (!favorablePlayer) return null;
+
+  const underdogLabel = favorablePlayer === 1 ? context.player1Label : context.player2Label;
+  const opponentLabel = favorablePlayer === 1 ? context.player2Label : context.player1Label;
+
+  return {
+    summary: 'Despite significantly fewer deployed military resources.',
+    details: `${underdogLabel} won this encounter despite having significantly fewer deployed military resources than ${opponentLabel}. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where ${underdogLabel} found an advantage, healing, stronger micro, or a favorable unit matchup.`,
+  };
 }
 
 function formatMode(leaderboard: string): string {
@@ -1346,7 +1476,7 @@ function buildAgeDestructionSummary(
     return 'Destruction: neither player destroyed measurable value.';
   }
 
-  return `Destruction: You destroyed ${Math.round(opponentLosses)} value; opponent destroyed ${Math.round(yourLosses)} value.`;
+  return `Destruction: you destroyed ${Math.round(opponentLosses)} value; opponent destroyed ${Math.round(yourLosses)} value.`;
 }
 
 function minGatherRateInWindow(series: GatherRatePoint[], start: number, end: number): number {
@@ -1371,6 +1501,7 @@ function buildAgeConversionSummary(params: {
   opponentGatherRateSeries: GatherRatePoint[];
   yourEvents: BandItemDeltaEvent[] | undefined;
   opponentEvents: BandItemDeltaEvent[] | undefined;
+  labels: Record<PostMatchPlayerKey, PostMatchPlayerDisplay>;
   start: number;
   end: number;
 }): string {
@@ -1401,7 +1532,11 @@ function buildAgeConversionSummary(params: {
   return 'Meaning: No major conversion signal inside this shared window.';
 }
 
-function playerReachedAgeLabel(age: AgeMarkerAge, yourTime: number | null, opponentTime: number | null): string {
+function playerReachedAgeLabel(
+  age: AgeMarkerAge,
+  yourTime: number | null,
+  opponentTime: number | null
+): string {
   if (yourTime !== null && opponentTime === null) return `Only you reached ${age}`;
   if (opponentTime !== null && yourTime === null) return `Only opponent reached ${age}`;
   return `No shared ${age} window`;
@@ -1416,6 +1551,7 @@ function buildAgeAnalyses(params: {
   opponentEvents: BandItemDeltaEvent[] | undefined;
   yourGatherRateSeries: GatherRatePoint[];
   opponentGatherRateSeries: GatherRatePoint[];
+  labels: Record<PostMatchPlayerKey, PostMatchPlayerDisplay>;
 }): MetricAgeAnalysisCard[] {
   const yourPlayer = params.summary.players[params.youIndex];
   const opponentPlayer = params.summary.players[params.youIndex === 0 ? 1 : 0];
@@ -1501,6 +1637,7 @@ function buildAgeAnalyses(params: {
       opponentGatherRateSeries: params.opponentGatherRateSeries,
       yourEvents: params.yourEvents,
       opponentEvents: params.opponentEvents,
+      labels: params.labels,
       start: ageStart,
       end: ageEnd,
     });
@@ -1925,6 +2062,8 @@ export function buildPostMatchViewModel(params: {
 
   const youIndex = normalizeIndex(summary, perspectiveProfileId);
   const opponentIndex = youIndex === 0 ? 1 : 0;
+  const playerDisplays = buildPlayerDisplays(summary);
+  const perspectivePlayerDisplays = perspectiveDisplays(playerDisplays, youIndex);
 
   const poolPlayer1 = analysis.deployedResourcePools.player1;
   const poolPlayer2 = analysis.deployedResourcePools.player2;
@@ -2031,7 +2170,7 @@ export function buildPostMatchViewModel(params: {
       militaryPercent: Math.round(opponentBetResult.militaryShare * 100),
     }
     : null;
-  const ageMarkers = buildAgeMarkers(summary, youIndex);
+  const ageMarkers = buildAgeMarkers(summary, youIndex, perspectivePlayerDisplays);
   const ageAnalyses = buildAgeAnalyses({
     summary,
     youIndex,
@@ -2041,6 +2180,7 @@ export function buildPostMatchViewModel(params: {
     opponentEvents: opponentPool.bandItemDeltas,
     yourGatherRateSeries: yourPool.gatherRateSeries,
     opponentGatherRateSeries: opponentPool.gatherRateSeries,
+    labels: perspectivePlayerDisplays,
   });
   const allSignificantEvents = buildSignificantTimelineEvents(
     analysis.significantResourceLossEvents,
@@ -2275,8 +2415,12 @@ export function buildPostMatchViewModel(params: {
       durationLabel: formatTime(summary.duration),
       map: summary.mapName,
       summaryUrl: `https://aoe4world.com/players/${yourPlayer.profileId}/games/${summary.gameId}${params.summarySig ? `?sig=${encodeURIComponent(params.summarySig)}` : ''}`,
-      youCivilization: yourPlayer.civilization,
-      opponentCivilization: opponentPlayer.civilization,
+      youCivilization: perspectivePlayerDisplays.you.civilization,
+      opponentCivilization: perspectivePlayerDisplays.opponent.civilization,
+      youPlayer: perspectivePlayerDisplays.you,
+      opponentPlayer: perspectivePlayerDisplays.opponent,
+      player1: playerDisplays.player1,
+      player2: playerDisplays.player2,
       outcome: formatOutcome(summary.winReason, summary.duration),
     },
     deferredBanner: displayBanner(yourPool.deferredNotices, opponentPool.deferredNotices),

@@ -8,6 +8,7 @@ describe('HomePage form', () => {
     expect(source).not.toContain("'use client'");
     expect(source).not.toContain('useState');
     expect(source).not.toContain('window.location');
+    expect(source).toContain('searchParams?: Promise');
     expect(source).toContain('method="get"');
     expect(source).toContain('action="/matches/open"');
     expect(source).toContain('<label');

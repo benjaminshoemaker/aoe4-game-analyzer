@@ -1,6 +1,6 @@
 # Next Steps (Prioritized)
 
-Last updated: 2026-04-30 (America/Los_Angeles)
+Last updated: 2026-05-01 (America/Los_Angeles)
 
 This is the consolidated backlog for follow-up work after the current v1 post-match implementation.
 It centralizes deferred/open items from:
@@ -137,6 +137,16 @@ Priority levels:
   - Finalize common comparison axes and confidence policy.
   - Why: necessary to keep cross-civ comparisons honest and consistent.
   - Source: `NOTES.md` (open discussion items).
+
+## P1 — Win Probability / Corpus Research
+
+- [ ] `P1` Win-probability / decisive-ahead research with AoE4World-approved corpus access
+  - Preserve the current position: do not bulk-fetch AoE4World game summaries before coordination.
+  - After the article and public tool launch, reach out to AoE4World for bulk or integration access to game summaries.
+  - First modeling scope should be Diamond RM 1v1, using a conservative decisive-ahead classifier with abstention rather than full probability calibration.
+  - Target question: "Is either player decisively ahead, roughly 75%+ to convert historically, or should the system abstain?"
+  - Use public dumps only for candidate sizing and filtering until summary access is approved.
+  - Source: `features/win_probability/PLAN.md`.
 
 ## P2 — Output / UX Expansion
 

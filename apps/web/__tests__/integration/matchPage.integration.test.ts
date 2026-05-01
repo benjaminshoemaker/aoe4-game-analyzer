@@ -1,10 +1,11 @@
-import { buildMatchHtml, buildMatchHoverPayload } from '../../src/lib/matchPage';
+import { buildMatchHtml, buildMatchHoverPayload, buildMatchWinProbabilityData } from '../../src/lib/matchPage';
 
 const fetchGameSummaryFromApi = jest.fn();
 const analyzeGame = jest.fn();
 const buildPostMatchViewModel = jest.fn();
 const buildPostMatchHoverPayload = jest.fn();
 const renderPostMatchHtml = jest.fn();
+const buildWinProbabilityExamples = jest.fn();
 
 jest.mock('../../src/lib/aoe4/parser/gameSummaryParser', () => ({
   fetchGameSummaryFromApi: (...args: unknown[]) => fetchGameSummaryFromApi(...args),
@@ -21,6 +22,11 @@ jest.mock('../../src/lib/aoe4/analysis/postMatchViewModel', () => ({
 jest.mock('../../src/lib/aoe4/formatters/postMatchHtml', () => ({
   buildPostMatchHoverPayload: (...args: unknown[]) => buildPostMatchHoverPayload(...args),
   renderPostMatchHtml: (...args: unknown[]) => renderPostMatchHtml(...args),
+}));
+
+jest.mock('../../src/lib/aoe4/analysis/winProbability', () => ({
+  WIN_PROBABILITY_FEATURE_SCHEMA_VERSION: 'wp-state-v1',
+  buildWinProbabilityExamples: (...args: unknown[]) => buildWinProbabilityExamples(...args),
 }));
 
 describe('buildMatchHtml integration', () => {
@@ -104,5 +110,38 @@ describe('buildMatchHtml integration', () => {
     })).resolves.toBe(payload);
 
     expect(buildPostMatchHoverPayload).toHaveBeenCalledWith(model);
+  });
+
+  it('builds win-probability training data through the same post-match model', async () => {
+    const summary = { gameId: 230143339 };
+    const analysis = { gameId: 230143339 };
+    const model = { trajectory: { hoverSnapshots: [{ timestamp: 0 }] } };
+    const examples = [{ timestampSeconds: 0, perspective: 'you' }];
+
+    fetchGameSummaryFromApi.mockResolvedValue(summary);
+    analyzeGame.mockResolvedValue(analysis);
+    buildPostMatchViewModel.mockReturnValue(model);
+    buildWinProbabilityExamples.mockReturnValue(examples);
+
+    await expect(buildMatchWinProbabilityData({
+      profileSlug: 'my-slug',
+      gameId: 230143339,
+      sig: 'abc123',
+      matchAverageElo: 972,
+    })).resolves.toEqual({
+      examples,
+      metadata: {
+        modelStatus: 'untrained',
+        featureSchemaVersion: 'wp-state-v1',
+        exampleCount: 1,
+      },
+    });
+
+    expect(buildWinProbabilityExamples).toHaveBeenCalledWith({
+      summary,
+      model,
+      perspectiveProfileId: 'my-slug',
+      matchAverageElo: 972,
+    });
   });
 });
