@@ -1,0 +1,35 @@
+@import "../../design-system/tokens.css";
+
+:root {
+  --bg: var(--aoe-color-bg);
+  --bg-accent: var(--aoe-color-bg-accent);
+  --surface: var(--aoe-color-surface);
+  --text: var(--aoe-color-text);
+  --muted: var(--aoe-color-muted);
+  --border: var(--aoe-color-border);
+  --primary: var(--aoe-color-primary);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--aoe-font-display);
+  color: var(--text);
+  background:
+    radial-gradient(circle at 10% 0%, rgba(157, 47, 27, 0.08), transparent 40%),
+    radial-gradient(circle at 90% 10%, rgba(39, 107, 80, 0.07), transparent 38%),
+    var(--bg);
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+}

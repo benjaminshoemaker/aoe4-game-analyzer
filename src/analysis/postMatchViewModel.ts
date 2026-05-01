@@ -3,12 +3,13 @@ import postMatchStoryConfigJson from '../data/postMatchStoryConfig.json';
 import { GameAnalysis } from './types';
 import { getAgeUpTime } from './phaseIdentification';
 import { GameSummary } from '../parser/gameSummaryParser';
-import { BandItemDeltaEvent, BandItemSnapshotPoint, GatherRatePoint, PoolSeriesPoint } from './resourcePool';
+import { BandItemDeltaEvent, BandItemSnapshotPoint, GatherRatePoint, PoolBand, PoolSeriesPoint } from './resourcePool';
 import {
   buildVillagerOpportunityForPlayer,
   VillagerOpportunityForPlayer,
   VillagerOpportunityPoint
 } from './villagerOpportunity';
+import { SignificantResourceLossEvent, SignificantResourceLossItem, SignificantResourceLossKind } from './significantResourceLossEvents';
 
 export type BetShapeLabel =
   | 'economic-heavy'
@@ -67,6 +68,22 @@ export interface AgeMarker {
   timeLabel: string;
 }
 
+export interface SignificantTimelineEvent extends Omit<SignificantResourceLossEvent, 'victimPlayer' | 'kind'> {
+  victim: PostMatchPlayerKey;
+  victimLabel: string;
+  victimCivilization: string;
+  actorCivilization: string;
+  player1Civilization: string;
+  player2Civilization: string;
+  encounterLosses: {
+    player1: SignificantResourceLossItem[];
+    player2: SignificantResourceLossItem[];
+  };
+  kind: SignificantResourceLossKind;
+  timeLabel: string;
+  headline: string;
+}
+
 export interface AdjustedMilitarySeriesPoint {
   timestamp: number;
   you: number;
@@ -120,6 +137,26 @@ export interface HoverBandBreakdownEntry {
   category?: string;
 }
 
+export interface ResourceAccountingValues {
+  economic: number;
+  populationCap: number;
+  militaryCapacity: number;
+  militaryActive: number;
+  defensive: number;
+  research: number;
+  advancement: number;
+  destroyed: number;
+  float: number;
+  gathered: number;
+  total: number;
+}
+
+export interface ResourceAccountingSnapshot {
+  you: ResourceAccountingValues;
+  opponent: ResourceAccountingValues;
+  delta: ResourceAccountingValues;
+}
+
 export interface PostMatchHoverSnapshot {
   timestamp: number;
   timeLabel: string;
@@ -154,6 +191,7 @@ export interface PostMatchHoverSnapshot {
     advancement: number;
     total: number;
   };
+  accounting?: ResourceAccountingSnapshot;
   gather: {
     you: number;
     opponent: number;
@@ -209,7 +247,12 @@ export interface PostMatchHoverSnapshot {
       you: HoverBandBreakdownEntry[];
       opponent: HoverBandBreakdownEntry[];
     };
+    destroyed?: {
+      you: HoverBandBreakdownEntry[];
+      opponent: HoverBandBreakdownEntry[];
+    };
   };
+  significantEvent?: SignificantTimelineEvent | null;
 }
 
 export interface PostMatchViewModel {
@@ -239,6 +282,7 @@ export interface PostMatchViewModel {
     opponentBandItemDeltas: BandItemDeltaEvent[];
     hoverSnapshots: PostMatchHoverSnapshot[];
     ageMarkers: AgeMarker[];
+    significantEvents?: SignificantTimelineEvent[];
   };
   gatherRate: {
     durationSeconds: number;
@@ -587,6 +631,130 @@ export function buildAgeMarkers(summary: GameSummary, youIndex: 0 | 1): AgeMarke
   );
 }
 
+function buildSignificantTimelineEvents(
+  events: SignificantResourceLossEvent[] | undefined,
+  youIndex: 0 | 1,
+  summary: GameSummary
+): SignificantTimelineEvent[] {
+  const player1Civilization = civilizationLabel(summary.players[0]?.civilization ?? 'Player 1');
+  const player2Civilization = civilizationLabel(summary.players[1]?.civilization ?? 'Player 2');
+  return (events ?? [])
+    .map(event => {
+      const victimSummaryIndex = event.victimPlayer - 1;
+      const victim: PostMatchPlayerKey = victimSummaryIndex === youIndex ? 'you' : 'opponent';
+      const victimCivilization = event.victimPlayer === 1 ? player1Civilization : player2Civilization;
+      const actorCivilization = event.victimPlayer === 1 ? player2Civilization : player1Civilization;
+      return {
+        ...event,
+        victim,
+        victimLabel: victimCivilization,
+        victimCivilization,
+        actorCivilization,
+        player1Civilization,
+        player2Civilization,
+        encounterLosses: {
+          player1: event.playerImpacts?.player1?.losses ?? event.playerImpacts?.player1?.topLosses ?? [],
+          player2: event.playerImpacts?.player2?.losses ?? event.playerImpacts?.player2?.topLosses ?? [],
+        },
+        timeLabel: formatTime(event.timestamp),
+        headline: significantEventHeadline(event, {
+          youIndex,
+          player1Civilization,
+          player2Civilization,
+        }),
+      };
+    })
+    .sort((a, b) => a.timestamp - b.timestamp || a.victim.localeCompare(b.victim));
+}
+
+function civilizationLabel(civilization: string): string {
+  const cleaned = civilization.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!cleaned) return civilization;
+  return cleaned
+    .split(' ')
+    .map(word => word.length === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+function significantEventDisplayLimit(durationSeconds: number): number {
+  return Math.max(1, Math.floor((durationSeconds / 60) / 4));
+}
+
+function selectSignificantTimelineEvents(
+  events: SignificantTimelineEvent[],
+  durationSeconds: number
+): SignificantTimelineEvent[] {
+  const limit = significantEventDisplayLimit(durationSeconds);
+  return [...events]
+    .sort((a, b) =>
+      (b.grossImpact ?? b.grossLoss) - (a.grossImpact ?? a.grossLoss) ||
+      a.timestamp - b.timestamp ||
+      a.id.localeCompare(b.id)
+    )
+    .slice(0, limit)
+    .sort((a, b) => a.timestamp - b.timestamp || a.id.localeCompare(b.id));
+}
+
+function significantEventLabel(event: SignificantTimelineEvent): string {
+  return `${event.victimLabel} ${event.label} ${event.timeLabel}`;
+}
+
+function eventImpactForPlayer(event: SignificantResourceLossEvent, player: 1 | 2): { grossLoss: number; villagerDeaths: number } {
+  const impact = player === 1 ? event.playerImpacts?.player1 : event.playerImpacts?.player2;
+  if (impact) {
+    return {
+      grossLoss: impact.grossLoss,
+      villagerDeaths: impact.villagerDeaths,
+    };
+  }
+  return {
+    grossLoss: event.victimPlayer === player ? event.grossLoss : 0,
+    villagerDeaths: event.victimPlayer === player ? event.villagerDeaths : 0,
+  };
+}
+
+function villagerCountText(count: number): string {
+  if (count === 1) return 'one villager';
+  return `${count} villagers`;
+}
+
+function significantEventHeadline(event: SignificantResourceLossEvent, context: {
+  youIndex: 0 | 1;
+  player1Civilization: string;
+  player2Civilization: string;
+}): string {
+  const perspectivePlayer = (context.youIndex + 1) as 1 | 2;
+  const otherPlayer = perspectivePlayer === 1 ? 2 : 1;
+  const perspectiveCivilization = perspectivePlayer === 1 ? context.player1Civilization : context.player2Civilization;
+  const otherCivilization = otherPlayer === 1 ? context.player1Civilization : context.player2Civilization;
+  const perspectiveImpact = eventImpactForPlayer(event, perspectivePlayer);
+  const otherImpact = eventImpactForPlayer(event, otherPlayer);
+
+  if (event.kind === 'raid') {
+    const victimImpact = eventImpactForPlayer(event, event.victimPlayer);
+    const victimCivilization = event.victimPlayer === 1 ? context.player1Civilization : context.player2Civilization;
+    const actorCivilization = event.victimPlayer === 1 ? context.player2Civilization : context.player1Civilization;
+    const killedText = victimImpact.villagerDeaths > 0
+      ? ` and killed ${villagerCountText(victimImpact.villagerDeaths)}`
+      : '';
+    return `${actorCivilization} raided ${victimCivilization}${killedText}.`;
+  }
+
+  if (event.kind === 'fight') {
+    if (perspectiveImpact.grossLoss > otherImpact.grossLoss) {
+      return `${perspectiveCivilization} lost more value than ${otherCivilization} in a fight: ${Math.round(perspectiveImpact.grossLoss)} vs ${Math.round(otherImpact.grossLoss)}.`;
+    }
+    if (perspectiveImpact.grossLoss < otherImpact.grossLoss) {
+      return `${perspectiveCivilization} took a favorable fight against ${otherCivilization}: ${Math.round(perspectiveImpact.grossLoss)} lost vs ${Math.round(otherImpact.grossLoss)} lost.`;
+    }
+    return `${perspectiveCivilization} and ${otherCivilization} traded evenly in a fight: ${Math.round(perspectiveImpact.grossLoss)} each.`;
+  }
+
+  const victimCivilization = event.victimPlayer === 1 ? context.player1Civilization : context.player2Civilization;
+  const victimImpact = eventImpactForPlayer(event, event.victimPlayer);
+  return `${victimCivilization} lost ${Math.round(victimImpact.grossLoss)} value in a significant loss.`;
+}
+
 function formatMode(leaderboard: string): string {
   const lower = leaderboard.toLowerCase();
   if (lower === 'rm_1v1' || lower === 'rm_solo') return 'Ranked 1v1';
@@ -812,6 +980,93 @@ function toHoverBandValues(point: PoolSeriesPoint): PostMatchHoverSnapshot['you'
   };
 }
 
+const accountingBands: PoolBand[] = [
+  'economic',
+  'populationCap',
+  'militaryCapacity',
+  'militaryActive',
+  'defensive',
+  'research',
+  'advancement',
+];
+
+function createZeroAccountingBands(): Record<PoolBand, number> {
+  return {
+    economic: 0,
+    populationCap: 0,
+    militaryCapacity: 0,
+    militaryActive: 0,
+    defensive: 0,
+    research: 0,
+    advancement: 0,
+  };
+}
+
+function cumulativeDestroyedByBandAtOrBefore(
+  events: BandItemDeltaEvent[] | undefined,
+  timestamp: number
+): Record<PoolBand, number> {
+  const destroyed = createZeroAccountingBands();
+  if (!events) return destroyed;
+
+  for (const event of events) {
+    if (event.timestamp > timestamp) break;
+    if (event.deltaValue >= 0) continue;
+    destroyed[event.band] += Math.abs(event.deltaValue);
+  }
+
+  return destroyed;
+}
+
+function buildResourceAccountingValues(
+  point: PoolSeriesPoint,
+  destroyedByBand: Record<PoolBand, number>,
+  gatheredValue: number
+): ResourceAccountingValues {
+  const grossBands = accountingBands.reduce<Record<PoolBand, number>>((values, band) => {
+    values[band] = Math.max(0, Math.round(point[band] + destroyedByBand[band]));
+    return values;
+  }, createZeroAccountingBands());
+  const destroyed = Math.round(accountingBands.reduce((sum, band) => sum + destroyedByBand[band], 0));
+  const grossTotal = accountingBands.reduce((sum, band) => sum + grossBands[band], 0);
+  const total = Math.max(0, Math.round(grossTotal - destroyed));
+  const gathered = Math.max(0, Math.round(gatheredValue));
+  const float = Math.max(0, gathered - total - destroyed);
+
+  return {
+    economic: grossBands.economic,
+    populationCap: grossBands.populationCap,
+    militaryCapacity: grossBands.militaryCapacity,
+    militaryActive: grossBands.militaryActive,
+    defensive: grossBands.defensive,
+    research: grossBands.research,
+    advancement: grossBands.advancement,
+    destroyed,
+    float,
+    gathered,
+    total,
+  };
+}
+
+function deltaResourceAccountingValues(
+  you: ResourceAccountingValues,
+  opponent: ResourceAccountingValues
+): ResourceAccountingValues {
+  return {
+    economic: you.economic - opponent.economic,
+    populationCap: you.populationCap - opponent.populationCap,
+    militaryCapacity: you.militaryCapacity - opponent.militaryCapacity,
+    militaryActive: you.militaryActive - opponent.militaryActive,
+    defensive: you.defensive - opponent.defensive,
+    research: you.research - opponent.research,
+    advancement: you.advancement - opponent.advancement,
+    destroyed: you.destroyed - opponent.destroyed,
+    float: you.float - opponent.float,
+    gathered: you.gathered - opponent.gathered,
+    total: you.total - opponent.total,
+  };
+}
+
 function deltaHoverBandValues(
   you: PostMatchHoverSnapshot['you'],
   opponent: PostMatchHoverSnapshot['opponent']
@@ -830,7 +1085,7 @@ function deltaHoverBandValues(
 
 function toHoverBreakdownEntries(
   snapshotBands: BandItemSnapshotPoint['bands'] | null,
-  band: keyof PostMatchHoverSnapshot['bandBreakdown']
+  band: PoolBand
 ): HoverBandBreakdownEntry[] {
   if (!snapshotBands) return [];
   return (snapshotBands[band] ?? []).map(entry => ({
@@ -840,6 +1095,54 @@ function toHoverBreakdownEntries(
     count: entry.count,
     category: entry.itemCategory,
   }));
+}
+
+function toDestroyedBreakdownEntries(
+  events: BandItemDeltaEvent[] | undefined,
+  timestamp: number
+): HoverBandBreakdownEntry[] {
+  const byOccurrence = new Map<string, { itemKey: string; label: string; value: number; count: number; category?: string }>();
+  for (const event of events ?? []) {
+    if (event.timestamp > timestamp) break;
+    if (event.deltaValue >= 0) continue;
+
+    const key = `${event.timestamp}:${event.itemKey}`;
+    const existing = byOccurrence.get(key) ?? {
+      itemKey: event.itemKey,
+      label: event.itemLabel,
+      value: 0,
+      count: 0,
+      category: event.itemCategory,
+    };
+    existing.value += Math.abs(event.deltaValue);
+    existing.count = Math.max(existing.count, Math.abs(event.deltaCount));
+    byOccurrence.set(key, existing);
+  }
+
+  const byItem = new Map<string, { label: string; value: number; count: number; category?: string }>();
+  for (const occurrence of byOccurrence.values()) {
+    const existing = byItem.get(occurrence.itemKey) ?? {
+      label: occurrence.label,
+      value: 0,
+      count: 0,
+      category: occurrence.category,
+    };
+    existing.value += occurrence.value;
+    existing.count += occurrence.count;
+    byItem.set(occurrence.itemKey, existing);
+  }
+
+  const total = [...byItem.values()].reduce((sum, entry) => sum + entry.value, 0);
+  return [...byItem.values()]
+    .filter(entry => entry.value > 0)
+    .map(entry => ({
+      label: entry.label,
+      value: Math.round(entry.value),
+      percent: total > 0 ? (entry.value / total) * 100 : 0,
+      count: Math.round(entry.count),
+      category: entry.category,
+    }))
+    .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
 }
 
 function totalGapAt(
@@ -1315,6 +1618,8 @@ export function buildPostMatchViewModel(params: {
     opponentPlayer,
     summary.duration
   );
+  const yourCumulativeGatheredSeries = buildCumulativeGatheredSeries(yourPlayer, summary.duration);
+  const opponentCumulativeGatheredSeries = buildCumulativeGatheredSeries(opponentPlayer, summary.duration);
 
   const finalYour = yourPool.series.length > 0 ? yourPool.series[yourPool.series.length - 1].total : 0;
   const finalOpponent = opponentPool.series.length > 0 ? opponentPool.series[opponentPool.series.length - 1].total : 0;
@@ -1351,6 +1656,12 @@ export function buildPostMatchViewModel(params: {
     }
     : null;
   const ageMarkers = buildAgeMarkers(summary, youIndex);
+  const allSignificantEvents = buildSignificantTimelineEvents(
+    analysis.significantResourceLossEvents,
+    youIndex,
+    summary
+  );
+  const significantEvents = selectSignificantTimelineEvents(allSignificantEvents, summary.duration);
   const hoverTimestamps = uniqueSortedTimestamps([
     0,
     summary.duration,
@@ -1358,8 +1669,11 @@ export function buildPostMatchViewModel(params: {
     ...opponentPool.series.map(point => point.timestamp),
     ...yourPool.gatherRateSeries.map(point => point.timestamp),
     ...opponentPool.gatherRateSeries.map(point => point.timestamp),
+    ...yourCumulativeGatheredSeries.map(point => point.timestamp),
+    ...opponentCumulativeGatheredSeries.map(point => point.timestamp),
     ...adjustedMilitarySeries.map(point => point.timestamp),
     ...ageMarkers.map(marker => marker.timestamp),
+    ...significantEvents.map(event => event.timestamp),
     ...(yourPool.bandItemSnapshots ?? []).map(point => point.timestamp),
     ...(opponentPool.bandItemSnapshots ?? []).map(point => point.timestamp),
   ]);
@@ -1368,6 +1682,16 @@ export function buildPostMatchViewModel(params: {
     const opponentPoint = pointAtOrBefore(opponentPool.series, timestamp);
     const you = toHoverBandValues(youPoint);
     const opponent = toHoverBandValues(opponentPoint);
+    const youAccounting = buildResourceAccountingValues(
+      youPoint,
+      cumulativeDestroyedByBandAtOrBefore(yourPool.bandItemDeltas, timestamp),
+      cumulativeValueAtOrBefore(yourCumulativeGatheredSeries, timestamp)
+    );
+    const opponentAccounting = buildResourceAccountingValues(
+      opponentPoint,
+      cumulativeDestroyedByBandAtOrBefore(opponentPool.bandItemDeltas, timestamp),
+      cumulativeValueAtOrBefore(opponentCumulativeGatheredSeries, timestamp)
+    );
     const adjusted = adjustedMilitaryAtOrBefore(adjustedMilitarySeries, timestamp);
     const youBreakdown = bandSnapshotsAtOrBefore(yourPool.bandItemSnapshots, timestamp);
     const opponentBreakdown = bandSnapshotsAtOrBefore(opponentPool.bandItemSnapshots, timestamp);
@@ -1384,15 +1708,27 @@ export function buildPostMatchViewModel(params: {
       ? ((adjusted.opponent - opponent.militaryActive) / opponent.militaryActive) * 100
       : null;
 
+    const significantEvent = significantEvents.find(event => event.timestamp === timestamp) ?? null;
+
     return {
       timestamp,
       timeLabel: formatTime(timestamp),
-      markers: ageMarkers
-        .filter(marker => marker.timestamp === timestamp)
-        .map(marker => marker.label),
+      markers: [
+        ...ageMarkers
+          .filter(marker => marker.timestamp === timestamp)
+          .map(marker => marker.label),
+        ...significantEvents
+          .filter(event => event.timestamp === timestamp)
+          .map(significantEventLabel),
+      ],
       you,
       opponent,
       delta: deltaHoverBandValues(you, opponent),
+      accounting: {
+        you: youAccounting,
+        opponent: opponentAccounting,
+        delta: deltaResourceAccountingValues(youAccounting, opponentAccounting),
+      },
       gather: {
         you: Math.round(gatherRateAtOrBefore(yourPool.gatherRateSeries, timestamp)),
         opponent: Math.round(gatherRateAtOrBefore(opponentPool.gatherRateSeries, timestamp)),
@@ -1449,7 +1785,12 @@ export function buildPostMatchViewModel(params: {
           you: toHoverBreakdownEntries(youBreakdown, 'advancement'),
           opponent: toHoverBreakdownEntries(opponentBreakdown, 'advancement'),
         },
+        destroyed: {
+          you: toDestroyedBreakdownEntries(yourPool.bandItemDeltas, timestamp),
+          opponent: toDestroyedBreakdownEntries(opponentPool.bandItemDeltas, timestamp),
+        },
       },
+      significantEvent,
     };
   });
 
@@ -1563,6 +1904,7 @@ export function buildPostMatchViewModel(params: {
       opponentBandItemDeltas: [...(opponentPool.bandItemDeltas ?? [])],
       hoverSnapshots,
       ageMarkers,
+      significantEvents,
     },
     gatherRate: {
       durationSeconds: summary.duration,

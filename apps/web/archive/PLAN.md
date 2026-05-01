@@ -1,4 +1,7 @@
-# AoE4 Web App Plan
+# Archived: AoE4 Web App Plan
+
+Archived on 2026-05-01 because this plan no longer reflects the shipped `apps/web`
+surface. Keep it only as historical context.
 
 ## Purpose
 

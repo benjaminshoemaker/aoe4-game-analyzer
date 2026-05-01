@@ -1,0 +1,2681 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AoE4 Post-Match Analysis</title>
+  <style>
+    :root {
+      --color-background: #f2f4ee;
+      --color-background-secondary: #eef2e7;
+      --color-card: #fbfcf9;
+      --color-text: #1f2a1f;
+      --color-muted: #5b6257;
+      --color-border: #d6ddd1;
+      --you: #378ADD;
+      --opponent: #D85A30;
+      --report-max-width: 1440px;
+      --inspector-min-width: 380px;
+      --inspector-max-width: 460px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--color-text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
+      background: radial-gradient(circle at 8% -12%, #d8e6d6, transparent 34%),
+        radial-gradient(circle at 92% -8%, #f0ddd0, transparent 32%),
+        var(--color-background);
+      padding: 22px;
+    }
+
+    .wrap {
+      width: min(100%, var(--report-max-width));
+      max-width: var(--report-max-width);
+      margin: 0 auto;
+      display: grid;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .panel {
+      min-width: 0;
+      background: var(--color-card);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(32, 43, 32, 0.08);
+    }
+
+    .header-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: start;
+      min-width: 0;
+    }
+
+    .title {
+      font-size: 25px;
+      margin: 0;
+      letter-spacing: 0.2px;
+    }
+
+    .recap-heading {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+    }
+
+    .recap-link {
+      display: inline-flex;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #0c447c;
+      text-decoration: none;
+      border: 1px solid #bcd3ea;
+      border-radius: 999px;
+      background: #f2f7fc;
+      min-height: 44px;
+      padding: 0 12px;
+    }
+
+    .recap-link:hover,
+    .recap-link:focus-visible {
+      background: #e4f0fb;
+      border-color: #8eb6de;
+      outline: none;
+    }
+
+    .meta-line {
+      margin-top: 6px;
+      font-size: 13px;
+      color: var(--color-muted);
+    }
+
+    .chips {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .civ-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      border: 1px solid var(--color-border);
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: #fff;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      white-space: normal;
+    }
+
+    .swatch {
+      width: 11px;
+      height: 11px;
+      border-radius: 999px;
+    }
+
+    .outcome {
+      font-size: 18px;
+      font-weight: 700;
+      color: #253226;
+      text-align: right;
+    }
+
+    .banner {
+      background: #fff7dc;
+      border: 1px solid #f1d57d;
+      color: #6d4a00;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric-card {
+      min-width: 0;
+      border: 1px solid var(--color-border);
+      background: #fff;
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .metric-card-final {
+      grid-column: -2 / -1;
+    }
+
+    .metric-title {
+      font-size: 13px;
+      color: var(--color-muted);
+      margin-bottom: 8px;
+      overflow-wrap: anywhere;
+    }
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .metric-range {
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.1;
+      overflow-wrap: anywhere;
+    }
+
+    .metric-analysis {
+      margin-top: 8px;
+      color: #253226;
+      font-size: 12px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .metric-analysis-lines {
+      margin-top: 8px;
+      display: grid;
+      gap: 5px;
+    }
+
+    .metric-analysis-lines .metric-analysis {
+      margin-top: 0;
+    }
+
+    .metric-analysis-gap {
+      font-weight: 700;
+    }
+
+    .metric-sub {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--color-muted);
+      overflow-wrap: anywhere;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 21px;
+    }
+
+    .section-note {
+      max-width: 76ch;
+      margin: 6px 0 10px;
+      color: var(--color-muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .allocation-read-guide {
+      margin: 8px 0 10px;
+      border: 1px solid #dde6da;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--color-muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .allocation-read-guide-summary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 8px 10px;
+      color: #253226;
+      font-weight: 800;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .allocation-read-guide-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .allocation-read-guide-summary::before {
+      content: "";
+      width: 0;
+      height: 0;
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+      border-left: 6px solid #5B6257;
+      transition: transform 140ms ease;
+      flex: none;
+    }
+
+    .allocation-read-guide[open] .allocation-read-guide-summary {
+      border-bottom: 1px solid #edf1ea;
+    }
+
+    .allocation-read-guide[open] .allocation-read-guide-summary::before {
+      transform: rotate(90deg);
+    }
+
+    .allocation-read-guide-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px 12px;
+      padding: 10px;
+    }
+
+    .allocation-read-guide-title {
+      grid-column: 1 / -1;
+      color: #253226;
+      font-weight: 800;
+    }
+
+    .allocation-read-guide-item {
+      min-width: 0;
+    }
+
+    .allocation-read-guide-item strong {
+      display: block;
+      color: #253226;
+      font-size: 13px;
+      margin-bottom: 1px;
+    }
+
+    .allocation-read-guide-item span {
+      display: block;
+      overflow-wrap: anywhere;
+    }
+
+    .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .legend-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid var(--color-border);
+      border-radius: 999px;
+      background: #fff;
+      padding: 4px 9px;
+      font-size: 12px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+
+    .destroyed-dot {
+      background: #a85e42;
+    }
+
+    .opportunity-lost-dot {
+      background: #C56C52;
+    }
+
+    .chart-head {
+      font-size: 12px;
+      margin: 10px 0 5px;
+      color: #253226;
+    }
+
+    .age-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin: 0 0 10px;
+      font-size: 12px;
+      color: var(--color-muted);
+    }
+
+    .age-key {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid var(--color-border);
+      border-radius: 999px;
+      background: #fff;
+      padding: 4px 9px;
+    }
+
+    .age-line {
+      width: 18px;
+      height: 0;
+      border-top: 2px solid;
+      display: inline-block;
+    }
+
+    .age-line.dashed {
+      border-top-style: dashed;
+    }
+
+    .player-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border-radius: 999px;
+      padding: 4px 8px;
+      background: #fff;
+      border: 1px solid var(--color-border);
+      font-size: 12px;
+    }
+
+    .strategy-chart,
+    .leader-strip {
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .leader-strip {
+      margin-bottom: 10px;
+    }
+
+    .leader-strip-axis-bg {
+      fill: rgba(255, 255, 255, 0.92);
+      stroke: #e1e7de;
+      stroke-width: 1;
+    }
+
+    .leader-strip-time-label {
+      font-size: 11px;
+      font-weight: 700;
+      fill: #4f5a50;
+      paint-order: stroke;
+      stroke: #fff;
+      stroke-width: 3px;
+      stroke-linejoin: round;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .allocation-leader-segment {
+      opacity: 0.9;
+      transition: opacity 160ms ease;
+    }
+
+    .allocation-leader-segment:hover {
+      opacity: 1;
+    }
+
+    .trajectory-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) clamp(var(--inspector-min-width), 32vw, var(--inspector-max-width));
+      gap: 16px;
+      align-items: start;
+    }
+
+    .chart-stack {
+      min-width: 0;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .mobile-timeline-control {
+      display: none;
+      gap: 10px;
+      margin-top: 10px;
+      border: 1px solid #dfe6dc;
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px;
+    }
+
+    .mobile-timeline-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+      color: var(--color-muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .mobile-timeline-meta strong {
+      color: #253226;
+      font-size: 18px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mobile-timeline-actions {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .mobile-timeline-button {
+      min-width: 56px;
+      min-height: 44px;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      background: #f8faf6;
+      color: #253226;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .mobile-timeline-button:disabled {
+      color: #9aa49a;
+      cursor: default;
+      opacity: 0.62;
+    }
+
+    .mobile-timeline-slider {
+      width: 100%;
+      min-width: 0;
+      min-height: 44px;
+      accent-color: var(--you);
+    }
+
+    .mobile-timeline-context {
+      color: var(--color-muted);
+      font-size: 12px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .hover-inspector {
+      position: sticky;
+      top: 12px;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      background: #fff;
+      max-height: calc(100vh - 24px);
+      padding: 12px 14px;
+      box-shadow: 0 1px 3px rgba(32, 43, 32, 0.08);
+      font-variant-numeric: tabular-nums;
+      overflow: auto;
+    }
+
+    .inspector-eyebrow {
+      color: var(--color-muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .inspector-time {
+      margin-top: 3px;
+      font-size: 22px;
+      font-weight: 700;
+      color: #253226;
+    }
+
+    .inspector-context {
+      min-height: 18px;
+      margin: 4px 0 10px;
+      color: var(--color-muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .event-impact {
+      margin: 8px 0 12px;
+      padding: 9px 10px;
+      border: 1px solid #ecd2c7;
+      border-radius: 8px;
+      background: #fff8f5;
+    }
+
+    .event-impact-heading {
+      margin-bottom: 5px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #7b3f32;
+    }
+
+    .event-impact-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #253226;
+    }
+
+    .event-impact-description {
+      margin: 4px 0 8px;
+      color: #465447;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .event-impact-loss-detail {
+      margin: 8px 0;
+      padding: 7px;
+      border: 1px solid #eadbd4;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.62);
+    }
+
+    .event-impact-loss-detail-title {
+      margin-bottom: 5px;
+      color: #7b3f32;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .event-impact-loss-columns {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .event-impact-loss-column {
+      min-width: 0;
+    }
+
+    .event-impact-loss-column-heading {
+      margin-bottom: 3px;
+      color: #465447;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .event-impact-loss-summary {
+      display: grid;
+      gap: 3px;
+      margin: 0 0 6px;
+      padding: 0 0 6px;
+      border-bottom: 1px solid #f0e2dc;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .event-impact-loss-summary div {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 7px;
+      align-items: baseline;
+    }
+
+    .event-impact-loss-summary dt {
+      min-width: 0;
+      color: var(--color-muted);
+      font-size: 9.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }
+
+    .event-impact-loss-summary dd {
+      margin: 0;
+      color: #253226;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .event-impact-loss-list {
+      display: grid;
+      gap: 2px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .event-impact-loss-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: baseline;
+      color: #253226;
+      font-size: 12px;
+    }
+
+    .event-impact-loss-name {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .event-impact-loss-value {
+      color: #7b3f32;
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+    }
+
+    .event-impact-loss-row-empty {
+      display: block;
+      color: var(--color-muted);
+    }
+
+    @media (max-width: 760px) {
+      .event-impact-loss-columns {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .event-impact-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 10px;
+      margin: 0;
+    }
+
+    .event-impact-metrics div {
+      min-width: 0;
+    }
+
+    .event-impact-metrics dt {
+      color: var(--color-muted);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .event-impact-metrics dd {
+      margin: 1px 0 0;
+      color: #253226;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .event-impact-losses {
+      margin-top: 7px;
+      color: var(--color-muted);
+      font-size: 12px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .mobile-selected-summary {
+      display: none;
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    .mobile-summary-card {
+      min-width: 0;
+      border: 1px solid #e5ebe1;
+      border-radius: 8px;
+      background: #f8faf6;
+      padding: 9px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mobile-summary-label,
+    .mobile-summary-card small {
+      display: block;
+      color: var(--color-muted);
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .mobile-summary-card strong {
+      display: block;
+      color: #253226;
+      font-size: 18px;
+      line-height: 1.15;
+      margin: 3px 0;
+    }
+
+    .mobile-detail-panel {
+      display: block;
+    }
+
+    .mobile-detail-summary {
+      display: none;
+      align-items: center;
+      min-height: 44px;
+      color: #253226;
+      font-weight: 800;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .mobile-detail-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .mobile-detail-summary::before {
+      content: "";
+      width: 0;
+      height: 0;
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+      border-left: 6px solid #5B6257;
+      margin-right: 8px;
+      transition: transform 140ms ease;
+      flex: none;
+    }
+
+    .mobile-detail-panel[open] .mobile-detail-summary::before {
+      transform: rotate(90deg);
+    }
+
+    .inspector-section-label {
+      margin: 8px 0 6px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #465447;
+    }
+
+    .inspector-table-wrap {
+      overflow-x: auto;
+      border-radius: 6px;
+      padding-bottom: 2px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .inspector-table-wrap:focus-visible {
+      outline: 2px solid #8fb6dc;
+      outline-offset: 2px;
+    }
+
+    .inspector-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 13px;
+    }
+
+    .inspector-table th,
+    .inspector-table td {
+      padding: 6px 0;
+      border-top: 1px solid #edf1ea;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .inspector-table th:first-child {
+      text-align: left;
+      color: var(--color-muted);
+      font-weight: 600;
+      width: 46%;
+    }
+
+    .inspector-table th:not(:first-child),
+    .inspector-table td:not(:first-child) {
+      width: 18%;
+    }
+
+    .band-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      margin: -2px 0;
+      padding: 2px 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .band-row.is-selected th,
+    .band-row.is-selected td {
+      background: #f1f6fb;
+    }
+
+    .band-row.is-selected th {
+      box-shadow: inset 3px 0 0 var(--you);
+      color: #1f3551;
+    }
+
+    .allocation-category-row th,
+    .allocation-category-row td {
+      background: #f5f8f2;
+      color: #253226;
+      font-weight: 800;
+    }
+
+    .allocation-category-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      width: 100%;
+      margin: -2px 0;
+      padding: 2px 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .category-caret::before {
+      content: "▾";
+      display: inline-block;
+      color: #64705f;
+      font-size: 10px;
+      transition: transform 120ms ease;
+    }
+
+    .allocation-category-toggle[aria-expanded="false"] .category-caret::before {
+      transform: rotate(-90deg);
+    }
+
+    .band-sub-row th {
+      color: #4a5767;
+      font-weight: 600;
+    }
+
+    .band-sub-label {
+      display: inline-block;
+      padding-left: 18px;
+      font-size: 11px;
+    }
+
+    .band-sub-link {
+      display: inline-block;
+      margin: 0;
+      padding: 0 0 0 18px;
+      border: 0;
+      background: transparent;
+      color: #1f3551;
+      font: inherit;
+      font-size: 11px;
+      text-align: left;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .inspector-table th:first-child .legend-dot {
+      margin-right: 6px;
+      vertical-align: -1px;
+    }
+
+    .inspector-total-row th,
+    .inspector-total-row td {
+      color: #253226;
+      font-weight: 800;
+      border-top-color: #d6ddd1;
+    }
+
+    .inspector-destroyed-row th,
+    .inspector-destroyed-row td {
+      color: #5e2f22;
+      font-weight: 800;
+      border-top-color: #d6ddd1;
+    }
+
+    .inspector-opportunity-lost-row th,
+    .inspector-opportunity-lost-row td {
+      color: #7b3f32;
+      font-weight: 800;
+      border-top-color: #d6ddd1;
+    }
+
+    .band-breakdown {
+      margin-top: 12px;
+      border-top: 1px solid #dfe6dc;
+      padding-top: 10px;
+    }
+
+    .band-breakdown-head {
+      font-size: 13px;
+      font-weight: 700;
+      color: #253226;
+      margin-bottom: 6px;
+    }
+
+    .band-breakdown-summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) repeat(3, auto);
+      gap: 6px 10px;
+      align-items: baseline;
+      margin-bottom: 10px;
+      padding: 8px;
+      border: 1px solid #e5ebe1;
+      border-radius: 6px;
+      background: #f8faf6;
+      color: #465447;
+      font-size: 12px;
+    }
+
+    .band-breakdown-summary strong {
+      color: #253226;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .band-summary-label {
+      min-width: 0;
+      color: #253226;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+
+    .band-breakdown-cols {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .band-breakdown-cols h4 {
+      margin: 0 0 4px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-muted);
+    }
+
+    .band-breakdown-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      max-height: 160px;
+      overflow: auto;
+      display: grid;
+      gap: 5px;
+      font-size: 12px;
+    }
+
+    .band-breakdown-list li {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: flex-start;
+      border-bottom: 1px dashed #edf1ea;
+      padding-bottom: 2px;
+      min-width: 0;
+    }
+
+    .band-breakdown-list .band-breakdown-group {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #5b6257;
+      border-bottom: 0;
+      padding-top: 4px;
+      padding-bottom: 0;
+    }
+
+    .band-item-label {
+      color: #253226;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .band-item-label-truncated {
+      display: block;
+      max-width: 100%;
+      overflow: visible;
+      text-overflow: clip;
+      white-space: normal;
+      border-radius: 3px;
+      line-height: 1.25;
+    }
+
+    .band-item-label-truncated:hover,
+    .band-item-label-truncated:focus-visible {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      outline: 1px solid #c8d6c3;
+      outline-offset: 1px;
+      background: #fff;
+      padding: 1px 2px;
+    }
+
+    .band-item-metric {
+      color: #465447;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      flex: none;
+      text-align: right;
+    }
+
+    .band-item-metric small {
+      color: #6f7a70;
+    }
+
+    .band-breakdown-empty {
+      color: var(--color-muted);
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .hover-line {
+      opacity: 0;
+      transition: opacity 120ms ease;
+    }
+
+    .hover-column:hover .hover-line {
+      opacity: 0.75;
+    }
+
+    .hover-target {
+      cursor: crosshair;
+    }
+
+    .significant-event-marker {
+      cursor: pointer;
+      outline: none;
+    }
+
+    .significant-event-stem {
+      stroke-width: 1.4;
+      stroke-dasharray: 3 4;
+      opacity: 0.72;
+      pointer-events: none;
+    }
+
+    .significant-event-dot {
+      stroke: #fff;
+      stroke-width: 2;
+      filter: drop-shadow(0 1px 2px rgba(32, 43, 32, 0.24));
+    }
+
+    .significant-event-glyph {
+      fill: #fff;
+      font-size: 10px;
+      font-weight: 900;
+      pointer-events: none;
+    }
+
+    .significant-event-marker:hover .significant-event-dot,
+    .significant-event-marker:focus-visible .significant-event-dot {
+      stroke: #1f2a1f;
+      stroke-width: 2.4;
+    }
+
+    .hover-active-line {
+      stroke: #1F2A1F;
+      stroke-width: 1.35;
+      opacity: 0.78;
+      pointer-events: none;
+    }
+
+    .hover-value-label {
+      pointer-events: none;
+      font-size: 11px;
+      font-weight: 800;
+      paint-order: stroke;
+      stroke: #F7FAF8;
+      stroke-width: 3px;
+      stroke-linejoin: round;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .allocation-lane-bg {
+      fill: #edf4f6;
+      opacity: 0.7;
+    }
+
+    .allocation-lane-destroyed .allocation-lane-bg {
+      fill: #f8ece7;
+    }
+
+    .allocation-lane-float .allocation-lane-bg {
+      fill: #ecf5ed;
+    }
+
+    .allocation-lane-opportunityLost .allocation-lane-bg {
+      fill: #f8e8e4;
+    }
+
+    .allocation-lane-divider {
+      stroke: #cfd9d6;
+      stroke-width: 1;
+      stroke-dasharray: 3 4;
+    }
+
+    .allocation-lane-overall .delta-label {
+      fill: #1f3551;
+    }
+
+    .you-label { fill: var(--you); }
+    .opponent-label { fill: var(--opponent); }
+    .delta-label { fill: #253226; }
+
+    body[data-hover-pinned="true"] .hover-inspector {
+      border-color: #9bbce0;
+      box-shadow: 0 0 0 2px rgba(55, 138, 221, 0.12);
+    }
+
+    .strategy-readout-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .strategy-readout-card {
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .strategy-readout-card h3 {
+      margin: 0 0 8px;
+      font-size: 13px;
+      color: #253226;
+    }
+
+    .strategy-readout-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      border-top: 1px solid #edf1ea;
+      padding-top: 4px;
+      margin-top: 4px;
+      color: var(--color-muted);
+    }
+
+    .strategy-readout-row strong {
+      color: #253226;
+    }
+
+    .strategy-state-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .strategy-state-card {
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      background: #fff;
+      padding: 9px;
+      font-size: 12px;
+    }
+
+    .strategy-state-card-muted {
+      background: #f4f7f1;
+      color: var(--color-muted);
+    }
+
+    .strategy-state-time {
+      color: var(--color-muted);
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .strategy-state-title {
+      color: #253226;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .strategy-state-card p {
+      margin: 0 0 6px;
+      line-height: 1.35;
+    }
+
+    .strategy-state-meta {
+      color: var(--color-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .line-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--color-border);
+      border-radius: 999px;
+      background: #fff;
+      padding: 4px 10px;
+    }
+
+    .line-swatch {
+      width: 16px;
+      height: 0;
+      border-top: 2px solid;
+      display: inline-block;
+    }
+
+    .line-swatch.dashed {
+      border-top-style: dashed;
+    }
+
+    @media (max-width: 1160px) {
+      .trajectory-grid { grid-template-columns: 1fr; }
+      .hover-inspector { position: static; max-height: none; }
+    }
+
+    @media (max-width: 980px) {
+      body { padding: 16px; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .metric-card-final { grid-column: -2 / -1; }
+      .header-row { grid-template-columns: 1fr; }
+      .outcome { text-align: left; }
+      .band-breakdown-cols { grid-template-columns: 1fr; }
+      .allocation-read-guide-grid { grid-template-columns: 1fr; }
+      .strategy-readout-grid { grid-template-columns: 1fr; }
+      .strategy-state-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 760px) {
+      .strategy-state-strip { grid-template-columns: 1fr; }
+
+      .band-toggle,
+      .allocation-category-toggle,
+      .band-sub-link {
+        min-height: 44px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+      }
+
+      .inspector-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        border: 0;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        clip-path: inset(50%);
+      }
+
+      .inspector-table,
+      .inspector-table tbody,
+      .inspector-table tr,
+      .inspector-table th,
+      .inspector-table td {
+        display: block;
+        width: 100%;
+      }
+
+      .inspector-table tr {
+        border-top: 1px solid #edf1ea;
+        padding: 6px 0;
+      }
+
+      .inspector-table th,
+      .inspector-table td {
+        border-top: 0;
+        padding: 2px 0;
+        white-space: normal;
+      }
+
+      .inspector-table th:first-child {
+        width: 100%;
+        color: #253226;
+        font-weight: 700;
+        margin-bottom: 2px;
+      }
+
+      .inspector-table th:not(:first-child),
+      .inspector-table td:not(:first-child) {
+        width: 100%;
+      }
+
+      .inspector-table td {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: baseline;
+        text-align: right;
+      }
+
+      .inspector-table td::before {
+        content: attr(data-cell-label);
+        color: var(--color-muted);
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .inspector-total-row {
+        border-top-color: #d6ddd1;
+      }
+    }
+
+    @media (max-width: 520px) {
+      body { padding: 12px; }
+      .wrap { width: calc(100vw - 24px); max-width: calc(100vw - 24px); }
+      .panel { padding: 12px; }
+      .chips { flex-direction: column; align-items: stretch; }
+      .civ-chip { width: 100%; }
+      .metrics { grid-template-columns: 1fr; }
+      .metric-card-final { grid-column: auto; }
+      .section-title { font-size: 19px; }
+      .chart-stack { overflow-x: hidden; }
+      .chart-stack .leader-strip,
+      .chart-stack .strategy-chart { min-width: 0; }
+      .mobile-timeline-control { display: grid; }
+      .hover-target { pointer-events: none; }
+      .significant-event-marker.hover-target { pointer-events: all; }
+      .mobile-selected-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .mobile-detail-summary { display: flex; }
+      .mobile-detail-content { margin-top: 8px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="panel">
+      <div class="header-row">
+        <div>
+          <div class="recap-heading">
+            <h1 class="title">Match recap</h1>
+            <a class="recap-link" href="https://aoe4world.com/players/111/games/123456?sig=testsig" target="_blank" rel="noreferrer noopener">AoE4World summary</a>
+          </div>
+          <div class="meta-line">Ranked 1v1 · 10:00 · Dry Arabia</div>
+          <div class="chips">
+            <span class="civ-chip"><span class="swatch" style="background:#378ADD"></span>You · English</span>
+            <span class="civ-chip"><span class="swatch" style="background:#D85A30"></span>Opponent · French</span>
+          </div>
+        </div>
+        <div class="outcome">Defeated 10:00</div>
+      </div>
+      
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title">Allocation lead and mix over time</h2>
+      <p class="section-note">Bands are remapped into Economic, Technology, Military, and Other. The first three charts show share of strategic allocation; Overall is absolute deployed resource value after subtracting Destroyed.</p>
+      <details class="allocation-read-guide" aria-label="Allocation chart legend">
+        <summary class="allocation-read-guide-summary">How to read this chart</summary>
+        <div class="allocation-read-guide-grid">
+          <div class="allocation-read-guide-item" aria-label="Leader strip: absolute deployed-value leader by 30-second block">
+            <strong>Leader strip</strong>
+            <span>Absolute deployed-value leader by 30-second block.</span>
+          </div>
+          <div class="allocation-read-guide-item" aria-label="Economic, Technology, and Military: percentage share of strategic allocation">
+            <strong>Category lanes</strong>
+            <span>Economic, Technology, and Military show percentage share.</span>
+          </div>
+          <div class="allocation-read-guide-item" aria-label="Destroyed: cumulative value assumed destroyed by opponent">
+            <strong>Destroyed lane</strong>
+            <span>Destroyed is cumulative value assumed destroyed by opponent.</span>
+          </div>
+          <div class="allocation-read-guide-item" aria-label="Overall: absolute deployed resource value, including Other">
+            <strong>Overall lane</strong>
+            <span>Overall: absolute deployed resource value after subtracting Destroyed.</span>
+          </div>
+          <div class="allocation-read-guide-item" aria-label="Float (not deployed): gathered resources not currently committed">
+            <strong>Float lane</strong>
+            <span>Float (not deployed) is gathered resources not currently committed.</span>
+          </div>
+          <div class="allocation-read-guide-item" aria-label="Opportunity lost: total villager opportunity cost">
+            <strong>Opportunity lost lane</strong>
+            <span>Total villager opportunity cost.</span>
+          </div>
+        </div>
+      </details>
+      <div class="age-legend">
+        <strong>Age timings</strong>
+        <span class="age-key"><span class="age-line" style="border-color:#378ADD"></span>You age-up</span>
+        <span class="age-key"><span class="age-line dashed" style="border-color:#D85A30"></span>Opponent age-up</span>
+      </div>
+      <div class="trajectory-grid">
+        <div class="chart-stack">
+          
+<svg id="allocation-leader-strip" class="leader-strip" viewBox="0 0 980 126" role="img" aria-label="Thirty-second leader strip by allocation category">
+  <rect x="0" y="0" width="980" height="126" fill="#F7FAF8" rx="8" />
+  <line x1="96.00" y1="12" x2="96.00" y2="88.00" stroke="#E4E8E1" stroke-width="1" /><line x1="314.00" y1="12" x2="314.00" y2="88.00" stroke="#E4E8E1" stroke-width="1" /><line x1="532.00" y1="12" x2="532.00" y2="88.00" stroke="#E4E8E1" stroke-width="1" /><line x1="750.00" y1="12" x2="750.00" y2="88.00" stroke="#E4E8E1" stroke-width="1" /><line x1="968.00" y1="12" x2="968.00" y2="88.00" stroke="#E4E8E1" stroke-width="1" />
+  
+        <g>
+          <text x="12" y="31.00" font-size="12" font-weight="700" fill="#253226">Economic</text>
+          <rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="96.00" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 0:00-0:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="139.60" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 0:30-1:00: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="183.20" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 1:00-1:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="226.80" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 1:30-2:00: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="270.40" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 2:00-2:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="314.00" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 2:30-3:00: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="357.60" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 3:00-3:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="401.20" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 3:30-4:00: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="444.80" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 4:00-4:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="488.40" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 4:30-5:00: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="532.00" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 5:00-5:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="575.60" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 5:30-6:00: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="619.20" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 6:00-6:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="662.80" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 6:30-7:00: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="706.40" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 7:00-7:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="750.00" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 7:30-8:00: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="793.60" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 8:00-8:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="837.20" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 8:30-9:00: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="880.80" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 9:00-9:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="924.40" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 9:30-10:00: You 50, Opp 50</title></rect>
+        </g>
+      
+        <g>
+          <text x="12" y="57.00" font-size="12" font-weight="700" fill="#253226">Technology</text>
+          <rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="96.00" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 0:00-0:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="139.60" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 0:30-1:00: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="183.20" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 1:00-1:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="226.80" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 1:30-2:00: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="270.40" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 2:00-2:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="314.00" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 2:30-3:00: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="357.60" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 3:00-3:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="401.20" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 3:30-4:00: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="444.80" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 4:00-4:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="488.40" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 4:30-5:00: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="532.00" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 5:00-5:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="575.60" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 5:30-6:00: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="619.20" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 6:00-6:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="662.80" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 6:30-7:00: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="706.40" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 7:00-7:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="750.00" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 7:30-8:00: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="793.60" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 8:00-8:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="837.20" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 8:30-9:00: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="880.80" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 9:00-9:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="924.40" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 9:30-10:00: You 600, Opp 500</title></rect>
+        </g>
+      
+        <g>
+          <text x="12" y="83.00" font-size="12" font-weight="700" fill="#253226">Military</text>
+          <rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="96.00" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 0:00-0:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="139.60" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 0:30-1:00: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="183.20" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 1:00-1:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="226.80" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 1:30-2:00: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="270.40" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 2:00-2:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="314.00" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 2:30-3:00: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="357.60" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 3:00-3:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="401.20" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 3:30-4:00: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="444.80" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 4:00-4:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="488.40" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 4:30-5:00: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="532.00" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 5:00-5:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="575.60" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 5:30-6:00: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="619.20" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 6:00-6:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="662.80" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 6:30-7:00: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="706.40" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 7:00-7:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="750.00" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 7:30-8:00: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="793.60" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 8:00-8:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="837.20" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 8:30-9:00: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="880.80" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 9:00-9:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="924.40" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 9:30-10:00: You 168, Opp 120</title></rect>
+        </g>
+      
+  <g data-time-axis="allocation-leader">
+    <rect class="leader-strip-axis-bg" x="96" y="94.00" width="872.00" height="28.00" rx="6" />
+    <line x1="96" y1="96.00" x2="968.00" y2="96.00" stroke="#CAD2C7" stroke-width="1" />
+    
+        <line x1="96.00" y1="99.00" x2="96.00" y2="105.00" stroke="#A8AEA5" stroke-width="1" />
+        <text class="leader-strip-time-label" x="96.00" y="118.00" text-anchor="middle">0:00</text>
+      
+        <line x1="314.00" y1="99.00" x2="314.00" y2="105.00" stroke="#A8AEA5" stroke-width="1" />
+        <text class="leader-strip-time-label" x="314.00" y="118.00" text-anchor="middle">2:30</text>
+      
+        <line x1="532.00" y1="99.00" x2="532.00" y2="105.00" stroke="#A8AEA5" stroke-width="1" />
+        <text class="leader-strip-time-label" x="532.00" y="118.00" text-anchor="middle">5:00</text>
+      
+        <line x1="750.00" y1="99.00" x2="750.00" y2="105.00" stroke="#A8AEA5" stroke-width="1" />
+        <text class="leader-strip-time-label" x="750.00" y="118.00" text-anchor="middle">7:30</text>
+      
+        <line x1="968.00" y1="99.00" x2="968.00" y2="105.00" stroke="#A8AEA5" stroke-width="1" />
+        <text class="leader-strip-time-label" x="968.00" y="118.00" text-anchor="middle">10:00</text>
+      
+  </g>
+</svg>
+          
+<svg id="allocation-comparison" class="strategy-chart allocation-chart" viewBox="0 0 980 812" role="img" aria-label="Allocation comparison chart">
+  <rect x="0" y="0" width="980" height="812" fill="#F7FAF8" rx="10" />
+  
+        <line x1="96.00" y1="42.00" x2="96.00" y2="774.00" stroke="#E2E5DF" stroke-width="1" />
+        <text x="96.00" y="805.00" text-anchor="middle" font-size="11" fill="#5B6257">0:00</text>
+      
+        <line x1="314.00" y1="42.00" x2="314.00" y2="774.00" stroke="#E2E5DF" stroke-width="1" />
+        <text x="314.00" y="805.00" text-anchor="middle" font-size="11" fill="#5B6257">2:30</text>
+      
+        <line x1="532.00" y1="42.00" x2="532.00" y2="774.00" stroke="#E2E5DF" stroke-width="1" />
+        <text x="532.00" y="805.00" text-anchor="middle" font-size="11" fill="#5B6257">5:00</text>
+      
+        <line x1="750.00" y1="42.00" x2="750.00" y2="774.00" stroke="#E2E5DF" stroke-width="1" />
+        <text x="750.00" y="805.00" text-anchor="middle" font-size="11" fill="#5B6257">7:30</text>
+      
+        <line x1="968.00" y1="42.00" x2="968.00" y2="774.00" stroke="#E2E5DF" stroke-width="1" />
+        <text x="968.00" y="805.00" text-anchor="middle" font-size="11" fill="#5B6257">10:00</text>
+      
+  
+  
+        <g class="allocation-lane allocation-lane-economic">
+          
+          
+          <text x="12" y="61.00" font-size="13" font-weight="800" fill="#253226">Economic</text>
+          <text x="88.00" y="46.00" text-anchor="end" font-size="11" fill="#5B6257">10.0%</text>
+          <text x="88.00" y="88.00" text-anchor="end" font-size="11" fill="#5B6257">5.0%</text>
+          <text x="88.00" y="130.00" text-anchor="end" font-size="11" fill="#5B6257">0%</text>
+          <line x1="96" y1="42.00" x2="968.00" y2="42.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="84.00" x2="968.00" y2="84.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="126.00" x2="968.00" y2="126.00" stroke="#5B6257" stroke-width="1.1" />
+          <path d="M 96.00 74.76" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+          <path d="M 96.00 63.00" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
+          <text data-hover-label-strategy-economic data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="60.00" text-anchor="end">Economic Δ -1.4pp</text>
+        </g>
+      
+        <g class="allocation-lane allocation-lane-technology">
+          
+          
+          <text x="12" y="169.00" font-size="13" font-weight="800" fill="#253226">Technology</text>
+          <text x="88.00" y="154.00" text-anchor="end" font-size="11" fill="#5B6257">75.0%</text>
+          <text x="88.00" y="196.00" text-anchor="end" font-size="11" fill="#5B6257">37.5%</text>
+          <text x="88.00" y="238.00" text-anchor="end" font-size="11" fill="#5B6257">0%</text>
+          <line x1="96" y1="150.00" x2="968.00" y2="150.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="192.00" x2="968.00" y2="192.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="234.00" x2="968.00" y2="234.00" stroke="#5B6257" stroke-width="1.1" />
+          <path d="M 96.00 151.90" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+          <path d="M 96.00 150.45" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
+          <text data-hover-label-strategy-technology data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="168.00" text-anchor="end">Technology Δ -1.3pp</text>
+        </g>
+      
+        <g class="allocation-lane allocation-lane-military">
+          
+          
+          <text x="12" y="277.00" font-size="13" font-weight="800" fill="#253226">Military</text>
+          <text x="88.00" y="262.00" text-anchor="end" font-size="11" fill="#5B6257">25.0%</text>
+          <text x="88.00" y="304.00" text-anchor="end" font-size="11" fill="#5B6257">12.5%</text>
+          <text x="88.00" y="346.00" text-anchor="end" font-size="11" fill="#5B6257">0%</text>
+          <line x1="96" y1="258.00" x2="968.00" y2="258.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="300.00" x2="968.00" y2="300.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="342.00" x2="968.00" y2="342.00" stroke="#5B6257" stroke-width="1.1" />
+          <path d="M 96.00 273.12" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+          <path d="M 96.00 281.86" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
+          <text data-hover-label-strategy-military data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="276.00" text-anchor="end">Military Δ +2.6pp</text>
+        </g>
+      
+        <g class="allocation-lane allocation-lane-destroyed">
+          <line class="allocation-lane-divider" x1="0" y1="352.00" x2="980" y2="352.00" />
+          <rect class="allocation-lane-bg" x="96" y="358.00" width="872.00" height="100.00" rx="6" />
+          <text x="12" y="385.00" font-size="13" font-weight="800" fill="#253226">Destroyed</text>
+          <text x="88.00" y="370.00" text-anchor="end" font-size="11" fill="#5B6257">1</text>
+          <text x="88.00" y="412.00" text-anchor="end" font-size="11" fill="#5B6257">1</text>
+          <text x="88.00" y="454.00" text-anchor="end" font-size="11" fill="#5B6257">0</text>
+          <line x1="96" y1="366.00" x2="968.00" y2="366.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="408.00" x2="968.00" y2="408.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="450.00" x2="968.00" y2="450.00" stroke="#5B6257" stroke-width="1.1" />
+          <path d="M 96.00 450.00" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+          <path d="M 96.00 450.00" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
+          <text data-hover-label-strategy-destroyed data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="384.00" text-anchor="end">Destroyed Δ 0</text>
+        </g>
+      
+        <g class="allocation-lane allocation-lane-overall">
+          <line class="allocation-lane-divider" x1="0" y1="460.00" x2="980" y2="460.00" />
+          <rect class="allocation-lane-bg" x="96" y="466.00" width="872.00" height="100.00" rx="6" />
+          <text x="12" y="493.00" font-size="13" font-weight="800" fill="#253226">Overall</text>
+          <text x="88.00" y="478.00" text-anchor="end" font-size="11" fill="#5B6257">820</text>
+          <text x="88.00" y="520.00" text-anchor="end" font-size="11" fill="#5B6257">410</text>
+          <text x="88.00" y="562.00" text-anchor="end" font-size="11" fill="#5B6257">0</text>
+          <line x1="96" y1="474.00" x2="968.00" y2="474.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="516.00" x2="968.00" y2="516.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="558.00" x2="968.00" y2="558.00" stroke="#5B6257" stroke-width="1.1" />
+          <path d="M 96.00 474.20" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+          <path d="M 96.00 489.37" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
+          <text data-hover-label-strategy-overall data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="492.00" text-anchor="end">Overall Δ +148</text>
+        </g>
+      
+        <g class="allocation-lane allocation-lane-float">
+          <line class="allocation-lane-divider" x1="0" y1="568.00" x2="980" y2="568.00" />
+          <rect class="allocation-lane-bg" x="96" y="574.00" width="872.00" height="100.00" rx="6" />
+          <text x="12" y="601.00" font-size="13" font-weight="800" fill="#253226">Float</text>
+          <text x="88.00" y="586.00" text-anchor="end" font-size="11" fill="#5B6257">1,000</text>
+          <text x="88.00" y="628.00" text-anchor="end" font-size="11" fill="#5B6257">500</text>
+          <text x="88.00" y="670.00" text-anchor="end" font-size="11" fill="#5B6257">0</text>
+          <line x1="96" y1="582.00" x2="968.00" y2="582.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="624.00" x2="968.00" y2="624.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="666.00" x2="968.00" y2="666.00" stroke="#5B6257" stroke-width="1.1" />
+          <path d="M 96.00 624.00" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+          <path d="M 96.00 582.00" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
+          <text data-hover-label-strategy-float data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="600.00" text-anchor="end">Float Δ -500</text>
+        </g>
+      
+        <g class="allocation-lane allocation-lane-opportunityLost">
+          <line class="allocation-lane-divider" x1="0" y1="676.00" x2="980" y2="676.00" />
+          <rect class="allocation-lane-bg" x="96" y="682.00" width="872.00" height="100.00" rx="6" />
+          <text x="12" y="709.00" font-size="13" font-weight="800" fill="#253226">Opportunity lost</text>
+          <text x="88.00" y="694.00" text-anchor="end" font-size="11" fill="#5B6257">140</text>
+          <text x="88.00" y="736.00" text-anchor="end" font-size="11" fill="#5B6257">70</text>
+          <text x="88.00" y="778.00" text-anchor="end" font-size="11" fill="#5B6257">0</text>
+          <line x1="96" y1="690.00" x2="968.00" y2="690.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="732.00" x2="968.00" y2="732.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="774.00" x2="968.00" y2="774.00" stroke="#5B6257" stroke-width="1.1" />
+          <path d="M 96.00 720.00" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+          <path d="M 96.00 690.00" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
+          <text data-hover-label-strategy-opportunityLost data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="708.00" text-anchor="end">Opportunity lost Δ -50</text>
+        </g>
+      
+  <g class="hover-readouts" aria-hidden="true">
+    <line data-hover-line-strategy class="hover-active-line" x1="96.00" y1="42.00" x2="96.00" y2="774.00" />
+    <text data-hover-label-strategy-time class="hover-value-label" x="104.00" y="38" text-anchor="start">0:00</text>
+  </g>
+  <rect class="hover-target strategy-hover-target" data-hover-timestamp="0" x="96.00" y="42.00" width="872.00" height="732.00" fill="transparent" pointer-events="all"><title>0:00 - Economic: You 6.1%, Opp 7.5%, Delta -1.4pp | Technology: You 73.3%, Opp 74.6%, Delta -1.3pp | Military: You 20.5%, Opp 17.9%, Delta +2.6pp | Destroyed: You 0, Opp 0, Delta 0 | Overall: You 818, Opp 670, Delta +148 | Float: You 500, Opp 1,000, Delta -500 | Opportunity lost: You 90, Opp 140, Delta -50</title></rect>
+  
+</svg>
+          
+          <div class="mobile-timeline-control" aria-label="Match timeline controls">
+            <div class="mobile-timeline-meta">
+              <span>Selected time</span>
+              <strong data-mobile-current-time>0:00</strong>
+            </div>
+            <div class="mobile-timeline-actions">
+              <button type="button" class="mobile-timeline-button" data-mobile-timeline-step="-1" aria-label="Previous timestamp">Prev</button>
+              <input
+                class="mobile-timeline-slider"
+                data-mobile-timeline-slider
+                type="range"
+                min="0"
+                max="0"
+                step="1"
+                value="0"
+                aria-label="Select match timestamp"
+              />
+              <button type="button" class="mobile-timeline-button" data-mobile-timeline-step="1" aria-label="Next timestamp">Next</button>
+            </div>
+            <div class="mobile-timeline-context" data-mobile-current-context>Use the slider or step buttons to inspect a timestamp.</div>
+          </div>
+        </div>
+        
+    <aside id="hover-inspector" class="hover-inspector" aria-live="polite">
+      <div class="inspector-eyebrow">Selected time</div>
+      <div class="inspector-time" data-hover-field="timeLabel">0:00</div>
+      <div class="inspector-context" data-hover-context>Select a timestamp to inspect allocation values.</div>
+      
+      <div class="mobile-selected-summary" aria-label="Selected timestamp summary">
+        
+        <article class="mobile-summary-card" data-mobile-summary="overall">
+          <span class="mobile-summary-label">Total pool</span>
+          <strong data-mobile-summary-value="overall">+148</strong>
+          <small data-mobile-summary-detail="overall">You 818 · Opp 670</small>
+        </article>
+        
+        <article class="mobile-summary-card" data-mobile-summary="technology">
+          <span class="mobile-summary-label">Technology</span>
+          <strong data-mobile-summary-value="technology">+100</strong>
+          <small data-mobile-summary-detail="technology">You 600 · Opp 500</small>
+        </article>
+        
+        <article class="mobile-summary-card" data-mobile-summary="military">
+          <span class="mobile-summary-label">Military</span>
+          <strong data-mobile-summary-value="military">+48</strong>
+          <small data-mobile-summary-detail="military">You 168 · Opp 120</small>
+        </article>
+        
+        <article class="mobile-summary-card" data-mobile-summary="destroyed">
+          <span class="mobile-summary-label">Destroyed</span>
+          <strong data-mobile-summary-value="destroyed">0</strong>
+          <small data-mobile-summary-detail="destroyed">You 0 · Opp 0</small>
+        </article>
+      </div>
+      <details class="mobile-detail-panel" data-mobile-details open>
+        <summary class="mobile-detail-summary">Allocation details</summary>
+        <div class="mobile-detail-content">
+          
+          <section class="event-impact" data-significant-event hidden>
+            <div class="event-impact-heading">Event impact</div>
+            <div class="event-impact-title" data-hover-field="significantEvent.label"></div>
+            
+            <div class="event-impact-loss-detail" data-significant-event-losses>
+              <div class="event-impact-loss-detail-title">Encounter losses</div>
+              <div class="event-impact-loss-columns">
+                <div class="event-impact-loss-column">
+                  <div class="event-impact-loss-column-heading" data-significant-event-loss-heading="player1">Player 1 losses</div>
+                  
+                  <dl class="event-impact-loss-summary" data-significant-event-loss-summary="player1">
+                    <div><dt>Total loss</dt><dd data-significant-event-loss-total="player1"></dd></div>
+                    <div><dt>Immediate loss</dt><dd data-significant-event-loss-immediate="player1"></dd></div>
+                    <div data-significant-event-loss-villager-opportunity-row="player1" hidden><dt><span data-villager-opportunity-event-tooltip title="Scale-adjusted future missed gathering from killed villagers in this event window. The model removes those deaths, measures the future villager death-loss avoided, then discounts each future increment by event-time deployed resources divided by deployed resources at that later time.">Villager opportunity</span></dt><dd data-significant-event-loss-villager-opportunity="player1"></dd></div>
+                    <div><dt data-significant-event-loss-share-label="player1">Share of Player 1 deployed</dt><dd data-significant-event-loss-share="player1"></dd></div>
+                  </dl>
+                  <ul class="event-impact-loss-list" data-significant-event-loss-list="player1"><li class="event-impact-loss-row event-impact-loss-row-empty">No losses</li></ul>
+                </div>
+                <div class="event-impact-loss-column">
+                  <div class="event-impact-loss-column-heading" data-significant-event-loss-heading="player2">Player 2 losses</div>
+                  
+                  <dl class="event-impact-loss-summary" data-significant-event-loss-summary="player2">
+                    <div><dt>Total loss</dt><dd data-significant-event-loss-total="player2"></dd></div>
+                    <div><dt>Immediate loss</dt><dd data-significant-event-loss-immediate="player2"></dd></div>
+                    <div data-significant-event-loss-villager-opportunity-row="player2" hidden><dt><span data-villager-opportunity-event-tooltip title="Scale-adjusted future missed gathering from killed villagers in this event window. The model removes those deaths, measures the future villager death-loss avoided, then discounts each future increment by event-time deployed resources divided by deployed resources at that later time.">Villager opportunity</span></dt><dd data-significant-event-loss-villager-opportunity="player2"></dd></div>
+                    <div><dt data-significant-event-loss-share-label="player2">Share of Player 2 deployed</dt><dd data-significant-event-loss-share="player2"></dd></div>
+                  </dl>
+                  <ul class="event-impact-loss-list" data-significant-event-loss-list="player2"><li class="event-impact-loss-row event-impact-loss-row-empty">No losses</li></ul>
+                </div>
+              </div>
+            </div>
+            <p class="event-impact-description" data-hover-field="significantEvent.description"></p>
+            <dl class="event-impact-metrics">
+              <div><dt>Gross impact</dt><dd data-hover-field="significantEvent.grossLoss"></dd></div>
+            </dl>
+            <div class="event-impact-losses" data-hover-field="significantEvent.topLosses">No itemized losses</div>
+          </section>
+          <div class="inspector-section-label" data-inspector-section="allocation">Allocation</div>
+          <div class="inspector-table-wrap" tabindex="0" role="region" aria-label="Selected timestamp values table">
+            <table class="inspector-table">
+              <thead>
+                <tr>
+                  <th>Category / band</th>
+                  <th>You</th>
+                  <th>Opp</th>
+                  <th>Delta</th>
+                </tr>
+              </thead>
+              <tbody>
+                
+        <tr class="allocation-category-row" data-allocation-category-row="economic">
+          <th>
+            <button type="button" class="allocation-category-toggle" data-allocation-category-toggle="economic" aria-expanded="true">
+              <span class="category-caret" aria-hidden="true"></span>Economic
+            </button>
+          </th>
+          <td data-cell-label="You" data-hover-field="allocation.economic.you">50</td>
+          <td data-cell-label="Opp" data-hover-field="allocation.economic.opponent">50</td>
+          <td data-cell-label="Delta" data-hover-field="allocation.economic.delta">0</td>
+        </tr>
+        
+        <tr class="band-row is-selected" data-allocation-category-child="economic">
+          <th>
+            <button type="button" class="band-toggle" data-band-key="economic" aria-pressed="true">
+              <span class="legend-dot" style="background:#5DCAA5"></span>Economic
+            </button>
+          </th>
+          <td data-cell-label="You" data-hover-field="you.economic">50</td>
+          <td data-cell-label="Opp" data-hover-field="opponent.economic">50</td>
+          <td data-cell-label="Delta" data-hover-field="delta.economic">0</td>
+        </tr>
+        
+      
+      
+        <tr class="allocation-category-row" data-allocation-category-row="technology">
+          <th>
+            <button type="button" class="allocation-category-toggle" data-allocation-category-toggle="technology" aria-expanded="false">
+              <span class="category-caret" aria-hidden="true"></span>Technology
+            </button>
+          </th>
+          <td data-cell-label="You" data-hover-field="allocation.technology.you">600</td>
+          <td data-cell-label="Opp" data-hover-field="allocation.technology.opponent">500</td>
+          <td data-cell-label="Delta" data-hover-field="allocation.technology.delta">+100</td>
+        </tr>
+        
+        <tr class="band-row" data-allocation-category-child="technology" hidden>
+          <th>
+            <button type="button" class="band-toggle" data-band-key="research" aria-pressed="false">
+              <span class="legend-dot" style="background:#AFA9EC"></span>Research
+            </button>
+          </th>
+          <td data-cell-label="You" data-hover-field="you.research">100</td>
+          <td data-cell-label="Opp" data-hover-field="opponent.research">100</td>
+          <td data-cell-label="Delta" data-hover-field="delta.research">0</td>
+        </tr>
+        
+      
+        <tr class="band-row" data-allocation-category-child="technology" hidden>
+          <th>
+            <button type="button" class="band-toggle" data-band-key="advancement" aria-pressed="false">
+              <span class="legend-dot" style="background:#88AD6A"></span>Advancement
+            </button>
+          </th>
+          <td data-cell-label="You" data-hover-field="you.advancement">500</td>
+          <td data-cell-label="Opp" data-hover-field="opponent.advancement">400</td>
+          <td data-cell-label="Delta" data-hover-field="delta.advancement">+100</td>
+        </tr>
+        
+      
+      
+        <tr class="allocation-category-row" data-allocation-category-row="military">
+          <th>
+            <button type="button" class="allocation-category-toggle" data-allocation-category-toggle="military" aria-expanded="false">
+              <span class="category-caret" aria-hidden="true"></span>Military
+            </button>
+          </th>
+          <td data-cell-label="You" data-hover-field="allocation.military.you">168</td>
+          <td data-cell-label="Opp" data-hover-field="allocation.military.opponent">120</td>
+          <td data-cell-label="Delta" data-hover-field="allocation.military.delta">+48</td>
+        </tr>
+        
+        <tr class="band-row" data-allocation-category-child="military" hidden>
+          <th>
+            <button type="button" class="band-toggle" data-band-key="militaryCapacity" aria-pressed="false">
+              <span class="legend-dot" style="background:#EF9F27"></span>Military buildings
+            </button>
+          </th>
+          <td data-cell-label="You" data-hover-field="you.militaryCapacity">0</td>
+          <td data-cell-label="Opp" data-hover-field="opponent.militaryCapacity">0</td>
+          <td data-cell-label="Delta" data-hover-field="delta.militaryCapacity">0</td>
+        </tr>
+        
+      
+        <tr class="band-row" data-allocation-category-child="military" hidden>
+          <th>
+            <button type="button" class="band-toggle" data-band-key="militaryActive" aria-pressed="false">
+              <span class="legend-dot" style="background:#F0997B"></span>Mil active
+            </button>
+          </th>
+          <td data-cell-label="You" data-hover-field="you.militaryActive">168</td>
+          <td data-cell-label="Opp" data-hover-field="opponent.militaryActive">120</td>
+          <td data-cell-label="Delta" data-hover-field="delta.militaryActive">+48</td>
+        </tr>
+        
+      
+        <tr class="band-row" data-allocation-category-child="military" hidden>
+          <th>
+            <button type="button" class="band-toggle" data-band-key="defensive" aria-pressed="false">
+              <span class="legend-dot" style="background:#B4B2A9"></span>Defensive
+            </button>
+          </th>
+          <td data-cell-label="You" data-hover-field="you.defensive">0</td>
+          <td data-cell-label="Opp" data-hover-field="opponent.defensive">0</td>
+          <td data-cell-label="Delta" data-hover-field="delta.defensive">0</td>
+        </tr>
+        
+      
+      
+        <tr class="allocation-category-row" data-allocation-category-row="other">
+          <th>
+            <button type="button" class="allocation-category-toggle" data-allocation-category-toggle="other" aria-expanded="false">
+              <span class="category-caret" aria-hidden="true"></span>Other
+            </button>
+          </th>
+          <td data-cell-label="You" data-hover-field="allocation.other.you">0</td>
+          <td data-cell-label="Opp" data-hover-field="allocation.other.opponent">0</td>
+          <td data-cell-label="Delta" data-hover-field="allocation.other.delta">0</td>
+        </tr>
+        
+        <tr class="band-row" data-allocation-category-child="other" hidden>
+          <th>
+            <button type="button" class="band-toggle" data-band-key="populationCap" aria-pressed="false">
+              <span class="legend-dot" style="background:#7AB8E6"></span>Population cap
+            </button>
+          </th>
+          <td data-cell-label="You" data-hover-field="you.populationCap">0</td>
+          <td data-cell-label="Opp" data-hover-field="opponent.populationCap">0</td>
+          <td data-cell-label="Delta" data-hover-field="delta.populationCap">0</td>
+        </tr>
+        
+      
+      
+                
+        <tr class="band-row inspector-destroyed-row" data-inspector-row="destroyed">
+          <th>
+            <button type="button" class="band-toggle" data-band-key="destroyed" aria-pressed="false">
+              <span class="legend-dot destroyed-dot"></span>Destroyed
+            </button>
+          </th>
+          <td data-cell-label="You" data-hover-field="allocation.destroyed.you">0</td>
+          <td data-cell-label="Opp" data-hover-field="allocation.destroyed.opponent">0</td>
+          <td data-cell-label="Delta" data-hover-field="allocation.destroyed.delta">0</td>
+        </tr>
+      
+                <tr class="inspector-total-row">
+                  <th><span data-total-pool-tooltip title="Economic + Technology + Military + Other - Destroyed = Total pool | You: 50 + 600 + 168 + 0 - 0 = 818 | Opp: 50 + 500 + 120 + 0 - 0 = 670">Total Pool</span></th>
+                  <td data-cell-label="You" data-hover-field="allocation.overall.you">818</td>
+                  <td data-cell-label="Opp" data-hover-field="allocation.overall.opponent">670</td>
+                  <td data-cell-label="Delta" data-hover-field="allocation.overall.delta">+148</td>
+                </tr>
+                <tr class="inspector-float-row">
+                  <th>Float (not deployed)</th>
+                  <td data-cell-label="You" data-hover-field="allocation.float.you">500</td>
+                  <td data-cell-label="Opp" data-hover-field="allocation.float.opponent">1,000</td>
+                  <td data-cell-label="Delta" data-hover-field="allocation.float.delta">-500</td>
+                </tr>
+                
+        <tr class="band-row inspector-opportunity-lost-row" data-inspector-row="opportunityLost">
+          <th>
+            <button type="button" class="band-toggle" data-band-key="opportunityLost" aria-pressed="false" title="Total villager opportunity cost: resources missing villagers would have gathered by this timestamp. Event scores scale-adjust future gathering lost from killed villagers by the deployed-resource size at the event time; direct villager death value is shown in Destroyed.">
+              <span class="legend-dot opportunity-lost-dot"></span><span data-opportunity-lost-tooltip title="Total villager opportunity cost: resources missing villagers would have gathered by this timestamp. Event scores scale-adjust future gathering lost from killed villagers by the deployed-resource size at the event time; direct villager death value is shown in Destroyed.">Opportunity lost</span>
+            </button>
+          </th>
+          <td data-cell-label="You" data-hover-field="allocation.opportunityLost.you">90</td>
+          <td data-cell-label="Opp" data-hover-field="allocation.opportunityLost.opponent">140</td>
+          <td data-cell-label="Delta" data-hover-field="allocation.opportunityLost.delta">-50</td>
+        </tr>
+      
+                <tr>
+                  <th>Gather/min</th>
+                  <td data-cell-label="You" data-hover-field="gather.you">500</td>
+                  <td data-cell-label="Opp" data-hover-field="gather.opponent">480</td>
+                  <td data-cell-label="Delta" data-hover-field="gather.delta">+20</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="band-breakdown">
+            <div class="band-breakdown-head" data-band-breakdown-title>Economic composition</div>
+            <div class="band-breakdown-summary" data-band-breakdown-summary>
+              <span class="band-summary-label" data-band-summary-label>Economic</span>
+              <span>You <strong data-band-summary-you>50</strong></span>
+              <span>Opp <strong data-band-summary-opponent>50</strong></span>
+              <span>Delta <strong data-band-summary-delta>0</strong></span>
+            </div>
+            <div class="band-breakdown-cols">
+              <section>
+                <h4>You</h4>
+                <ul class="band-breakdown-list" data-band-breakdown-list="you">
+        <li>
+          <span class="band-item-label band-item-label-truncated" title="Villager" tabindex="0">Villager</span>
+          <span class="band-item-metric">50 <small>(100.0%)</small></span>
+        </li>
+      </ul>
+              </section>
+              <section>
+                <h4>Opponent</h4>
+                <ul class="band-breakdown-list" data-band-breakdown-list="opponent"><li class="band-breakdown-empty">No active items</li></ul>
+              </section>
+            </div>
+          </div>
+        </div>
+      </details>
+    </aside>
+      </div>
+    </section>
+
+    <section class="panel metrics">
+      
+      <article class="metric-card metric-card-age">
+        <div class="metric-title">Dark age</div>
+        <div class="metric-range">0:00-2:00</div>
+        <div class="metric-analysis-lines">
+          <div class="metric-analysis metric-analysis-gap">Gap widened: Tied -&gt; You +148.</div>
+          <div class="metric-analysis">Allocation: your edge was Technology +100; Military was similar.</div>
+          <div class="metric-analysis">Destruction: neither player destroyed measurable value.</div>
+          <div class="metric-analysis">Meaning: No major conversion signal inside this shared window.</div>
+        </div>
+      </article>
+      <article class="metric-card metric-card-age">
+        <div class="metric-title">Feudal age</div>
+        <div class="metric-range">2:00-7:00</div>
+        <div class="metric-analysis-lines">
+          <div class="metric-analysis metric-analysis-gap">Gap held: You +148 -&gt; You +148.</div>
+          <div class="metric-analysis">Allocation: no major allocation difference.</div>
+          <div class="metric-analysis">Destruction: neither player destroyed measurable value.</div>
+          <div class="metric-analysis">Meaning: No major conversion signal inside this shared window.</div>
+        </div>
+      </article>
+      <article class="metric-card metric-card-age">
+        <div class="metric-title">Castle age</div>
+        <div class="metric-range">7:00-10:00</div>
+        <div class="metric-analysis-lines">
+          <div class="metric-analysis metric-analysis-gap">Gap held: You +148 -&gt; You +148.</div>
+          <div class="metric-analysis">Allocation: no major allocation difference.</div>
+          <div class="metric-analysis">Destruction: neither player destroyed measurable value.</div>
+          <div class="metric-analysis">Meaning: No major conversion signal inside this shared window.</div>
+        </div>
+      </article>
+      <article class="metric-card metric-card-age">
+        <div class="metric-title">Imperial age</div>
+        <div class="metric-range">No shared window</div>
+        <div class="metric-analysis-lines">
+          <div class="metric-analysis metric-analysis-gap">Only you reached Imperial, so there was no shared Imperial window to compare.</div>
+          <div class="metric-analysis">You reached Imperial; opponent did not.</div>
+          <div class="metric-analysis">No shared window to evaluate destruction.</div>
+          <div class="metric-analysis">No shared window to evaluate conversion.</div>
+        </div>
+      </article>
+      <article class="metric-card metric-card-final">
+        <div class="metric-title">Final pool delta</div>
+        <div class="metric-value">+148</div>
+        <div class="metric-sub">at surrender/end</div>
+      </article>
+    </section>
+
+  </main>
+  
+  <script id="post-match-hover-data" type="application/json">[{"timestamp":0,"timeLabel":"0:00","strategyX":96,"markers":[],"you":{"economic":50,"populationCap":0,"militaryCapacity":0,"militaryActive":168,"defensive":0,"research":100,"advancement":500,"total":818},"opponent":{"economic":50,"populationCap":0,"militaryCapacity":0,"militaryActive":120,"defensive":0,"research":100,"advancement":400,"total":670},"delta":{"economic":0,"populationCap":0,"militaryCapacity":0,"militaryActive":48,"defensive":0,"research":0,"advancement":100,"total":148},"allocation":{"economic":{"you":50,"opponent":50,"delta":0,"youShare":6.1,"opponentShare":7.5,"shareDelta":-1.4},"technology":{"you":600,"opponent":500,"delta":100,"youShare":73.3,"opponentShare":74.6,"shareDelta":-1.3},"military":{"you":168,"opponent":120,"delta":48,"youShare":20.5,"opponentShare":17.9,"shareDelta":2.6},"other":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"destroyed":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"overall":{"you":818,"opponent":670,"delta":148,"youShare":0,"opponentShare":0,"shareDelta":0},"float":{"you":500,"opponent":1000,"delta":-500,"youShare":0,"opponentShare":0,"shareDelta":0},"opportunityLost":{"you":90,"opponent":140,"delta":-50,"youShare":0,"opponentShare":0,"shareDelta":0}},"totalPoolTooltip":"Economic + Technology + Military + Other - Destroyed = Total pool | You: 50 + 600 + 168 + 0 - 0 = 818 | Opp: 50 + 500 + 120 + 0 - 0 = 670","strategy":{"economy":{"you":6.1,"opponent":7.5,"delta":-1.4},"military":{"you":20.5,"opponent":17.9,"delta":2.6},"technology":{"you":73.3,"opponent":74.6,"delta":-1.3}},"gather":{"you":500,"opponent":480,"delta":20},"significantEvent":null,"bandBreakdown":{"economic":{"you":[{"label":"Villager","value":50,"percent":100,"count":1}],"opponent":[]},"populationCap":{"you":[],"opponent":[]},"militaryCapacity":{"you":[],"opponent":[]},"militaryActive":{"you":[],"opponent":[]},"defensive":{"you":[],"opponent":[]},"research":{"you":[],"opponent":[]},"advancement":{"you":[],"opponent":[]},"opportunityLost":{"you":[{"label":"0:00-0:30","value":90,"percent":100,"count":1}],"opponent":[{"label":"0:00-0:30","value":140,"percent":100,"count":2}]}}}]</script>
+  <script id="post-match-hover-data-url" type="application/json">{"url":"/dummy-hover-data"}</script>
+  <script>
+    (function () {
+      var payloadEl = document.getElementById('post-match-hover-data');
+      if (!payloadEl || !payloadEl.textContent) return;
+
+      var hoverData = [];
+      var byTimestamp = new Map();
+      var pinned = false;
+      var selectedBand = 'economic';
+      var currentTimestamp = null;
+      var scheduledTimestamp = null;
+      var framePending = false;
+      var bandLabels = {
+        economic: 'Economic',
+        populationCap: 'Population cap',
+        militaryCapacity: 'Military buildings',
+        militaryActive: 'Mil active',
+        defensive: 'Defensive',
+        research: 'Research',
+        advancement: 'Advancement',
+        destroyed: 'Destroyed',
+        opportunityLost: 'Opportunity lost'
+      };
+      var allocationGraphDefs = {
+        economic: { label: 'Economic', mode: 'share' },
+        technology: { label: 'Technology', mode: 'share' },
+        military: { label: 'Military', mode: 'share' },
+        destroyed: { label: 'Destroyed', mode: 'absolute' },
+        overall: { label: 'Overall', mode: 'absolute' },
+        float: { label: 'Float', mode: 'absolute' },
+        opportunityLost: { label: 'Opportunity lost', mode: 'absolute' }
+      };
+
+      function formatNumber(value) {
+        return Math.round(Number(value) || 0).toLocaleString('en-US');
+      }
+
+      function formatSigned(value) {
+        var rounded = Math.round(Number(value) || 0);
+        return rounded > 0 ? '+' + rounded.toLocaleString('en-US') : rounded.toLocaleString('en-US');
+      }
+
+      function formatPrecise(value, decimals) {
+        var digits = Number.isFinite(decimals) ? decimals : 2;
+        var numeric = Number(value);
+        if (!Number.isFinite(numeric)) return 'n/a';
+        return numeric.toLocaleString('en-US', {
+          minimumFractionDigits: digits,
+          maximumFractionDigits: digits
+        });
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function labelX(x) {
+        return x > 810 ? x - 8 : x + 8;
+      }
+
+      function labelAnchor(x) {
+        return x > 810 ? 'end' : 'start';
+      }
+
+      function replaceTimestampInUrl(timestamp) {
+        try {
+          var url = new URL(window.location.href);
+          if (timestamp === null || timestamp === undefined || Number.isNaN(Number(timestamp))) {
+            url.searchParams.delete('t');
+          } else {
+            url.searchParams.set('t', String(Math.max(0, Math.round(Number(timestamp)))));
+          }
+          var nextHref = url.pathname + (url.search || '') + (url.hash || '');
+          window.history.replaceState({}, '', nextHref);
+        } catch (_error) {
+          // no-op on malformed browser URL parsing
+        }
+      }
+
+      function requestedTimestampFromUrl() {
+        try {
+          var url = new URL(window.location.href);
+          if (!url.searchParams.has('t')) return null;
+          var value = Number(url.searchParams.get('t'));
+          return Number.isFinite(value) ? value : null;
+        } catch (_error) {
+          return null;
+        }
+      }
+
+      function nearestTimestamp(target) {
+        if (!Number.isFinite(target) || hoverData.length === 0) return null;
+        var closest = hoverData[0].timestamp;
+        var minDistance = Math.abs(target - closest);
+        for (var idx = 1; idx < hoverData.length; idx += 1) {
+          var timestamp = Number(hoverData[idx].timestamp);
+          var distance = Math.abs(target - timestamp);
+          if (distance < minDistance) {
+            closest = timestamp;
+            minDistance = distance;
+          }
+        }
+        return closest;
+      }
+
+      function setHoverData(nextHoverData) {
+        hoverData = Array.isArray(nextHoverData) ? nextHoverData : [];
+        byTimestamp = new Map(hoverData.map(function (point) { return [String(point.timestamp), point]; }));
+        currentTimestamp = hoverData[0] ? hoverData[0].timestamp : null;
+      }
+
+      function pointIndexForTimestamp(timestamp) {
+        for (var idx = 0; idx < hoverData.length; idx += 1) {
+          if (String(hoverData[idx].timestamp) === String(timestamp)) return idx;
+        }
+        return 0;
+      }
+
+      function setText(selector, text) {
+        document.querySelectorAll(selector).forEach(function (el) {
+          el.textContent = text;
+        });
+      }
+
+      function setField(name, text) {
+        setText('[data-hover-field="' + name + '"]', text);
+      }
+
+      function setTitle(selector, text) {
+        document.querySelectorAll(selector).forEach(function (el) {
+          el.setAttribute('title', text);
+        });
+      }
+
+      function mobileContext(point) {
+        return point.markers && point.markers.length > 0
+          ? point.markers.join(' · ')
+          : 'Use the slider or step buttons to inspect a timestamp.';
+      }
+
+      function setMobileSummary(key, row) {
+        var safeRow = row || { you: 0, opponent: 0, delta: 0 };
+        setText('[data-mobile-summary-value="' + key + '"]', formatSigned(safeRow.delta));
+        setText(
+          '[data-mobile-summary-detail="' + key + '"]',
+          'You ' + formatNumber(safeRow.you) + ' · Opp ' + formatNumber(safeRow.opponent)
+        );
+      }
+
+      function syncMobileTimeline(point) {
+        var currentIndex = pointIndexForTimestamp(point.timestamp);
+        var maxIndex = Math.max(0, hoverData.length - 1);
+
+        document.querySelectorAll('[data-mobile-timeline-slider]').forEach(function (slider) {
+          slider.setAttribute('max', String(maxIndex));
+          slider.value = String(currentIndex);
+          slider.disabled = hoverData.length <= 1;
+        });
+        document.querySelectorAll('[data-mobile-timeline-step]').forEach(function (button) {
+          var step = Number(button.getAttribute('data-mobile-timeline-step') || 0);
+          button.disabled = hoverData.length <= 1 ||
+            (step < 0 && currentIndex <= 0) ||
+            (step > 0 && currentIndex >= maxIndex);
+        });
+
+        setText('[data-mobile-current-time]', point.timeLabel);
+        setText('[data-mobile-current-context]', mobileContext(point));
+        var allocation = point.allocation || {};
+        setMobileSummary('overall', allocation.overall);
+        setMobileSummary('technology', allocation.technology);
+        setMobileSummary('military', allocation.military);
+        setMobileSummary('destroyed', allocation.destroyed);
+      }
+
+      function setSvgLabel(selector, x, text) {
+        document.querySelectorAll(selector).forEach(function (el) {
+          if (!el.hasAttribute('data-fixed-label')) {
+            el.setAttribute('x', String(labelX(x)));
+            el.setAttribute('text-anchor', labelAnchor(x));
+          }
+          el.textContent = text;
+        });
+      }
+
+      function setVerticalLine(selector, x) {
+        document.querySelectorAll(selector).forEach(function (line) {
+          line.setAttribute('x1', String(x));
+          line.setAttribute('x2', String(x));
+        });
+      }
+
+      function renderBandBreakdown(point) {
+        var bandData = point.bandBreakdown && point.bandBreakdown[selectedBand]
+          ? point.bandBreakdown[selectedBand]
+          : { you: [], opponent: [] };
+        var bandLabel = bandLabels[selectedBand] || selectedBand;
+        var selectedValues = selectedBand === 'destroyed' || selectedBand === 'opportunityLost'
+          ? ((point.allocation && point.allocation[selectedBand]) || { you: 0, opponent: 0, delta: 0 })
+          : {
+              you: point.you && Number.isFinite(Number(point.you[selectedBand])) ? Number(point.you[selectedBand]) : 0,
+              opponent: point.opponent && Number.isFinite(Number(point.opponent[selectedBand])) ? Number(point.opponent[selectedBand]) : 0,
+              delta: point.delta && Number.isFinite(Number(point.delta[selectedBand])) ? Number(point.delta[selectedBand]) : 0
+            };
+
+        var titleEl = document.querySelector('[data-band-breakdown-title]');
+        if (titleEl) {
+          titleEl.textContent = selectedBand === 'opportunityLost'
+            ? 'Opportunity lost buckets'
+            : bandLabel + ' composition';
+        }
+        setText('[data-band-summary-label]', bandLabel);
+        setText('[data-band-summary-you]', formatNumber(selectedValues.you));
+        setText('[data-band-summary-opponent]', formatNumber(selectedValues.opponent));
+        setText('[data-band-summary-delta]', formatSigned(selectedValues.delta));
+
+        function listHtml(entries, bandKey) {
+          if (!entries || entries.length === 0) {
+            return '<li class="band-breakdown-empty">No active items</li>';
+          }
+
+          function displayLabel(entry) {
+            if (bandKey === 'research' || bandKey === 'advancement') {
+              return entry.label;
+            }
+            var count = Number(entry.count || 0);
+            if (!Number.isFinite(count) || count <= 0) {
+              return entry.label;
+            }
+            return entry.label + ' (' + formatNumber(count) + ')';
+          }
+
+          if (bandKey === 'research') {
+            var categoryDefs = [
+              { key: 'military', label: 'Military research' },
+              { key: 'economic', label: 'Economic research' },
+              { key: 'other', label: 'Other research' }
+            ];
+
+            var grouped = categoryDefs.map(function (def) {
+              var groupEntries = entries.filter(function (entry) {
+                return (entry.category || 'other') === def.key;
+              });
+              if (groupEntries.length === 0) return '';
+              var rows = groupEntries.map(function (entry) {
+                var label = displayLabel(entry);
+                var percent = Number(entry.percent || 0).toFixed(1);
+                return '<li><span class="band-item-label band-item-label-truncated" title="' + escapeHtml(label) + '" tabindex="0">' + escapeHtml(label) + '</span><span class="band-item-metric">' + formatNumber(entry.value) + ' <small>(' + percent + '%)</small></span></li>';
+              }).join('');
+              return '<li class="band-breakdown-group">' + escapeHtml(def.label) + '</li>' + rows;
+            }).join('');
+
+            if (grouped.length > 0) return grouped;
+          }
+
+          return entries.map(function (entry) {
+            var label = displayLabel(entry);
+            var percent = Number(entry.percent || 0).toFixed(1);
+            return '<li><span class="band-item-label band-item-label-truncated" title="' + escapeHtml(label) + '" tabindex="0">' + escapeHtml(label) + '</span><span class="band-item-metric">' + formatNumber(entry.value) + ' <small>(' + percent + '%)</small></span></li>';
+          }).join('');
+        }
+
+        var youList = document.querySelector('[data-band-breakdown-list="you"]');
+        var oppList = document.querySelector('[data-band-breakdown-list="opponent"]');
+        if (youList) youList.innerHTML = listHtml(bandData.you, selectedBand);
+        if (oppList) oppList.innerHTML = listHtml(bandData.opponent, selectedBand);
+      }
+
+      function syncBandSelection() {
+        document.querySelectorAll('.band-toggle[data-band-key]').forEach(function (button) {
+          var key = button.getAttribute('data-band-key');
+          var isSelected = key === selectedBand;
+          button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+          var row = button.closest('tr.band-row');
+          if (row) {
+            if (isSelected) row.classList.add('is-selected');
+            else row.classList.remove('is-selected');
+          }
+        });
+      }
+
+      function setCategoryCollapsed(key, collapsed) {
+        document.querySelectorAll('[data-allocation-category-child="' + key + '"]').forEach(function (row) {
+          row.hidden = collapsed;
+        });
+        document.querySelectorAll('[data-allocation-category-toggle="' + key + '"]').forEach(function (button) {
+          button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        });
+      }
+
+      function formatStrategyShare(value) {
+        var numeric = Number(value);
+        if (!Number.isFinite(numeric)) numeric = 0;
+        return numeric.toFixed(1) + '%';
+      }
+
+      function formatSignedPercentagePoints(value) {
+        var numeric = Number(value);
+        if (!Number.isFinite(numeric)) numeric = 0;
+        var rounded = Math.round(numeric * 10) / 10;
+        if (Object.is(rounded, -0)) rounded = 0;
+        var sign = rounded > 0 ? '+' : '';
+        return sign + rounded.toFixed(1) + 'pp';
+      }
+
+      function significantTopLossesText(event) {
+        if (!event || !Array.isArray(event.topLosses) || event.topLosses.length === 0) {
+          return 'No itemized losses';
+        }
+        return event.topLosses.map(function (item) {
+          return (item.label || 'Loss') + ' x' + formatNumber(item.count) + ' (' + formatNumber(item.value) + ')';
+        }).join(' · ');
+      }
+
+      function significantEventLossRowsHtml(items) {
+        if (!Array.isArray(items) || items.length === 0) {
+          return '<li class="event-impact-loss-row event-impact-loss-row-empty">No losses</li>';
+        }
+        return items.map(function (item) {
+          return '<li class="event-impact-loss-row">' +
+            '<span class="event-impact-loss-name">' + escapeHtml(item.label || 'Loss') + ' x' + formatNumber(item.count || 0) + '</span>' +
+            '<span class="event-impact-loss-value">' + formatNumber(item.value || 0) + '</span>' +
+            '</li>';
+        }).join('');
+      }
+
+      function significantEventLossValue(event, playerKey, metric) {
+        if (!event) return 0;
+        var impact = event.playerImpacts ? event.playerImpacts[playerKey] : null;
+        if (impact && Number.isFinite(Number(impact[metric]))) {
+          return Number(impact[metric]);
+        }
+        if (metric === 'immediateLoss' || metric === 'grossLoss') {
+          var losses = event.encounterLosses && Array.isArray(event.encounterLosses[playerKey])
+            ? event.encounterLosses[playerKey]
+            : [];
+          return losses.reduce(function (sum, item) {
+            return sum + Number(item.value || 0);
+          }, 0);
+        }
+        return 0;
+      }
+
+      function setSignificantLossSummaryText(attr, playerKey, value) {
+        document.querySelectorAll('[data-significant-event-loss-' + attr + '="' + playerKey + '"]').forEach(function (el) {
+          el.textContent = value;
+        });
+      }
+
+      function updateSignificantEventLossSummary(event, playerKey, playerLabel) {
+        var totalLoss = significantEventLossValue(event, playerKey, 'grossLoss');
+        var immediateLoss = significantEventLossValue(event, playerKey, 'immediateLoss');
+        var villagerOpportunityLoss = significantEventLossValue(event, playerKey, 'villagerOpportunityLoss');
+        var pctOfDeployed = significantEventLossValue(event, playerKey, 'pctOfDeployed');
+        setSignificantLossSummaryText('total', playerKey, event ? formatNumber(totalLoss) : '');
+        setSignificantLossSummaryText('immediate', playerKey, event ? formatNumber(immediateLoss) : '');
+        setSignificantLossSummaryText('villager-opportunity', playerKey, event ? formatNumber(villagerOpportunityLoss) : '');
+        setSignificantLossSummaryText('share', playerKey, event ? formatPrecise(pctOfDeployed, 1) + '%' : '');
+        document.querySelectorAll('[data-significant-event-loss-share-label="' + playerKey + '"]').forEach(function (el) {
+          el.textContent = 'Share of ' + playerLabel + ' deployed';
+        });
+        document.querySelectorAll('[data-significant-event-loss-villager-opportunity-row="' + playerKey + '"]').forEach(function (el) {
+          el.hidden = !event || villagerOpportunityLoss <= 0;
+        });
+      }
+
+      function updateSignificantEventLosses(event) {
+        var player1Label = event && event.player1Civilization ? event.player1Civilization : 'Player 1';
+        var player2Label = event && event.player2Civilization ? event.player2Civilization : 'Player 2';
+        document.querySelectorAll('[data-significant-event-loss-heading="player1"]').forEach(function (el) {
+          el.textContent = player1Label + ' losses';
+        });
+        document.querySelectorAll('[data-significant-event-loss-heading="player2"]').forEach(function (el) {
+          el.textContent = player2Label + ' losses';
+        });
+        document.querySelectorAll('[data-significant-event-loss-list="player1"]').forEach(function (el) {
+          el.innerHTML = significantEventLossRowsHtml(event && event.encounterLosses ? event.encounterLosses.player1 : []);
+        });
+        document.querySelectorAll('[data-significant-event-loss-list="player2"]').forEach(function (el) {
+          el.innerHTML = significantEventLossRowsHtml(event && event.encounterLosses ? event.encounterLosses.player2 : []);
+        });
+        updateSignificantEventLossSummary(event, 'player1', player1Label);
+        updateSignificantEventLossSummary(event, 'player2', player2Label);
+      }
+
+      function updateSignificantEvent(point) {
+        var event = point.significantEvent || null;
+        document.querySelectorAll('[data-significant-event]').forEach(function (el) {
+          el.hidden = !event;
+        });
+        if (!event) {
+          setField('significantEvent.label', '');
+          setField('significantEvent.description', '');
+          setField('significantEvent.grossLoss', '');
+          setField('significantEvent.topLosses', '');
+          updateSignificantEventLosses(null);
+          return;
+        }
+
+        setField('significantEvent.label', event.headline || ((event.victimLabel ? event.victimLabel + ' ' : '') + (event.label || 'Event')));
+        setField('significantEvent.description', event.description || '');
+        setField('significantEvent.grossLoss', formatNumber(event.grossImpact ?? event.grossLoss));
+        setField('significantEvent.topLosses', significantTopLossesText(event));
+        updateSignificantEventLosses(event);
+      }
+
+      function updateInspector(timestamp) {
+        var point = byTimestamp.get(String(timestamp));
+        if (!point) return;
+        currentTimestamp = point.timestamp;
+
+        setField('timeLabel', point.timeLabel);
+        var contextEl = document.querySelector('[data-hover-context]');
+        if (contextEl) {
+          contextEl.textContent = mobileContext(point);
+        }
+        updateSignificantEvent(point);
+
+        ['economic', 'populationCap', 'militaryCapacity', 'militaryActive', 'defensive', 'research', 'advancement', 'total'].forEach(function (key) {
+          setField('you.' + key, formatNumber(point.you[key]));
+          setField('opponent.' + key, formatNumber(point.opponent[key]));
+          setField('delta.' + key, formatSigned(point.delta[key]));
+        });
+        ['economic', 'technology', 'military', 'other', 'destroyed', 'overall', 'float', 'opportunityLost'].forEach(function (key) {
+          var allocationRow = point.allocation && point.allocation[key]
+            ? point.allocation[key]
+            : { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 };
+          setField('allocation.' + key + '.you', formatNumber(allocationRow.you));
+          setField('allocation.' + key + '.opponent', formatNumber(allocationRow.opponent));
+          setField('allocation.' + key + '.delta', formatSigned(allocationRow.delta));
+        });
+        setTitle(
+          '[data-total-pool-tooltip]',
+          point.totalPoolTooltip || 'Economic + Technology + Military + Other - Destroyed = Total pool'
+        );
+        setField('gather.you', formatNumber(point.gather.you));
+        setField('gather.opponent', formatNumber(point.gather.opponent));
+        setField('gather.delta', formatSigned(point.gather.delta));
+        ['economy', 'military', 'technology'].forEach(function (key) {
+          var strategyRow = point.strategy && point.strategy[key]
+            ? point.strategy[key]
+            : { you: 0, opponent: 0, delta: 0 };
+          setField('strategy.' + key + '.you', formatStrategyShare(strategyRow.you));
+          setField('strategy.' + key + '.opponent', formatStrategyShare(strategyRow.opponent));
+          setField('strategy.' + key + '.delta', formatSignedPercentagePoints(strategyRow.delta));
+        });
+        Object.keys(allocationGraphDefs).forEach(function (key) {
+          var def = allocationGraphDefs[key];
+          var allocationRow = point.allocation && point.allocation[key]
+            ? point.allocation[key]
+            : { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 };
+          var labelText = def.mode === 'absolute'
+            ? def.label + ' Δ ' + formatSigned(allocationRow.delta)
+            : def.label + ' Δ ' + formatSignedPercentagePoints(allocationRow.shareDelta);
+          setSvgLabel('[data-hover-label-strategy-' + key + ']', point.strategyX, labelText);
+        });
+
+        setVerticalLine('[data-hover-line-strategy]', point.strategyX);
+        setSvgLabel('[data-hover-label-strategy-time]', point.strategyX, point.timeLabel);
+        renderBandBreakdown(point);
+        syncMobileTimeline(point);
+      }
+
+      function selectPointByIndex(index, shouldUpdateUrl) {
+        if (hoverData.length === 0) return;
+        var safeIndex = Math.max(0, Math.min(hoverData.length - 1, Number(index) || 0));
+        var point = hoverData[safeIndex];
+        if (!point) return;
+        pinned = true;
+        document.body.setAttribute('data-hover-pinned', 'true');
+        updateInspector(point.timestamp);
+        if (shouldUpdateUrl) replaceTimestampInUrl(point.timestamp);
+      }
+
+      function selectTimestamp(timestamp, shouldUpdateUrl) {
+        var nearest = nearestTimestamp(Number(timestamp));
+        if (nearest === null) return;
+        selectPointByIndex(pointIndexForTimestamp(nearest), shouldUpdateUrl);
+      }
+
+      function scheduleInspector(timestamp) {
+        scheduledTimestamp = timestamp;
+        if (framePending) return;
+        framePending = true;
+        var run = function () {
+          framePending = false;
+          if (!pinned && scheduledTimestamp !== null) updateInspector(scheduledTimestamp);
+        };
+        if (window.requestAnimationFrame) {
+          window.requestAnimationFrame(run);
+        } else {
+          window.setTimeout(run, 16);
+        }
+      }
+
+      document.querySelectorAll('.band-toggle[data-band-key]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          var key = button.getAttribute('data-band-key');
+          if (!key) return;
+          selectedBand = key;
+          syncBandSelection();
+          if (currentTimestamp !== null) {
+            updateInspector(currentTimestamp);
+          }
+        });
+      });
+
+      document.querySelectorAll('[data-allocation-category-toggle]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          var key = button.getAttribute('data-allocation-category-toggle');
+          if (!key) return;
+          var collapsed = button.getAttribute('aria-expanded') !== 'false';
+          setCategoryCollapsed(key, collapsed);
+        });
+      });
+
+      document.querySelectorAll('.inspector-table-wrap').forEach(function (wrap) {
+        wrap.addEventListener('keydown', function (event) {
+          if (event.key === 'ArrowRight') {
+            wrap.scrollLeft += 40;
+            event.preventDefault();
+            return;
+          }
+          if (event.key === 'ArrowLeft') {
+            wrap.scrollLeft -= 40;
+            event.preventDefault();
+          }
+        });
+      });
+
+      document.querySelectorAll('[data-mobile-timeline-slider]').forEach(function (slider) {
+        slider.addEventListener('input', function () {
+          selectPointByIndex(Number(slider.value), true);
+        });
+      });
+
+      document.querySelectorAll('[data-mobile-timeline-step]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          var step = Number(button.getAttribute('data-mobile-timeline-step') || 0);
+          selectPointByIndex(pointIndexForTimestamp(currentTimestamp) + step, true);
+        });
+      });
+
+      document.querySelectorAll('[data-mobile-details] > summary').forEach(function (summary) {
+        summary.addEventListener('click', function () {
+          var details = summary.parentElement;
+          if (details) details.setAttribute('data-mobile-user-toggled', 'true');
+        });
+      });
+
+      function syncMobileDetailsForViewport() {
+        var isMobile = window.matchMedia && window.matchMedia('(max-width: 520px)').matches;
+        document.querySelectorAll('[data-mobile-details]').forEach(function (details) {
+          if (isMobile) {
+            if (!details.hasAttribute('data-mobile-user-toggled')) details.removeAttribute('open');
+            return;
+          }
+          details.setAttribute('open', '');
+        });
+      }
+
+      if (window.addEventListener) {
+        window.addEventListener('resize', syncMobileDetailsForViewport);
+      }
+
+      document.querySelectorAll('.hover-target[data-hover-timestamp]').forEach(function (target) {
+        target.addEventListener('pointerenter', function () {
+          if (!pinned) scheduleInspector(target.getAttribute('data-hover-timestamp'));
+        });
+        target.addEventListener('pointermove', function () {
+          if (!pinned) scheduleInspector(target.getAttribute('data-hover-timestamp'));
+        });
+        target.addEventListener('click', function () {
+          var selectedTimestamp = Number(target.getAttribute('data-hover-timestamp'));
+          selectTimestamp(selectedTimestamp, true);
+        });
+        target.addEventListener('keydown', function (event) {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          var selectedTimestamp = Number(target.getAttribute('data-hover-timestamp'));
+          selectTimestamp(selectedTimestamp, true);
+        });
+      });
+
+      document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') return;
+        pinned = false;
+        document.body.removeAttribute('data-hover-pinned');
+        replaceTimestampInUrl(null);
+        if (hoverData[0]) updateInspector(hoverData[0].timestamp);
+      });
+
+      function initializeSelection() {
+        syncBandSelection();
+        var requestedTimestamp = requestedTimestampFromUrl();
+        if (requestedTimestamp !== null) {
+          var nearest = nearestTimestamp(requestedTimestamp);
+          if (nearest !== null) {
+            pinned = true;
+            document.body.setAttribute('data-hover-pinned', 'true');
+            replaceTimestampInUrl(nearest);
+            updateInspector(nearest);
+            syncMobileDetailsForViewport();
+            return;
+          }
+        }
+        if (hoverData[0]) updateInspector(hoverData[0].timestamp);
+        syncMobileDetailsForViewport();
+      }
+
+      setHoverData(JSON.parse(payloadEl.textContent));
+      var payloadSourceEl = document.getElementById('post-match-hover-data-url');
+      var payloadSourceUrl = null;
+      if (payloadSourceEl && payloadSourceEl.textContent) {
+        try {
+          payloadSourceUrl = JSON.parse(payloadSourceEl.textContent).url || null;
+        } catch (_error) {
+          payloadSourceUrl = null;
+        }
+      }
+
+      if (payloadSourceUrl && window.fetch) {
+        fetch(payloadSourceUrl, {
+          credentials: 'same-origin',
+          headers: { accept: 'application/json' }
+        })
+          .then(function (response) {
+            if (!response.ok) throw new Error('Failed to load hover data');
+            return response.json();
+          })
+          .then(function (payload) {
+            setHoverData(Array.isArray(payload) ? payload : payload.hoverSnapshots);
+            initializeSelection();
+          })
+          .catch(function () {
+            initializeSelection();
+          });
+        return;
+      }
+      initializeSelection();
+    }());
+  </script>
+  <script id="web-vitals-monitor">(function(){
+  if (typeof window === 'undefined' || !('PerformanceObserver' in window)) return;
+  var endpoint = "/api/web-vitals";
+  var lcp = 0;
+  var cls = 0;
+  var inp = 0;
+  var sent = {};
+  function send(name, value) {
+    if (!Number.isFinite(value) || sent[name] === value) return;
+    sent[name] = value;
+    var body = JSON.stringify({
+      name: name,
+      value: Math.round(value * 100) / 100,
+      path: window.location.pathname,
+      ts: Date.now()
+    });
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(endpoint, body);
+      return;
+    }
+    fetch(endpoint, {
+      method: 'POST',
+      body: body,
+      keepalive: true,
+      headers: { 'content-type': 'application/json' }
+    }).catch(function(){});
+  }
+  try {
+    new PerformanceObserver(function(list){
+      var entries = list.getEntries();
+      if (entries.length > 0) lcp = entries[entries.length - 1].startTime;
+    }).observe({ type: 'largest-contentful-paint', buffered: true });
+  } catch (_) {}
+  try {
+    new PerformanceObserver(function(list){
+      list.getEntries().forEach(function(entry){
+        if (!entry.hadRecentInput) cls += entry.value || 0;
+      });
+    }).observe({ type: 'layout-shift', buffered: true });
+  } catch (_) {}
+  try {
+    new PerformanceObserver(function(list){
+      list.getEntries().forEach(function(entry){
+        if (entry.interactionId) inp = Math.max(inp, entry.duration || 0);
+      });
+    }).observe({ type: 'event', durationThreshold: 40, buffered: true });
+  } catch (_) {}
+  function flush() {
+    send('LCP', lcp);
+    send('CLS', cls);
+    send('INP', inp);
+  }
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'hidden') flush();
+  });
+  window.addEventListener('pagehide', flush);
+}());</script>
+</body>
+</html>

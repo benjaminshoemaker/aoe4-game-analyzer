@@ -1,0 +1,21 @@
+{
+  "betConsequenceClauses": {
+    "economic|military": "That bet needed time to convert, but opponent invested in military earlier and pressured before your economy fully paid off.",
+    "military|economic": "That timing-forward military bet created pressure windows before opponent's economic investment converted.",
+    "economic-heavy|military-heavy": "Both players polarized their spend, and tempo swings around military windows determined who converted first.",
+    "military-heavy|economic-heavy": "You front-loaded military value while opponent invested deeper into economy, creating repeated pressure windows.",
+    "balanced|balanced": "Both players kept broad allocations, so the gap came from timing windows and engagement outcomes rather than one-sided composition.",
+    "defensive|military": "Your defensive allocation reduced immediate losses, but military pressure still dictated the pace of map control.",
+    "military|defensive": "Military-forward investment tested defensive scaling and forced value trades before static defenses could fully stabilize.",
+    "economic|economic": "Both players leaned economic, so subsequent timing and destruction events did most of the separation work.",
+    "military|military": "Both players committed heavily to military, so engagement sequencing and re-max speed drove the outcome."
+  },
+  "defaultClauses": {
+    "economic-heavy": "That allocation favored long-run growth, but it needed clean survival windows to convert into sustained military advantage.",
+    "economic": "That allocation tilted toward growth and required stable midgame timing to pay off.",
+    "balanced": "That allocation kept options open, so timing execution and fight quality became the key separators.",
+    "military": "That allocation emphasized tempo and pressure windows over long-run growth.",
+    "military-heavy": "That allocation front-loaded immediate combat presence and depended on converting pressure into lasting lead.",
+    "defensive": "That allocation traded map tempo for structure-backed stability and efficient defense windows."
+  }
+}

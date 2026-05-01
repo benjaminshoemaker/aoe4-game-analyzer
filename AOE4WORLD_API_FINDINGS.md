@@ -7,6 +7,8 @@ This document captures observed capabilities and caveats of AoE4World APIs, base
 - Live endpoint probing (JSON responses and status codes)
 - Data docs: `https://data.aoe4world.com/`
 - Dumps index: `https://aoe4world.com/dumps`
+- Source review of `https://github.com/aoe4world/data`, `https://github.com/aoe4world/explorer`, and `https://github.com/aoe4world/replays-api`
+- AoE4World FAQ notes on leaderboards, game summaries, and Explorer data sourcing
 
 ## High-level Surface Area
 
@@ -49,6 +51,35 @@ This document captures observed capabilities and caveats of AoE4World APIs, base
   - `leadersboards_qm_1v1.csv.gz`
   - `leadersboards_rm_1v1_elo.csv.gz`
   - `leadersboards_rm_1v1_weekly.csv.zip`
+
+## Source Lineage and Higher-Fidelity Upstreams
+
+### Static game data
+- `aoe4world/data` is parsed from installed Age of Empires IV game files.
+- The update flow starts from raw archives such as `Attrib.sga`, `UIArt.sga`, and `LocaleEnglish.sga`, unpacked with AOEMods.Essence.
+- The hosted JSON is a normalized, developer-friendly, tooltip-oriented layer, not the raw game data.
+- Higher-fidelity upstream for mechanics/static data: the local AoE4 game archives themselves, especially `Attrib.sga`.
+
+### Explorer
+- `aoe4world/explorer` is primarily a UI over `aoe4world/data`.
+- The repo uses `aoe4world/data` as a git submodule.
+- Treat Explorer as a useful visualization/validation surface, not as a separate upstream data source.
+
+### Live profiles, leaderboards, and match metadata
+- AoE4World appears to ingest this layer from the official Relic/Microsoft leaderboard/API services.
+- Evidence: AoE4World FAQ says leaderboard removals are done by Relic, country is synced from the official leaderboard/API, and missing matches can happen when the leaderboard service fails to report ongoing games.
+- Higher-fidelity upstream for public match metadata is likely the official Relic/Microsoft service used by the in-game/official Age leaderboard, but it may not expose richer per-game timelines publicly.
+
+### Game summaries and replay-derived timelines
+- `aoe4world/replays-api` parses compressed replay summary files and generates normalized game summaries.
+- Its API accepts a `url`, downloads the compressed summary, decompresses it, parses it with `ReplaySummaryParser`, and returns a generated `GameSummary` plus compatibility output.
+- This layer is richer than `/api/v0/games` for timelines/build orders/resource curves, but it is still partly interpreted.
+- AoE4World FAQ notes that in-game scores match the game, while values like total resources spent and army value can miss discounted units, Ovoo double production, discounted research, Wololo conversions, and similar mechanics.
+- Higher-fidelity upstream for per-game analysis is the replay summary file, and potentially full replay parsing where available. The normalized AoE4World summary is convenient but should not be treated as perfect ground truth.
+
+### Bulk history
+- `/dumps` are the preferred source for broad historical backfills instead of crawling the API.
+- These dumps are AoE4World-derived snapshots, not a first-party raw upstream.
 
 ## 1v1-Focused Findings (RM + QM)
 
@@ -189,4 +220,3 @@ Observed:
 4. Enrichment:
 - Use `/players/:id` modes for rank/rating histories.
 - Use `/stats/...` endpoints for contextual meta layers (civ/map/matchup priors).
-

@@ -1,6 +1,6 @@
 # Next Steps (Prioritized)
 
-Last updated: 2026-04-24 (America/Los_Angeles)
+Last updated: 2026-04-30 (America/Los_Angeles)
 
 This is the consolidated backlog for follow-up work after the current v1 post-match implementation.
 It centralizes deferred/open items from:
@@ -60,6 +60,13 @@ Priority levels:
 
 ## P1 — Core Model Fidelity
 
+- [ ] `P0` Finish and stabilize significant-resource-loss event wiring
+  - Fix current verification failures around `significantResourceLossEvents` so the event data is present on `GameAnalysis` and rendered hover points include the selected significant raid/destruction event.
+  - Re-run the full root test suite and keep unit, integration, and e2e output pristine.
+  - Current failing evidence: `__tests__/integration/postMatchView.integration.test.ts` expects `analysis.significantResourceLossEvents`, and `__tests__/e2e/postMatchRender.test.ts` expects a worker-death hover point to include `significantEvent`.
+  - Why: this is active dirty-work functionality and the project test policy requires failures to be fixed at the root before claiming the branch is healthy.
+  - Source: `npm test` verification on 2026-04-30.
+
 - [ ] `P0` Villager-opportunity cap parity with product rule (120-villager target OR 200-pop cap)
   - Implement "stop expected villager growth if player reaches 120 villagers OR is population-capped at 200" exactly as agreed.
   - Why: current model enforces the 120 target cap but does not yet stop at 200-pop cap.
@@ -102,10 +109,24 @@ Priority levels:
   - Why: major context modifier with limited direct telemetry.
   - Source: `NOTES.md` (Proposed model, section E).
 
+- [ ] `P1` Investigate AoE4World replay-summary data for defensive-fight location context
+  - Evaluate `https://github.com/aoe4world/replays-api` as a source for entity coordinates and death/attacker records.
+  - Specific target: use parsed `STLS` created-entity coordinates to locate keeps, outposts, town centers, and defensive landmarks, then compare fight/loss clusters against defensive-structure ranges.
+  - Also evaluate whether `STLB.damageDealt` and lost-entity attacker fields can distinguish damage done by buildings versus nearby army units.
+  - Key caveat: the repo's tester notes full replay parsing is not implemented; first pass should verify whether replay summary files are available for target matches and whether the parser output is stable enough to integrate.
+  - Why: this may turn the current heuristic "defensive structures were active nearby" signal into a location-backed "fight happened under defensive structures" signal.
+  - Source: user follow-up, AoE4World GitHub org, `aoe4world/replays-api`.
+
 - [ ] `P1` Divergence attribution scoring
   - Better identify where the trajectory split starts (allocation/timing/destruction/civ effect).
   - Why: currently under-specified.
   - Source: `NOTES.md` (Current model limitations).
+
+- [ ] `P1` Add permanent/consumed spend as a Hover Inspector line item
+  - Show permanent/consumed spend as accounting context in the Hover Inspector, without adding a dedicated chart.
+  - Keep tech and age investments in the deployed/allocation model; this deferred line should cover separate consumed-resource cases such as repairs, market exchange friction, canceled or queued edge cases, and paid one-time or temporary effects.
+  - Why: these costs are not current deployed assets, opponent-destroyed value, or float, but can explain ledger gaps.
+  - Source: user accounting discussion.
 
 - [ ] `P1` Idle worker/idle production proxy metrics
   - Villager idle and production idle inferred from available telemetry.
@@ -151,6 +172,11 @@ Priority levels:
 - [ ] `P2` Add ranked decisive-cause statement and coaching recommendations
   - Gate on confidence and model trustworthiness.
   - Source: `DEFERRED.md`, `NOTES.md` (descriptive-first posture).
+
+- [ ] `P2` Add AI Explanation widget
+  - Generate a lazy, prose-only whole-game explanation from the existing post-match data, with the evidence-first quality target captured in the feature plan.
+  - Reuse the plan in `features/ai_explanation/PLAN.md` before implementation, including its evidence packet, prompt, API route, UI, and test strategy.
+  - Source: `/Users/coding/Projects/aoe4-game-analyzer/features/ai_explanation/PLAN.md`.
 
 ## P1 — API / Data Reliability
 

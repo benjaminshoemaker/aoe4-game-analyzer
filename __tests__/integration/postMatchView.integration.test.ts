@@ -24,6 +24,12 @@ function extractHoverData(html: string): any[] {
   return JSON.parse(match[1]);
 }
 
+function extractSvg(html: string, id: string): string {
+  const match = html.match(new RegExp(`<svg id="${id}"[\\s\\S]*?</svg>`));
+  if (!match) throw new Error(`Expected SVG ${id}`);
+  return match[0];
+}
+
 describe('post-match view integration', () => {
   beforeEach(() => {
     nock.cleanAll();
@@ -113,8 +119,7 @@ describe('post-match view integration', () => {
 
     const sections = [
       'Match recap',
-      'Deployed resource pool over time',
-      'Strategic allocation state',
+      'Allocation lead and mix over time',
       'Gather rate',
       'Villager opportunity cost',
       'Where the gap came from',
@@ -128,22 +133,66 @@ describe('post-match view integration', () => {
       cursor = idx + 1;
     }
 
-    expect(html).toContain('id="pool-comparison"');
-    expect(html).toContain('id="strategy-allocation"');
+    expect(html).toContain('id="allocation-leader-strip"');
+    expect(html).toContain('id="allocation-comparison"');
+    expect(html).toContain('data-allocation-leader-segment');
+    expect(html).toContain('data-leader="tie"');
+    const leaderStrip = extractSvg(html, 'allocation-leader-strip');
+    expect(leaderStrip).toContain('data-category-key="economic"');
+    expect(leaderStrip).toContain('data-category-key="technology"');
+    expect(leaderStrip).toContain('data-category-key="military"');
+    expect(leaderStrip).not.toContain('data-category-key="destroyed"');
+    expect(leaderStrip).not.toContain('data-category-key="overall"');
+    expect(leaderStrip).not.toContain('data-category-key="float"');
+    expect(html).toContain('<details class="allocation-read-guide" aria-label="Allocation chart legend">');
+    expect(html).toContain('<summary class="allocation-read-guide-summary">How to read this chart</summary>');
+    expect(html).toContain('Leader strip: absolute deployed-value leader by 30-second block');
+    expect(html).toContain('Economic, Technology, and Military: percentage share of strategic allocation');
+    expect(html).toContain('Destroyed: cumulative value assumed destroyed by opponent');
+    expect(html).toContain('Overall: absolute deployed resource value after subtracting Destroyed');
+    expect(html).toContain('Float (not deployed): gathered resources not currently committed');
+    expect(html).toContain('class="allocation-lane allocation-lane-overall"');
+    expect(html).toContain('class="allocation-lane allocation-lane-destroyed"');
+    expect(html).toContain('class="allocation-lane allocation-lane-float"');
+    expect(html).not.toContain('Overall resources');
+    expect(html).toContain('data-secondary-section="gather-rate"');
+    expect(html).toContain('data-fixed-label="true"');
+    expect(html).toContain('x1="96"');
     expect(html).toContain('data-hover-line-strategy');
-    expect(html).toContain('data-hover-field="strategy.economy.delta"');
-    expect(html).toContain('data-hover-field="strategy.military.delta"');
-    expect(html).toContain('data-hover-field="strategy.technology.delta"');
-    expect(html).toContain('Technology combines all research plus advancement');
-    expect(html).toContain('Military combines active army plus military buildings');
+    expect(html).toContain('data-hover-label-strategy-economic');
+    expect(html).toContain('data-hover-label-strategy-technology');
+    expect(html).toContain('data-hover-label-strategy-military');
+    expect(html).toContain('data-hover-label-strategy-destroyed');
+    expect(html).toContain('data-hover-label-strategy-overall');
+    expect(html).toContain('data-hover-label-strategy-float');
+    expect(html).toContain('data-hover-field="allocation.economic.you"');
+    expect(html).toContain('data-hover-field="allocation.technology.delta"');
+    expect(html).toContain('data-hover-field="allocation.military.delta"');
+    expect(html).toContain('data-hover-field="allocation.other.delta"');
+    expect(html).toContain('data-hover-field="allocation.destroyed.delta"');
+    expect(html).toContain('data-hover-field="allocation.float.delta"');
+    expect(html).toContain('data-inspector-row="destroyed"');
+    expect(html).toContain('data-band-key="destroyed"');
+    const otherRowIndex = html.indexOf('data-allocation-category-row="other"');
+    const destroyedRowIndex = html.indexOf('data-inspector-row="destroyed"');
+    const totalPoolIndex = html.indexOf('data-total-pool-tooltip');
+    expect(otherRowIndex).toBeGreaterThanOrEqual(0);
+    expect(destroyedRowIndex).toBeGreaterThan(otherRowIndex);
+    expect(totalPoolIndex).toBeGreaterThan(destroyedRowIndex);
+    expect(html).toContain('Bands are remapped into Economic, Technology, Military, and Other');
+    expect(html).toContain('Overall is absolute deployed resource value after subtracting Destroyed');
+    expect(html).toContain('data-total-pool-tooltip');
     expect(html).toContain('Age timings');
-    expect(html).toContain('Pool delta (You - Opponent)');
     expect(html).toContain('You Feudal 3:20');
     expect(html).toContain('Opponent Castle 10:00');
     expect(html).toContain('id="hover-inspector"');
     expect(html).toContain('id="post-match-hover-data"');
     expect(html).toContain('data-hover-timestamp="200"');
-    expect(html).toContain('data-hover-label-pool-total-you');
+    expect(html).toContain('data-allocation-category-toggle="economic" aria-expanded="true"');
+    expect(html).toContain('data-allocation-category-toggle="technology" aria-expanded="false"');
+    expect(html).toContain('data-allocation-category-toggle="military" aria-expanded="false"');
+    expect(html).toContain('data-allocation-category-toggle="other" aria-expanded="false"');
+    expect(html).toContain('data-allocation-category-child="military" hidden');
     expect(html).toContain('Research');
     expect(html).toContain('Population cap');
     expect(html).toContain('Advancement');
@@ -159,6 +208,22 @@ describe('post-match view integration', () => {
     expect(html).toContain('data-adjusted-field="matrixWhy"');
     expect(html).toContain('adjusted-matrix-cell-btn');
     expect(html).toContain('id="villager-opportunity"');
+
+    const hoverData = extractHoverData(html);
+    const finalHover = hoverData[hoverData.length - 1];
+    expect(finalHover.allocation).toEqual(expect.objectContaining({
+      destroyed: expect.objectContaining({ you: 0, opponent: 0, delta: 0 }),
+      float: expect.objectContaining({
+        you: expect.any(Number),
+        opponent: expect.any(Number),
+      }),
+      overall: expect.objectContaining({ you: finalHover.accounting.you.total }),
+    }));
+    expect(
+      finalHover.accounting.you.total +
+      finalHover.accounting.you.destroyed +
+      finalHover.accounting.you.float
+    ).toBeCloseTo(summary.players[0].totalResourcesGathered.total, 0);
     expect(html).toContain('id="villager-opportunity-you"');
     expect(html).toContain('id="villager-opportunity-opponent"');
     expect(html).toContain('Expected villager rate');
@@ -200,6 +265,10 @@ describe('post-match view integration', () => {
     expect(html).not.toContain('"label":"Wheelbarrow (1)"');
     expect(html).toContain('function updateInspector');
     expect(html).toContain('Click to pin');
+    expect(html).not.toContain('Deployed resource pool over time');
+    expect(html).not.toContain('Strategic allocation state');
+    expect(html).not.toContain('id="pool-comparison"');
+    expect(html).not.toContain('Pool delta (You - Opponent)');
 
     const milActiveIndex = html.indexOf('data-band-key="militaryActive"');
     const adjustedIndex = html.indexOf('Adjusted mil active');
@@ -267,6 +336,36 @@ describe('post-match view integration', () => {
       value: 450,
       count: 9,
     }));
+    expect(point?.accounting?.opponent).toEqual(expect.objectContaining({
+      economic: 500,
+      destroyed: 50,
+      total: 450,
+    }));
+    expect(point?.allocation?.destroyed).toEqual(expect.objectContaining({
+      opponent: 50,
+    }));
+    expect(point?.bandBreakdown?.destroyed?.opponent).toEqual([
+      expect.objectContaining({
+        label: 'Villager',
+        value: 50,
+        count: 1,
+        percent: 100,
+      }),
+    ]);
+    expect(analysis.significantResourceLossEvents?.[0]).toEqual(expect.objectContaining({
+      victimPlayer: 2,
+      kind: 'raid',
+      immediateLoss: 50,
+      villagerDeaths: 1,
+    }));
+    expect(point?.significantEvent).toEqual(expect.objectContaining({
+      victim: 'opponent',
+      kind: 'raid',
+      immediateLoss: 50,
+      villagerDeaths: 1,
+    }));
+    expect(html).toContain('data-significant-event-marker');
+    expect(html).toContain('Event impact');
   });
 
   it('normalizes rm_solo leaderboard alias to Ranked 1v1 in recap header', async () => {

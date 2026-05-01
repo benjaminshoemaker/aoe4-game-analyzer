@@ -1,4 +1,4 @@
-import { AgeMarker, PostMatchViewModel } from '../analysis/postMatchViewModel';
+import { AgeMarker, PostMatchViewModel, SignificantTimelineEvent } from '../analysis/postMatchViewModel';
 import { GatherRatePoint, PoolSeriesPoint } from '../analysis/resourcePool';
 import { evaluateUnitPairCounterComputation } from '../data/combatValueEngine';
 import type { PairCounterComputation } from '../data/counterMatrix';
@@ -14,6 +14,7 @@ interface BandDef {
 }
 
 type HoverBandKey = BandDef['key'];
+type BreakdownKey = HoverBandKey | 'destroyed';
 
 const bandDefs: BandDef[] = [
   { key: 'economic', label: 'Economic', color: '#5DCAA5' },
@@ -25,7 +26,76 @@ const bandDefs: BandDef[] = [
   { key: 'advancement', label: 'Advancement', color: '#88AD6A' },
 ];
 
+type AllocationCategoryKey = 'economic' | 'technology' | 'military' | 'other';
+type AllocationGraphKey = 'economic' | 'technology' | 'military' | 'destroyed' | 'overall' | 'float';
+type AllocationLeader = 'you' | 'opponent' | 'tie';
+
+interface AllocationCategoryDef {
+  key: AllocationCategoryKey;
+  label: string;
+  bandKeys: HoverBandKey[];
+}
+
+interface AllocationGraphDef {
+  key: AllocationGraphKey;
+  label: string;
+  mode: 'share' | 'absolute';
+}
+
+export interface AllocationValues {
+  economic: number;
+  technology: number;
+  military: number;
+  other: number;
+  destroyed: number;
+  overall: number;
+  float: number;
+}
+
+interface AllocationComparisonRow {
+  you: number;
+  opponent: number;
+  delta: number;
+  youShare: number;
+  opponentShare: number;
+  shareDelta: number;
+}
+
+type AllocationComparison = Record<AllocationGraphKey | AllocationCategoryKey, AllocationComparisonRow>;
+
+export interface AllocationLeaderSegment {
+  categoryKey: AllocationGraphKey;
+  start: number;
+  end: number;
+  hoverTimestamp: number;
+  leader: AllocationLeader;
+  you: number;
+  opponent: number;
+}
+
+const allocationCategoryDefs: AllocationCategoryDef[] = [
+  { key: 'economic', label: 'Economic', bandKeys: ['economic'] },
+  { key: 'technology', label: 'Technology', bandKeys: ['research', 'advancement'] },
+  { key: 'military', label: 'Military', bandKeys: ['militaryCapacity', 'militaryActive', 'defensive'] },
+  { key: 'other', label: 'Other', bandKeys: ['populationCap'] },
+];
+
+const allocationGraphDefs: AllocationGraphDef[] = [
+  { key: 'economic', label: 'Economic', mode: 'share' },
+  { key: 'technology', label: 'Technology', mode: 'share' },
+  { key: 'military', label: 'Military', mode: 'share' },
+  { key: 'destroyed', label: 'Destroyed', mode: 'absolute' },
+  { key: 'overall', label: 'Overall', mode: 'absolute' },
+  { key: 'float', label: 'Float', mode: 'absolute' },
+];
+const shareAllocationKeys: Array<AllocationGraphKey | AllocationCategoryKey> = ['economic', 'technology', 'military'];
+const shareAllocationKeySet = new Set<AllocationGraphKey | AllocationCategoryKey>(shareAllocationKeys);
+const allocationLeaderGraphDefs = allocationGraphDefs.filter(graph =>
+  shareAllocationKeySet.has(graph.key)
+);
+
 type StrategyBucketKey = 'economy' | 'military' | 'technology';
+type SignificantEventPlayerKey = 'player1' | 'player2';
 
 interface StrategyBucketDef {
   key: StrategyBucketKey;
@@ -44,10 +114,15 @@ const poolLaneHeight = 170;
 const poolLaneGap = 42;
 const poolDeltaTopGap = 38;
 const poolDeltaHeight = 72;
-const strategyPadding = { top: 44, right: 12, bottom: 38, left: 58 };
-const strategyHeight = 430;
-const strategyLaneHeight = 96;
-const strategyLaneGap = 28;
+const strategyPadding = { top: 42, right: 12, bottom: 38, left: 96 };
+const strategyLaneHeight = 84;
+const strategyLaneGap = 24;
+const strategyHeight =
+  strategyPadding.top +
+  allocationGraphDefs.length * strategyLaneHeight +
+  (allocationGraphDefs.length - 1) * strategyLaneGap +
+  strategyPadding.bottom;
+const leaderStripHeight = 26 + allocationLeaderGraphDefs.length * 18 + (allocationLeaderGraphDefs.length - 1) * 8;
 const gatherPadding = { top: 16, right: 12, bottom: 24, left: 56 };
 const gatherHeight = 150;
 const villagerChartWidth = 470;
@@ -55,6 +130,8 @@ const villagerPadding = { top: 14, right: 10, bottom: 24, left: 42 };
 const villagerHeight = 180;
 const MATRIX_STRONG_THRESHOLD = 1.2;
 const MATRIX_WEAK_THRESHOLD = 0.85;
+const significantVillagerOpportunityTooltip =
+  'Scale-adjusted future missed gathering from killed villagers in this event window. The model removes those deaths, measures the future villager death-loss avoided, then discounts each future increment by event-time deployed resources divided by deployed resources at that later time.';
 
 interface HoverBandValues {
   economic: number;
@@ -64,8 +141,14 @@ interface HoverBandValues {
   defensive: number;
   research: number;
   advancement: number;
+  destroyed?: number;
+  float?: number;
+  gathered?: number;
   total: number;
 }
+
+type AccountingSnapshot = NonNullable<PostMatchViewModel['trajectory']['hoverSnapshots'][number]['accounting']>;
+type AccountingValues = AccountingSnapshot['you'];
 
 interface HoverSnapshot {
   timestamp: number;
@@ -78,6 +161,9 @@ interface HoverSnapshot {
   you: HoverBandValues;
   opponent: HoverBandValues;
   delta: HoverBandValues;
+  accounting: AccountingSnapshot;
+  allocation: AllocationComparison;
+  totalPoolTooltip: string;
   strategy: Record<StrategyBucketKey, {
     you: number;
     opponent: number;
@@ -89,6 +175,7 @@ interface HoverSnapshot {
     delta: number;
   };
   villagerOpportunity: PostMatchViewModel['trajectory']['hoverSnapshots'][number]['villagerOpportunity'];
+  significantEvent: SignificantTimelineEvent | null;
   adjustedMilitary: {
     you: number;
     opponent: number;
@@ -127,10 +214,12 @@ interface HoverSnapshot {
     }>;
     matrix: AdjustedMatrixPayload;
   };
-  bandBreakdown: Record<HoverBandKey, {
-    you: BandBreakdownEntry[];
-    opponent: BandBreakdownEntry[];
-  }>;
+  bandBreakdown: Record<HoverBandKey, BandBreakdownPayload> & Partial<Record<'destroyed', BandBreakdownPayload>>;
+}
+
+interface BandBreakdownPayload {
+  you: BandBreakdownEntry[];
+  opponent: BandBreakdownEntry[];
 }
 
 interface BandBreakdownEntry {
@@ -257,10 +346,130 @@ function poolPointAtOrBefore(series: PoolSeriesPoint[], timestamp: number): Pool
   return candidate;
 }
 
-function buildStrategyShares(values: HoverBandValues): Record<StrategyBucketKey, number> {
-  const economy = Math.max(0, values.economic + values.populationCap);
-  const military = Math.max(0, values.militaryActive + values.militaryCapacity);
+export function buildAllocationCategories(values: HoverBandValues): AllocationValues {
+  const economic = Math.max(0, values.economic);
   const technology = Math.max(0, values.research + values.advancement);
+  const military = Math.max(0, values.militaryCapacity + values.militaryActive + values.defensive);
+  const other = Math.max(0, values.populationCap);
+  const destroyed = Math.max(0, values.destroyed ?? 0);
+  const float = Math.max(0, values.float ?? 0);
+  return {
+    economic,
+    technology,
+    military,
+    other,
+    destroyed,
+    overall: Math.max(0, economic + technology + military + other - destroyed),
+    float,
+  };
+}
+
+function buildAllocationComparison(
+  you: HoverBandValues,
+  opponent: HoverBandValues
+): AllocationComparison {
+  const youCategories = buildAllocationCategories(you);
+  const opponentCategories = buildAllocationCategories(opponent);
+  const youShareTotal = Math.max(0, youCategories.economic + youCategories.technology + youCategories.military);
+  const opponentShareTotal = Math.max(0, opponentCategories.economic + opponentCategories.technology + opponentCategories.military);
+
+  const rowFor = (key: AllocationGraphKey | AllocationCategoryKey): AllocationComparisonRow => {
+    const youValue = youCategories[key];
+    const opponentValue = opponentCategories[key];
+    const youShare = allocationShareFor(key, youValue, youShareTotal);
+    const opponentShare = allocationShareFor(key, opponentValue, opponentShareTotal);
+
+    return {
+      you: youValue,
+      opponent: opponentValue,
+      delta: youValue - opponentValue,
+      youShare,
+      opponentShare,
+      shareDelta: roundToTenth(youShare - opponentShare),
+    };
+  };
+
+  return {
+    economic: rowFor('economic'),
+    technology: rowFor('technology'),
+    military: rowFor('military'),
+    other: rowFor('other'),
+    destroyed: rowFor('destroyed'),
+    overall: rowFor('overall'),
+    float: rowFor('float'),
+  };
+}
+
+function allocationShareFor(
+  key: AllocationGraphKey | AllocationCategoryKey,
+  value: number,
+  shareTotal: number
+): number {
+  if (!shareAllocationKeySet.has(key) || shareTotal <= 0) return 0;
+  return roundToTenth((value / shareTotal) * 100);
+}
+
+function hoverSnapshotAtOrBefore<T extends { timestamp: number }>(points: T[], timestamp: number): T {
+  if (points.length === 0) {
+    throw new Error('Expected at least one point for allocation segment generation');
+  }
+
+  let candidate = points[0];
+  for (const point of points) {
+    if (point.timestamp > timestamp) break;
+    candidate = point;
+  }
+  return candidate;
+}
+
+export function buildAllocationLeaderSegments(
+  points: Array<{
+    timestamp: number;
+    you: HoverBandValues;
+    opponent: HoverBandValues;
+    accounting?: HoverSnapshot['accounting'];
+  }>,
+  duration: number
+): AllocationLeaderSegment[] {
+  if (points.length === 0) return [];
+
+  const segmentCount = Math.max(1, Math.ceil(Math.max(1, duration) / 30));
+  const segments: AllocationLeaderSegment[] = [];
+
+  for (const graph of allocationLeaderGraphDefs) {
+    for (let index = 0; index < segmentCount; index += 1) {
+      const start = index * 30;
+      const end = Math.min(Math.max(1, duration), (index + 1) * 30);
+      const point = hoverSnapshotAtOrBefore(points, end);
+      const allocation = buildAllocationComparison(
+        point.accounting?.you ?? point.you,
+        point.accounting?.opponent ?? point.opponent
+      );
+      const row = allocation[graph.key];
+      const diff = row.you - row.opponent;
+      const leader: AllocationLeader =
+        Math.abs(diff) < 0.5 ? 'tie' : diff > 0 ? 'you' : 'opponent';
+
+      segments.push({
+        categoryKey: graph.key,
+        start,
+        end,
+        hoverTimestamp: point.timestamp,
+        leader,
+        you: row.you,
+        opponent: row.opponent,
+      });
+    }
+  }
+
+  return segments;
+}
+
+function buildStrategyShares(values: HoverBandValues): Record<StrategyBucketKey, number> {
+  const categories = buildAllocationCategories(values);
+  const economy = categories.economic;
+  const military = categories.military;
+  const technology = categories.technology;
   const total = economy + military + technology;
 
   if (total <= 0) {
@@ -302,6 +511,64 @@ function buildStrategySnapshot(
       delta: roundToTenth(youShares.technology - opponentShares.technology),
     },
   };
+}
+
+function fallbackAccountingValues(values: HoverBandValues): AccountingValues {
+  const destroyed = Math.max(0, Math.round(values.destroyed ?? 0));
+  const float = Math.max(0, Math.round(values.float ?? 0));
+  const gathered = Math.max(0, Math.round(values.gathered ?? values.total + destroyed + float));
+
+  return {
+    economic: Math.max(0, Math.round(values.economic)),
+    populationCap: Math.max(0, Math.round(values.populationCap)),
+    militaryCapacity: Math.max(0, Math.round(values.militaryCapacity)),
+    militaryActive: Math.max(0, Math.round(values.militaryActive)),
+    defensive: Math.max(0, Math.round(values.defensive)),
+    research: Math.max(0, Math.round(values.research)),
+    advancement: Math.max(0, Math.round(values.advancement)),
+    destroyed,
+    float,
+    gathered,
+    total: Math.max(0, Math.round(values.total)),
+  };
+}
+
+function deltaAccountingValues(you: AccountingValues, opponent: AccountingValues): AccountingValues {
+  return {
+    economic: you.economic - opponent.economic,
+    populationCap: you.populationCap - opponent.populationCap,
+    militaryCapacity: you.militaryCapacity - opponent.militaryCapacity,
+    militaryActive: you.militaryActive - opponent.militaryActive,
+    defensive: you.defensive - opponent.defensive,
+    research: you.research - opponent.research,
+    advancement: you.advancement - opponent.advancement,
+    destroyed: you.destroyed - opponent.destroyed,
+    float: you.float - opponent.float,
+    gathered: you.gathered - opponent.gathered,
+    total: you.total - opponent.total,
+  };
+}
+
+function fallbackAccountingSnapshot(
+  you: HoverBandValues,
+  opponent: HoverBandValues
+): AccountingSnapshot {
+  const accountingYou = fallbackAccountingValues(you);
+  const accountingOpponent = fallbackAccountingValues(opponent);
+
+  return {
+    you: accountingYou,
+    opponent: accountingOpponent,
+    delta: deltaAccountingValues(accountingYou, accountingOpponent),
+  };
+}
+
+function totalPoolTooltipText(allocation: AllocationComparison): string {
+  return [
+    'Economic + Technology + Military + Other - Destroyed = Total pool',
+    `You: ${formatNumber(allocation.economic.you)} + ${formatNumber(allocation.technology.you)} + ${formatNumber(allocation.military.you)} + ${formatNumber(allocation.other.you)} - ${formatNumber(allocation.destroyed.you)} = ${formatNumber(allocation.overall.you)}`,
+    `Opp: ${formatNumber(allocation.economic.opponent)} + ${formatNumber(allocation.technology.opponent)} + ${formatNumber(allocation.military.opponent)} + ${formatNumber(allocation.other.opponent)} - ${formatNumber(allocation.destroyed.opponent)} = ${formatNumber(allocation.overall.opponent)}`,
+  ].join(' | ');
 }
 
 type StrategyFocus = StrategyBucketKey | 'balanced';
@@ -524,6 +791,8 @@ function buildHoverSnapshots(model: PostMatchViewModel): HoverSnapshot[] {
       model.header.youCivilization,
       model.header.opponentCivilization
     );
+    const accounting = snapshot.accounting ?? fallbackAccountingSnapshot(snapshot.you, snapshot.opponent);
+    const allocation = buildAllocationComparison(accounting.you, accounting.opponent);
 
     return {
       timestamp: snapshot.timestamp,
@@ -536,9 +805,13 @@ function buildHoverSnapshots(model: PostMatchViewModel): HoverSnapshot[] {
       you: snapshot.you,
       opponent: snapshot.opponent,
       delta: snapshot.delta,
-      strategy: buildStrategySnapshot(snapshot.you, snapshot.opponent),
+      accounting,
+      allocation,
+      totalPoolTooltip: totalPoolTooltipText(allocation),
+      strategy: buildStrategySnapshot(accounting.you, accounting.opponent),
       gather: snapshot.gather,
       villagerOpportunity: snapshot.villagerOpportunity,
+      significantEvent: snapshot.significantEvent ?? null,
       adjustedMilitary: {
         ...snapshot.adjustedMilitary,
         matrix,
@@ -565,8 +838,122 @@ function hoverLabelAnchor(xPos: number): string {
   return xPos > svgWidth - 170 ? 'end' : 'start';
 }
 
+function significantEventTitle(event: SignificantTimelineEvent | null): string {
+  if (!event) return '';
+  if (event.headline) return event.headline;
+  return `${event.victimLabel} ${event.label}`;
+}
+
+function significantEventTopLossesText(event: SignificantTimelineEvent | null): string {
+  if (!event || event.topLosses.length === 0) return 'No itemized losses';
+  return event.topLosses
+    .map(item => `${item.label} x${formatNumber(item.count)} (${formatNumber(item.value)})`)
+    .join(' · ');
+}
+
+function significantEventLossRowsHtml(items: SignificantTimelineEvent['encounterLosses']['player1']): string {
+  if (items.length === 0) {
+    return '<li class="event-impact-loss-row event-impact-loss-row-empty">No losses</li>';
+  }
+
+  return items
+    .map(item => `
+          <li class="event-impact-loss-row">
+            <span class="event-impact-loss-name">${escapeHtml(item.label)} x${formatNumber(item.count)}</span>
+            <span class="event-impact-loss-value">${formatNumber(item.value)}</span>
+          </li>`)
+    .join('');
+}
+
+function significantEventLossValue(
+  event: SignificantTimelineEvent | null,
+  playerKey: SignificantEventPlayerKey,
+  metric: 'grossLoss' | 'immediateLoss' | 'villagerOpportunityLoss' | 'pctOfDeployed'
+): number {
+  if (!event) return 0;
+  const impact = event.playerImpacts?.[playerKey];
+  if (impact && Number.isFinite(impact[metric])) {
+    return impact[metric];
+  }
+  if (metric === 'immediateLoss' || metric === 'grossLoss') {
+    return (event.encounterLosses?.[playerKey] ?? [])
+      .reduce((sum, item) => sum + item.value, 0);
+  }
+  return 0;
+}
+
+function significantEventLossSummaryHtml(
+  event: SignificantTimelineEvent | null,
+  playerKey: SignificantEventPlayerKey,
+  playerLabel: string
+): string {
+  const totalLoss = significantEventLossValue(event, playerKey, 'grossLoss');
+  const immediateLoss = significantEventLossValue(event, playerKey, 'immediateLoss');
+  const villagerOpportunityLoss = significantEventLossValue(event, playerKey, 'villagerOpportunityLoss');
+  const pctOfDeployed = significantEventLossValue(event, playerKey, 'pctOfDeployed');
+  const opportunityHiddenAttr = event && villagerOpportunityLoss > 0 ? '' : ' hidden';
+  const shareLabel = `Share of ${playerLabel} deployed`;
+  return `
+              <dl class="event-impact-loss-summary" data-significant-event-loss-summary="${playerKey}">
+                <div><dt>Total loss</dt><dd data-significant-event-loss-total="${playerKey}">${event ? formatNumber(totalLoss) : ''}</dd></div>
+                <div><dt>Immediate loss</dt><dd data-significant-event-loss-immediate="${playerKey}">${event ? formatNumber(immediateLoss) : ''}</dd></div>
+                <div data-significant-event-loss-villager-opportunity-row="${playerKey}"${opportunityHiddenAttr}><dt><span data-villager-opportunity-event-tooltip title="${escapeHtml(significantVillagerOpportunityTooltip)}">Villager opportunity</span></dt><dd data-significant-event-loss-villager-opportunity="${playerKey}">${event ? formatNumber(villagerOpportunityLoss) : ''}</dd></div>
+                <div><dt data-significant-event-loss-share-label="${playerKey}">${escapeHtml(shareLabel)}</dt><dd data-significant-event-loss-share="${playerKey}">${event ? `${formatPrecise(pctOfDeployed, 1)}%` : ''}</dd></div>
+              </dl>`;
+}
+
+function significantEventLossesHtml(event: SignificantTimelineEvent | null): string {
+  const player1Label = event?.player1Civilization ?? 'Player 1';
+  const player2Label = event?.player2Civilization ?? 'Player 2';
+  return `
+        <div class="event-impact-loss-detail" data-significant-event-losses>
+          <div class="event-impact-loss-detail-title">Encounter losses</div>
+          <div class="event-impact-loss-columns">
+            <div class="event-impact-loss-column">
+              <div class="event-impact-loss-column-heading" data-significant-event-loss-heading="player1">${escapeHtml(player1Label)} losses</div>
+              ${significantEventLossSummaryHtml(event, 'player1', player1Label)}
+              <ul class="event-impact-loss-list" data-significant-event-loss-list="player1">${significantEventLossRowsHtml(event?.encounterLosses?.player1 ?? [])}</ul>
+            </div>
+            <div class="event-impact-loss-column">
+              <div class="event-impact-loss-column-heading" data-significant-event-loss-heading="player2">${escapeHtml(player2Label)} losses</div>
+              ${significantEventLossSummaryHtml(event, 'player2', player2Label)}
+              <ul class="event-impact-loss-list" data-significant-event-loss-list="player2">${significantEventLossRowsHtml(event?.encounterLosses?.player2 ?? [])}</ul>
+            </div>
+          </div>
+        </div>`;
+}
+
+function significantEventAriaLabel(event: SignificantTimelineEvent): string {
+  return `${event.label} at ${event.timeLabel}: ${event.headline || event.description}`;
+}
+
+function significantEventMarkerColor(event: SignificantTimelineEvent): string {
+  return event.victim === 'you' ? '#378ADD' : '#D85A30';
+}
+
+function significantEventMarkerGlyph(event: SignificantTimelineEvent): string {
+  if (event.kind === 'raid') return 'R';
+  if (event.kind === 'fight') return 'F';
+  return 'L';
+}
+
+function buildSignificantEventImpactHtml(event: SignificantTimelineEvent | null): string {
+  const hiddenAttr = event ? '' : ' hidden';
+  return `
+      <section class="event-impact" data-significant-event${hiddenAttr}>
+        <div class="event-impact-heading">Event impact</div>
+        <div class="event-impact-title" data-hover-field="significantEvent.label">${escapeHtml(significantEventTitle(event))}</div>
+        ${significantEventLossesHtml(event)}
+        <p class="event-impact-description" data-hover-field="significantEvent.description">${escapeHtml(event?.description ?? '')}</p>
+        <dl class="event-impact-metrics">
+          <div><dt>Gross impact</dt><dd data-hover-field="significantEvent.grossLoss">${event ? formatNumber(event.grossImpact ?? event.grossLoss) : ''}</dd></div>
+        </dl>
+        <div class="event-impact-losses" data-hover-field="significantEvent.topLosses">${escapeHtml(significantEventTopLossesText(event))}</div>
+      </section>`;
+}
+
 function buildHoverInspectorHtml(snapshot: HoverSnapshot): string {
-  function renderBreakdownList(entries: BandBreakdownEntry[], bandKey: HoverBandKey): string {
+  function renderBreakdownList(entries: BandBreakdownEntry[], bandKey: BreakdownKey): string {
     if (entries.length === 0) {
       return '<li class="band-breakdown-empty">No active items</li>';
     }
@@ -610,13 +997,15 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot): string {
       .join('');
   }
 
-  const bandRows = bandDefs
-    .map(band => {
+  const bandByKey = new Map(bandDefs.map(band => [band.key, band]));
+  const allocation = snapshot.allocation ?? buildAllocationComparison(snapshot.you, snapshot.opponent);
+
+  const renderBandRow = (band: BandDef, categoryKey: AllocationCategoryKey, collapsed: boolean): string => {
       const isSelected = band.key === 'economic';
       const selectedClass = isSelected ? ' is-selected' : '';
       const subRow = band.key === 'militaryActive'
         ? `
-          <tr class="band-sub-row inspector-adjusted-row">
+          <tr class="band-sub-row inspector-adjusted-row" data-allocation-category-child="${categoryKey}"${collapsed ? ' hidden' : ''}>
             <th><button type="button" class="band-sub-link" data-open-adjusted-explainer>Adjusted mil active</button></th>
             <td data-cell-label="You" data-hover-field="adjustedMilitary.you"><span class="inspector-adjusted-value-main">${formatNumber(snapshot.adjustedMilitary.you)}</span><small class="inspector-adjusted-value-pct">(${formatSignedPercent(snapshot.adjustedMilitary.youPct)})</small></td>
             <td data-cell-label="Opp" data-hover-field="adjustedMilitary.opponent"><span class="inspector-adjusted-value-main">${formatNumber(snapshot.adjustedMilitary.opponent)}</span><small class="inspector-adjusted-value-pct">(${formatSignedPercent(snapshot.adjustedMilitary.opponentPct)})</small></td>
@@ -626,7 +1015,7 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot): string {
         : '';
 
       return `
-        <tr class="band-row${selectedClass}">
+        <tr class="band-row${selectedClass}" data-allocation-category-child="${categoryKey}"${collapsed ? ' hidden' : ''}>
           <th>
             <button type="button" class="band-toggle" data-band-key="${band.key}" aria-pressed="${isSelected ? 'true' : 'false'}">
               <span class="legend-dot" style="background:${band.color}"></span>${escapeHtml(band.label)}
@@ -638,6 +1027,47 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot): string {
         </tr>
         ${subRow}
       `;
+  };
+  const renderDestroyedRow = (): string => {
+    const row = allocation.destroyed;
+    return `
+        <tr class="band-row inspector-destroyed-row" data-inspector-row="destroyed">
+          <th>
+            <button type="button" class="band-toggle" data-band-key="destroyed" aria-pressed="false">
+              <span class="legend-dot destroyed-dot"></span>Destroyed
+            </button>
+          </th>
+          <td data-cell-label="You" data-hover-field="allocation.destroyed.you">${formatNumber(row.you)}</td>
+          <td data-cell-label="Opp" data-hover-field="allocation.destroyed.opponent">${formatNumber(row.opponent)}</td>
+          <td data-cell-label="Delta" data-hover-field="allocation.destroyed.delta">${formatSigned(row.delta)}</td>
+        </tr>
+      `;
+  };
+
+  const bandRows = allocationCategoryDefs
+    .map(category => {
+      const row = allocation[category.key];
+      const expanded = category.key === 'economic';
+      const children = category.bandKeys
+        .map(key => {
+          const band = bandByKey.get(key);
+          return band ? renderBandRow(band, category.key, !expanded) : '';
+        })
+        .join('');
+
+      return `
+        <tr class="allocation-category-row" data-allocation-category-row="${category.key}">
+          <th>
+            <button type="button" class="allocation-category-toggle" data-allocation-category-toggle="${category.key}" aria-expanded="${expanded ? 'true' : 'false'}">
+              <span class="category-caret" aria-hidden="true"></span>${escapeHtml(category.label)}
+            </button>
+          </th>
+          <td data-cell-label="You" data-hover-field="allocation.${category.key}.you">${formatNumber(row.you)}</td>
+          <td data-cell-label="Opp" data-hover-field="allocation.${category.key}.opponent">${formatNumber(row.opponent)}</td>
+          <td data-cell-label="Delta" data-hover-field="allocation.${category.key}.delta">${formatSigned(row.delta)}</td>
+        </tr>
+        ${children}
+      `;
     })
     .join('');
 
@@ -648,11 +1078,12 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot): string {
       <div class="inspector-eyebrow">Hover inspector</div>
       <div class="inspector-time" data-hover-field="timeLabel">${escapeHtml(snapshot.timeLabel)}</div>
       <div class="inspector-context" data-hover-context>${snapshot.markers.length > 0 ? escapeHtml(snapshot.markers.join(' · ')) : 'Click to pin · Esc to clear'}</div>
+      ${buildSignificantEventImpactHtml(snapshot.significantEvent)}
       <div class="inspector-table-wrap" tabindex="0" role="region" aria-label="Hover inspector values table">
         <table class="inspector-table">
           <thead>
             <tr>
-              <th>Band</th>
+              <th>Category / band</th>
               <th>You</th>
               <th>Opp</th>
               <th>Delta</th>
@@ -660,11 +1091,18 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot): string {
           </thead>
           <tbody>
             ${bandRows}
+            ${renderDestroyedRow()}
             <tr class="inspector-total-row">
-              <th>Total pool</th>
-              <td data-cell-label="You" data-hover-field="you.total">${formatNumber(snapshot.you.total)}</td>
-              <td data-cell-label="Opp" data-hover-field="opponent.total">${formatNumber(snapshot.opponent.total)}</td>
-              <td data-cell-label="Delta" data-hover-field="delta.total">${formatSigned(snapshot.delta.total)}</td>
+              <th><span data-total-pool-tooltip title="${escapeHtml(snapshot.totalPoolTooltip)}">Total Pool</span></th>
+              <td data-cell-label="You" data-hover-field="allocation.overall.you">${formatNumber(allocation.overall.you)}</td>
+              <td data-cell-label="Opp" data-hover-field="allocation.overall.opponent">${formatNumber(allocation.overall.opponent)}</td>
+              <td data-cell-label="Delta" data-hover-field="allocation.overall.delta">${formatSigned(allocation.overall.delta)}</td>
+            </tr>
+            <tr class="inspector-float-row">
+              <th>Float (not deployed)</th>
+              <td data-cell-label="You" data-hover-field="allocation.float.you">${formatNumber(allocation.float.you)}</td>
+              <td data-cell-label="Opp" data-hover-field="allocation.float.opponent">${formatNumber(allocation.float.opponent)}</td>
+              <td data-cell-label="Delta" data-hover-field="allocation.float.delta">${formatSigned(allocation.float.delta)}</td>
             </tr>
             <tr>
               <th>Gather/min</th>
@@ -926,8 +1364,12 @@ function buildAdjustedMatrixHtml(snapshot: HoverSnapshot): string {
 
 function buildAdjustedMilitaryBreakdownSection(snapshot: HoverSnapshot): string {
   return `
-    <section class="panel" id="adjusted-military-explainer">
-      <h2 class="section-title">Adjusted military active method</h2>
+    <details class="panel secondary-panel" id="adjusted-military-explainer" data-secondary-section="adjusted-military">
+      <summary class="secondary-summary">
+        <span class="section-title">Adjusted military active method</span>
+        <span class="secondary-summary-meta">Composition matchup math</span>
+      </summary>
+      <div class="secondary-body">
       <p class="section-note">
         Adjusted military active estimates clash-ready strength by combining composition matchups with completed military upgrades.
         Computed at <strong data-adjusted-field="timeLabel">${escapeHtml(snapshot.timeLabel)}</strong> using
@@ -976,7 +1418,8 @@ function buildAdjustedMilitaryBreakdownSection(snapshot: HoverSnapshot): string 
       <div data-adjusted-field="matrixMock">
         ${buildAdjustedMatrixHtml(snapshot)}
       </div>
-    </section>`;
+      </div>
+    </details>`;
 }
 
 function formatPoolTooltip(label: string, point: PoolSeriesPoint): string[] {
@@ -1052,6 +1495,44 @@ function buildAgeMarkerLayer(params: {
       </g>`;
     })
     .join('');
+}
+
+function uniqueSignificantEvents(hoverSnapshots: HoverSnapshot[]): SignificantTimelineEvent[] {
+  const byId = new Map<string, SignificantTimelineEvent>();
+  for (const snapshot of hoverSnapshots) {
+    if (snapshot.significantEvent) {
+      byId.set(snapshot.significantEvent.id, snapshot.significantEvent);
+    }
+  }
+  return [...byId.values()].sort((a, b) => a.timestamp - b.timestamp || a.id.localeCompare(b.id));
+}
+
+function buildSignificantEventMarkerLayer(params: {
+  events: SignificantTimelineEvent[];
+  duration: number;
+  x: (timestamp: number) => number;
+  lineStartY: number;
+  lineEndY: number;
+}): string {
+  const events = params.events.filter(event => event.timestamp >= 0 && event.timestamp <= params.duration);
+  if (events.length === 0) return '';
+
+  const markerY = Math.max(18, params.lineStartY - 18);
+  return `<g class="significant-event-markers" aria-label="Significant loss events">
+    ${events
+    .map(event => {
+      const xPos = params.x(event.timestamp);
+      const color = significantEventMarkerColor(event);
+      const label = significantEventAriaLabel(event);
+      return `<g class="significant-event-marker hover-target" data-significant-event-marker data-hover-timestamp="${event.timestamp}" role="button" tabindex="0" aria-label="${escapeHtml(label)}">
+        <line class="significant-event-stem" x1="${xPos.toFixed(2)}" y1="${markerY.toFixed(2)}" x2="${xPos.toFixed(2)}" y2="${params.lineEndY.toFixed(2)}" stroke="${color}" />
+        <circle class="significant-event-dot" cx="${xPos.toFixed(2)}" cy="${markerY.toFixed(2)}" r="10" fill="${color}" />
+        <text class="significant-event-glyph" x="${xPos.toFixed(2)}" y="${(markerY + 3.7).toFixed(2)}" text-anchor="middle">${escapeHtml(significantEventMarkerGlyph(event))}</text>
+        <title>${escapeHtml(label)}</title>
+      </g>`;
+    })
+    .join('')}
+  </g>`;
 }
 
 function buildPoolComparisonSvg(
@@ -1238,6 +1719,99 @@ function buildPoolComparisonSvg(
 </svg>`;
 }
 
+function leaderColor(leader: AllocationLeader): string {
+  if (leader === 'you') return '#378ADD';
+  if (leader === 'opponent') return '#D85A30';
+  return '#A8AEA5';
+}
+
+function roundUpAbsoluteAxisMax(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 1;
+  const exponent = Math.floor(Math.log10(value));
+  const step = 10 ** Math.max(0, exponent - 1);
+  return Math.ceil(value / step) * step;
+}
+
+function roundUpPercentAxisMax(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 10;
+  return Math.min(100, Math.max(10, Math.ceil(value / 5) * 5));
+}
+
+function allocationLaneMaxY(
+  graph: AllocationGraphDef,
+  hoverSnapshots: HoverSnapshot[]
+): number {
+  const maxValue = Math.max(
+    0,
+    ...hoverSnapshots.flatMap(snapshot => {
+      const row = snapshot.allocation[graph.key];
+      return graph.mode === 'absolute'
+        ? [row.you, row.opponent]
+        : [row.youShare, row.opponentShare];
+    })
+  );
+
+  return graph.mode === 'absolute'
+    ? roundUpAbsoluteAxisMax(maxValue)
+    : roundUpPercentAxisMax(maxValue);
+}
+
+function buildAllocationLeaderStripSvg(
+  hoverSnapshots: HoverSnapshot[],
+  duration: number
+): string {
+  const width = svgWidth;
+  const padding = strategyPadding;
+  const plotWidth = width - padding.left - padding.right;
+  const maxX = Math.max(duration, 1);
+  const rowHeight = 18;
+  const rowGap = 8;
+  const firstRowTop = 18;
+  const x = (timestamp: number): number => padding.left + (timestamp / maxX) * plotWidth;
+  const segments = buildAllocationLeaderSegments(hoverSnapshots, duration);
+
+  const rows = allocationLeaderGraphDefs
+    .map((category, idx) => {
+      const rowTop = firstRowTop + idx * (rowHeight + rowGap);
+      const segmentRects = segments
+        .filter(segment => segment.categoryKey === category.key)
+        .map(segment => {
+          const startX = x(segment.start);
+          const endX = x(segment.end);
+          const widthPx = Math.max(1, endX - startX);
+          const title = `${category.label} ${formatTime(segment.start)}-${formatTime(segment.end)}: You ${formatNumber(segment.you)}, Opp ${formatNumber(segment.opponent)}`;
+          return `<rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="${category.key}" data-leader="${segment.leader}" data-hover-timestamp="${segment.hoverTimestamp}" x="${startX.toFixed(2)}" y="${rowTop.toFixed(2)}" width="${widthPx.toFixed(2)}" height="${rowHeight}" fill="${leaderColor(segment.leader)}" pointer-events="all"><title>${escapeHtml(title)}</title></rect>`;
+        })
+        .join('');
+
+      return `
+        <g>
+          <text x="12" y="${(rowTop + 13).toFixed(2)}" font-size="12" font-weight="700" fill="#253226">${escapeHtml(category.label)}</text>
+          ${segmentRects}
+        </g>
+      `;
+    })
+    .join('');
+
+  const xTicks = [0, 0.25, 0.5, 0.75, 1]
+    .map(step => {
+      const timestamp = Math.round(maxX * step);
+      const xPos = x(timestamp);
+      return `
+        <line x1="${xPos.toFixed(2)}" y1="12" x2="${xPos.toFixed(2)}" y2="${(leaderStripHeight - 16).toFixed(2)}" stroke="#E4E8E1" stroke-width="1" />
+        <text x="${xPos.toFixed(2)}" y="${(leaderStripHeight - 4).toFixed(2)}" text-anchor="middle" font-size="10" fill="#5B6257">${formatTime(timestamp)}</text>
+      `;
+    })
+    .join('');
+
+  return `
+<svg id="allocation-leader-strip" class="leader-strip" viewBox="0 0 ${width} ${leaderStripHeight}" role="img" aria-label="Thirty-second leader strip by allocation category">
+  <rect x="0" y="0" width="${width}" height="${leaderStripHeight}" fill="#F7FAF8" rx="8" />
+  ${xTicks}
+  ${rows}
+</svg>`;
+}
+
 function buildStrategyAllocationSvg(
   hoverSnapshots: HoverSnapshot[],
   duration: number,
@@ -1248,18 +1822,18 @@ function buildStrategyAllocationSvg(
   const padding = strategyPadding;
   const plotWidth = width - padding.left - padding.right;
   const x = (timestamp: number): number => scaledX(timestamp, duration, padding);
-  const y = (value: number, laneTop: number): number =>
-    laneTop + strategyLaneHeight - (Math.max(0, Math.min(100, value)) / 100) * strategyLaneHeight;
   const defaultHover = hoverSnapshots[0];
 
   if (!defaultHover) {
     return `
-<svg id="strategy-allocation" class="strategy-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Strategic allocation state chart">
+<svg id="allocation-comparison" class="strategy-chart allocation-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Allocation comparison chart">
   <rect x="0" y="0" width="${width}" height="${height}" fill="#F7FAF8" rx="10" />
 </svg>`;
   }
 
   const maxX = Math.max(duration, 1);
+  const yFor = (value: number, laneTop: number, maxY: number): number =>
+    laneTop + strategyLaneHeight - (Math.max(0, Math.min(maxY, value)) / maxY) * strategyLaneHeight;
   const xTicks = [0, 0.25, 0.5, 0.75, 1]
     .map(step => {
       const timestamp = Math.round(maxX * step);
@@ -1281,10 +1855,13 @@ function buildStrategyAllocationSvg(
       const rightTimestamp = idx === hoverSnapshots.length - 1 ? maxX : (timestamp + nextTimestamp) / 2;
       const left = x(leftTimestamp);
       const right = x(rightTimestamp);
-      const title = strategyBucketDefs
-        .map(bucket => {
-          const row = snapshot.strategy[bucket.key];
-          return `${bucket.label}: You ${formatStrategyShare(row.you)}, Opp ${formatStrategyShare(row.opponent)}, Delta ${formatSignedPercentagePoints(row.delta)}`;
+      const title = allocationGraphDefs
+        .map(graph => {
+          const row = snapshot.allocation[graph.key];
+          if (graph.mode === 'absolute') {
+            return `${graph.label}: You ${formatNumber(row.you)}, Opp ${formatNumber(row.opponent)}, Delta ${formatSigned(row.delta)}`;
+          }
+          return `${graph.label}: You ${formatStrategyShare(row.youShare)}, Opp ${formatStrategyShare(row.opponentShare)}, Delta ${formatSignedPercentagePoints(row.shareDelta)}`;
         })
         .join(' | ');
 
@@ -1292,29 +1869,51 @@ function buildStrategyAllocationSvg(
     })
     .join('');
 
-  const lanes = strategyBucketDefs
-    .map((bucket, idx) => {
+  const lanes = allocationGraphDefs
+    .map((graph, idx) => {
       const laneTop = padding.top + idx * (strategyLaneHeight + strategyLaneGap);
       const laneBottom = laneTop + strategyLaneHeight;
+      const maxY = allocationLaneMaxY(graph, hoverSnapshots);
+      const valueFor = (snapshot: HoverSnapshot, side: 'you' | 'opponent'): number => {
+        const row = snapshot.allocation[graph.key];
+        return graph.mode === 'absolute' ? row[side] : side === 'you' ? row.youShare : row.opponentShare;
+      };
       const youPath = hoverSnapshots
-        .map((snapshot, pointIdx) => `${pointIdx === 0 ? 'M' : 'L'} ${x(snapshot.timestamp).toFixed(2)} ${y(snapshot.strategy[bucket.key].you, laneTop).toFixed(2)}`)
+        .map((snapshot, pointIdx) => `${pointIdx === 0 ? 'M' : 'L'} ${x(snapshot.timestamp).toFixed(2)} ${yFor(valueFor(snapshot, 'you'), laneTop, maxY).toFixed(2)}`)
         .join(' ');
       const opponentPath = hoverSnapshots
-        .map((snapshot, pointIdx) => `${pointIdx === 0 ? 'M' : 'L'} ${x(snapshot.timestamp).toFixed(2)} ${y(snapshot.strategy[bucket.key].opponent, laneTop).toFixed(2)}`)
+        .map((snapshot, pointIdx) => `${pointIdx === 0 ? 'M' : 'L'} ${x(snapshot.timestamp).toFixed(2)} ${yFor(valueFor(snapshot, 'opponent'), laneTop, maxY).toFixed(2)}`)
         .join(' ');
+      const topLabel = graph.mode === 'absolute' ? formatNumber(maxY) : formatStrategyShare(maxY);
+      const midLabel = graph.mode === 'absolute' ? formatNumber(maxY / 2) : formatStrategyShare(maxY / 2);
+      const bottomLabel = graph.mode === 'absolute' ? '0' : '0%';
+      const defaultRow = defaultHover.allocation[graph.key];
+      const labelText = graph.mode === 'absolute'
+        ? `${graph.label} Δ ${formatSigned(defaultRow.delta)}`
+        : `${graph.label} Δ ${formatSignedPercentagePoints(defaultRow.shareDelta)}`;
+      const readoutX = padding.left + plotWidth - 8;
 
+      const laneClass = `allocation-lane allocation-lane-${graph.key}`;
+      const laneBackground = graph.mode === 'absolute'
+        ? `<rect class="allocation-lane-bg" x="${padding.left}" y="${(laneTop - 8).toFixed(2)}" width="${plotWidth.toFixed(2)}" height="${(strategyLaneHeight + 16).toFixed(2)}" rx="6" />`
+        : '';
+      const laneDivider = graph.mode === 'absolute'
+        ? `<line class="allocation-lane-divider" x1="0" y1="${(laneTop - 14).toFixed(2)}" x2="${width}" y2="${(laneTop - 14).toFixed(2)}" />`
+        : '';
       return `
-        <g>
-          <text x="12" y="${(laneTop + 15).toFixed(2)}" font-size="13" font-weight="700" fill="#253226">${escapeHtml(bucket.label)}</text>
-          <text x="${(padding.left - 8).toFixed(2)}" y="${(laneTop + 4).toFixed(2)}" text-anchor="end" font-size="10" fill="#5B6257">100%</text>
-          <text x="${(padding.left - 8).toFixed(2)}" y="${(laneTop + strategyLaneHeight / 2 + 4).toFixed(2)}" text-anchor="end" font-size="10" fill="#5B6257">50%</text>
-          <text x="${(padding.left - 8).toFixed(2)}" y="${(laneBottom + 4).toFixed(2)}" text-anchor="end" font-size="10" fill="#5B6257">0%</text>
+        <g class="${laneClass}">
+          ${laneDivider}
+          ${laneBackground}
+          <text x="12" y="${(laneTop + 19).toFixed(2)}" font-size="13" font-weight="800" fill="#253226">${escapeHtml(graph.label)}</text>
+          <text x="${(padding.left - 8).toFixed(2)}" y="${(laneTop + 4).toFixed(2)}" text-anchor="end" font-size="11" fill="#5B6257">${topLabel}</text>
+          <text x="${(padding.left - 8).toFixed(2)}" y="${(laneTop + strategyLaneHeight / 2 + 4).toFixed(2)}" text-anchor="end" font-size="11" fill="#5B6257">${midLabel}</text>
+          <text x="${(padding.left - 8).toFixed(2)}" y="${(laneBottom + 4).toFixed(2)}" text-anchor="end" font-size="11" fill="#5B6257">${bottomLabel}</text>
           <line x1="${padding.left}" y1="${laneTop.toFixed(2)}" x2="${(padding.left + plotWidth).toFixed(2)}" y2="${laneTop.toFixed(2)}" stroke="#D9DDD8" stroke-width="1" />
           <line x1="${padding.left}" y1="${(laneTop + strategyLaneHeight / 2).toFixed(2)}" x2="${(padding.left + plotWidth).toFixed(2)}" y2="${(laneTop + strategyLaneHeight / 2).toFixed(2)}" stroke="#D9DDD8" stroke-width="1" />
           <line x1="${padding.left}" y1="${laneBottom.toFixed(2)}" x2="${(padding.left + plotWidth).toFixed(2)}" y2="${laneBottom.toFixed(2)}" stroke="#5B6257" stroke-width="1.1" />
           <path d="${youPath}" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
           <path d="${opponentPath}" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
-          <text data-hover-label-strategy-${bucket.key} class="hover-value-label delta-label" x="${hoverLabelX(defaultHover.strategyX).toFixed(2)}" y="${(laneTop + 18).toFixed(2)}" text-anchor="${hoverLabelAnchor(defaultHover.strategyX)}">${escapeHtml(bucket.label)} Δ ${formatSignedPercentagePoints(defaultHover.strategy[bucket.key].delta)}</text>
+          <text data-hover-label-strategy-${graph.key} data-fixed-label="true" class="hover-value-label delta-label" x="${readoutX.toFixed(2)}" y="${(laneTop + 18).toFixed(2)}" text-anchor="end">${escapeHtml(labelText)}</text>
         </g>
       `;
     })
@@ -1329,11 +1928,17 @@ function buildStrategyAllocationSvg(
     lineEndY: height - padding.bottom,
     showLabels: false,
   });
+  const significantEventLayer = buildSignificantEventMarkerLayer({
+    events: uniqueSignificantEvents(hoverSnapshots),
+    duration,
+    x,
+    lineStartY: padding.top,
+    lineEndY: height - padding.bottom,
+  });
 
   return `
-<svg id="strategy-allocation" class="strategy-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Strategic allocation state chart">
+<svg id="allocation-comparison" class="strategy-chart allocation-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Allocation comparison chart">
   <rect x="0" y="0" width="${width}" height="${height}" fill="#F7FAF8" rx="10" />
-  <text x="${padding.left}" y="22" font-size="12" fill="#5B6257">Share of non-defensive strategic allocation. Hover for percentage-point deltas.</text>
   ${xTicks}
   ${ageMarkerLayer}
   ${lanes}
@@ -1342,6 +1947,7 @@ function buildStrategyAllocationSvg(
     <text data-hover-label-strategy-time class="hover-value-label" x="${hoverLabelX(defaultHover.strategyX).toFixed(2)}" y="38" text-anchor="${hoverLabelAnchor(defaultHover.strategyX)}">${escapeHtml(defaultHover.timeLabel)}</text>
   </g>
   ${hoverColumns}
+  ${significantEventLayer}
 </svg>`;
 }
 
@@ -1601,6 +2207,7 @@ function buildVillagerOpportunityCard(
         defensive: { you: [], opponent: [] },
         research: { you: [], opponent: [] },
         advancement: { you: [], opponent: [] },
+        destroyed: { you: [], opponent: [] },
       },
     }];
   const defaultHover = safeHoverSnapshots[0];
@@ -1678,8 +2285,12 @@ function buildVillagerOpportunityCard(
 
 function buildVillagerOpportunitySection(model: PostMatchViewModel, hoverSnapshots: HoverSnapshot[]): string {
   return `
-    <section class="panel" id="villager-opportunity">
-      <h2 class="section-title">Villager opportunity cost</h2>
+    <details class="panel secondary-panel" id="villager-opportunity" data-secondary-section="villager-opportunity">
+      <summary class="secondary-summary">
+        <span class="section-title">Villager opportunity cost</span>
+        <span class="secondary-summary-meta">Counterfactual economy detail</span>
+      </summary>
+      <div class="secondary-body">
       <p class="section-note">Counterfactual villager production is capped at ${formatNumber(model.villagerOpportunity.targetVillagers)} villagers. The chart compares cumulative villager-opportunity loss, cumulative resources gained, and cumulative possible resources (gained + loss). Underproduction is the counterfactual gap versus expected villagers; Villagers lost is observed villager deaths from the summary. Cumulative loss still includes interim loss from dead villagers even if they are replaced later. Percentage metrics normalize against each player&apos;s total gathered resources, and damage dealt uses opponent death-loss as the villager-kill impact proxy.</p>
       <div class="villager-opportunity-legend">
         <span class="line-chip"><span class="line-swatch" style="border-color:#C56C52"></span>Cumulative loss</span>
@@ -1706,7 +2317,8 @@ function buildVillagerOpportunitySection(model: PostMatchViewModel, hoverSnapsho
           hoverSnapshots
         )}
       </div>
-    </section>
+      </div>
+    </details>
   `;
 }
 
@@ -1739,12 +2351,16 @@ function buildHoverInteractionScript(hoverSnapshots: HoverSnapshot[]): string {
         militaryActive: 'Mil active',
         defensive: 'Defensive',
         research: 'Research',
-        advancement: 'Advancement'
+        advancement: 'Advancement',
+        destroyed: 'Destroyed'
       };
-      var strategyLabels = {
-        economy: 'Economy',
-        military: 'Military',
-        technology: 'Technology'
+      var allocationGraphDefs = {
+        economic: { label: 'Economic', mode: 'share' },
+        technology: { label: 'Technology', mode: 'share' },
+        military: { label: 'Military', mode: 'share' },
+        destroyed: { label: 'Destroyed', mode: 'absolute' },
+        overall: { label: 'Overall', mode: 'absolute' },
+        float: { label: 'Float', mode: 'absolute' }
       };
 
       function formatNumber(value) {
@@ -1799,6 +2415,12 @@ function buildHoverInteractionScript(hoverSnapshots: HoverSnapshot[]): string {
         setText('[data-hover-field="' + name + '"]', text);
       }
 
+      function setTitle(selector, text) {
+        document.querySelectorAll(selector).forEach(function (el) {
+          el.setAttribute('title', text);
+        });
+      }
+
       function setAdjustedField(name, text) {
         setText('[data-adjusted-field="' + name + '"]', text);
       }
@@ -1817,8 +2439,10 @@ function buildHoverInteractionScript(hoverSnapshots: HoverSnapshot[]): string {
 
       function setSvgLabel(selector, x, text) {
         document.querySelectorAll(selector).forEach(function (el) {
-          el.setAttribute('x', String(labelX(x)));
-          el.setAttribute('text-anchor', labelAnchor(x));
+          if (!el.hasAttribute('data-fixed-label')) {
+            el.setAttribute('x', String(labelX(x)));
+            el.setAttribute('text-anchor', labelAnchor(x));
+          }
           el.textContent = text;
         });
       }
@@ -1902,6 +2526,15 @@ function buildHoverInteractionScript(hoverSnapshots: HoverSnapshot[]): string {
             if (isSelected) row.classList.add('is-selected');
             else row.classList.remove('is-selected');
           }
+        });
+      }
+
+      function setCategoryCollapsed(key, collapsed) {
+        document.querySelectorAll('[data-allocation-category-child="' + key + '"]').forEach(function (row) {
+          row.hidden = collapsed;
+        });
+        document.querySelectorAll('[data-allocation-category-toggle="' + key + '"]').forEach(function (button) {
+          button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
         });
       }
 
@@ -2004,6 +2637,107 @@ function buildHoverInteractionScript(hoverSnapshots: HoverSnapshot[]): string {
         return sign + rounded.toFixed(1) + 'pp';
       }
 
+      function significantTopLossesText(event) {
+        if (!event || !Array.isArray(event.topLosses) || event.topLosses.length === 0) {
+          return 'No itemized losses';
+        }
+        return event.topLosses.map(function (item) {
+          return (item.label || 'Loss') + ' x' + formatNumber(item.count) + ' (' + formatNumber(item.value) + ')';
+        }).join(' · ');
+      }
+
+      function significantEventLossRowsHtml(items) {
+        if (!Array.isArray(items) || items.length === 0) {
+          return '<li class="event-impact-loss-row event-impact-loss-row-empty">No losses</li>';
+        }
+        return items.map(function (item) {
+          return '<li class="event-impact-loss-row">' +
+            '<span class="event-impact-loss-name">' + escapeHtml(item.label || 'Loss') + ' x' + formatNumber(item.count || 0) + '</span>' +
+            '<span class="event-impact-loss-value">' + formatNumber(item.value || 0) + '</span>' +
+            '</li>';
+        }).join('');
+      }
+
+      function significantEventLossValue(event, playerKey, metric) {
+        if (!event) return 0;
+        var impact = event.playerImpacts ? event.playerImpacts[playerKey] : null;
+        if (impact && Number.isFinite(Number(impact[metric]))) {
+          return Number(impact[metric]);
+        }
+        if (metric === 'immediateLoss' || metric === 'grossLoss') {
+          var losses = event.encounterLosses && Array.isArray(event.encounterLosses[playerKey])
+            ? event.encounterLosses[playerKey]
+            : [];
+          return losses.reduce(function (sum, item) {
+            return sum + Number(item.value || 0);
+          }, 0);
+        }
+        return 0;
+      }
+
+      function setSignificantLossSummaryText(attr, playerKey, value) {
+        document.querySelectorAll('[data-significant-event-loss-' + attr + '="' + playerKey + '"]').forEach(function (el) {
+          el.textContent = value;
+        });
+      }
+
+      function updateSignificantEventLossSummary(event, playerKey, playerLabel) {
+        var totalLoss = significantEventLossValue(event, playerKey, 'grossLoss');
+        var immediateLoss = significantEventLossValue(event, playerKey, 'immediateLoss');
+        var villagerOpportunityLoss = significantEventLossValue(event, playerKey, 'villagerOpportunityLoss');
+        var pctOfDeployed = significantEventLossValue(event, playerKey, 'pctOfDeployed');
+        setSignificantLossSummaryText('total', playerKey, event ? formatNumber(totalLoss) : '');
+        setSignificantLossSummaryText('immediate', playerKey, event ? formatNumber(immediateLoss) : '');
+        setSignificantLossSummaryText('villager-opportunity', playerKey, event ? formatNumber(villagerOpportunityLoss) : '');
+        setSignificantLossSummaryText('share', playerKey, event ? formatPrecise(pctOfDeployed, 1) + '%' : '');
+        document.querySelectorAll('[data-significant-event-loss-share-label="' + playerKey + '"]').forEach(function (el) {
+          el.textContent = 'Share of ' + playerLabel + ' deployed';
+        });
+        document.querySelectorAll('[data-significant-event-loss-villager-opportunity-row="' + playerKey + '"]').forEach(function (el) {
+          el.hidden = !event || villagerOpportunityLoss <= 0;
+        });
+      }
+
+      function updateSignificantEventLosses(event) {
+        var player1Label = event && event.player1Civilization ? event.player1Civilization : 'Player 1';
+        var player2Label = event && event.player2Civilization ? event.player2Civilization : 'Player 2';
+        document.querySelectorAll('[data-significant-event-loss-heading="player1"]').forEach(function (el) {
+          el.textContent = player1Label + ' losses';
+        });
+        document.querySelectorAll('[data-significant-event-loss-heading="player2"]').forEach(function (el) {
+          el.textContent = player2Label + ' losses';
+        });
+        document.querySelectorAll('[data-significant-event-loss-list="player1"]').forEach(function (el) {
+          el.innerHTML = significantEventLossRowsHtml(event && event.encounterLosses ? event.encounterLosses.player1 : []);
+        });
+        document.querySelectorAll('[data-significant-event-loss-list="player2"]').forEach(function (el) {
+          el.innerHTML = significantEventLossRowsHtml(event && event.encounterLosses ? event.encounterLosses.player2 : []);
+        });
+        updateSignificantEventLossSummary(event, 'player1', player1Label);
+        updateSignificantEventLossSummary(event, 'player2', player2Label);
+      }
+
+      function updateSignificantEvent(point) {
+        var event = point.significantEvent || null;
+        document.querySelectorAll('[data-significant-event]').forEach(function (el) {
+          el.hidden = !event;
+        });
+        if (!event) {
+          setField('significantEvent.label', '');
+          setField('significantEvent.description', '');
+          setField('significantEvent.grossLoss', '');
+          setField('significantEvent.topLosses', '');
+          updateSignificantEventLosses(null);
+          return;
+        }
+
+        setField('significantEvent.label', event.headline || ((event.victimLabel ? event.victimLabel + ' ' : '') + (event.label || 'Event')));
+        setField('significantEvent.description', event.description || '');
+        setField('significantEvent.grossLoss', formatNumber(event.grossImpact ?? event.grossLoss));
+        setField('significantEvent.topLosses', significantTopLossesText(event));
+        updateSignificantEventLosses(event);
+      }
+
       function updateInspector(timestamp) {
         var point = byTimestamp.get(String(timestamp));
         if (!point) return;
@@ -2017,12 +2751,25 @@ function buildHoverInteractionScript(hoverSnapshots: HoverSnapshot[]): string {
             ? (markerText ? 'Pinned · ' + markerText + ' · Esc to clear' : 'Pinned · Esc to clear')
             : (markerText || 'Click to pin · Esc to clear');
         }
+        updateSignificantEvent(point);
 
         ['economic', 'populationCap', 'militaryCapacity', 'militaryActive', 'defensive', 'research', 'advancement', 'total'].forEach(function (key) {
           setField('you.' + key, formatNumber(point.you[key]));
           setField('opponent.' + key, formatNumber(point.opponent[key]));
           setField('delta.' + key, formatSigned(point.delta[key]));
         });
+        ['economic', 'technology', 'military', 'other', 'destroyed', 'overall', 'float'].forEach(function (key) {
+          var allocationRow = point.allocation && point.allocation[key]
+            ? point.allocation[key]
+            : { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 };
+          setField('allocation.' + key + '.you', formatNumber(allocationRow.you));
+          setField('allocation.' + key + '.opponent', formatNumber(allocationRow.opponent));
+          setField('allocation.' + key + '.delta', formatSigned(allocationRow.delta));
+        });
+        setTitle(
+          '[data-total-pool-tooltip]',
+          point.totalPoolTooltip || 'Economic + Technology + Military + Other - Destroyed = Total pool'
+        );
         setFieldHtml('adjustedMilitary.you', '<span class=\"inspector-adjusted-value-main\">' + formatNumber(point.adjustedMilitary.you) + '</span><small class=\"inspector-adjusted-value-pct\">(' + adjustedPctText(point.adjustedMilitary.youPct) + ')</small>');
         setFieldHtml('adjustedMilitary.opponent', '<span class=\"inspector-adjusted-value-main\">' + formatNumber(point.adjustedMilitary.opponent) + '</span><small class=\"inspector-adjusted-value-pct\">(' + adjustedPctText(point.adjustedMilitary.opponentPct) + ')</small>');
         setField('adjustedMilitary.delta', formatSigned(point.adjustedMilitary.delta));
@@ -2066,8 +2813,18 @@ function buildHoverInteractionScript(hoverSnapshots: HoverSnapshot[]): string {
           setSvgLabel(
             '[data-hover-label-strategy-' + key + ']',
             point.strategyX,
-            strategyLabels[key] + ' Δ ' + formatSignedPercentagePoints(strategyRow.delta)
+            (key === 'economy' ? 'Economic' : key.charAt(0).toUpperCase() + key.slice(1)) + ' Δ ' + formatSignedPercentagePoints(strategyRow.delta)
           );
+        });
+        Object.keys(allocationGraphDefs).forEach(function (key) {
+          var def = allocationGraphDefs[key];
+          var allocationRow = point.allocation && point.allocation[key]
+            ? point.allocation[key]
+            : { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 };
+          var labelText = def.mode === 'absolute'
+            ? def.label + ' Δ ' + formatSigned(allocationRow.delta)
+            : def.label + ' Δ ' + formatSignedPercentagePoints(allocationRow.shareDelta);
+          setSvgLabel('[data-hover-label-strategy-' + key + ']', point.strategyX, labelText);
         });
 
         setVerticalLine('[data-hover-line-pool]', point.poolX);
@@ -2103,6 +2860,15 @@ function buildHoverInteractionScript(hoverSnapshots: HoverSnapshot[]): string {
         });
       });
 
+      document.querySelectorAll('[data-allocation-category-toggle]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          var key = button.getAttribute('data-allocation-category-toggle');
+          if (!key) return;
+          var expanded = button.getAttribute('aria-expanded') !== 'false';
+          setCategoryCollapsed(key, expanded);
+        });
+      });
+
       document.querySelectorAll('.inspector-table-wrap').forEach(function (wrap) {
         wrap.addEventListener('keydown', function (event) {
           if (event.key === 'ArrowRight') {
@@ -2129,12 +2895,20 @@ function buildHoverInteractionScript(hoverSnapshots: HoverSnapshot[]): string {
           document.body.setAttribute('data-hover-pinned', 'true');
           updateInspector(target.getAttribute('data-hover-timestamp'));
         });
+        target.addEventListener('keydown', function (event) {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          pinned = true;
+          document.body.setAttribute('data-hover-pinned', 'true');
+          updateInspector(target.getAttribute('data-hover-timestamp'));
+        });
       });
 
       document.querySelectorAll('[data-open-adjusted-explainer]').forEach(function (button) {
         button.addEventListener('click', function () {
           var explainer = document.getElementById('adjusted-military-explainer');
           if (!explainer) return;
+          if ('open' in explainer) explainer.open = true;
           explainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
           explainer.classList.add('focus-pulse');
           window.setTimeout(function () {
@@ -2209,26 +2983,31 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
     body {
       margin: 0;
       color: var(--color-text);
-      font-family: "Trebuchet MS", "Avenir Next", "Gill Sans", sans-serif;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
       background: radial-gradient(circle at 8% -12%, #d8e6d6, transparent 34%),
         radial-gradient(circle at 92% -8%, #f0ddd0, transparent 32%),
         var(--color-background);
-      padding: 28px;
+      padding: 22px;
     }
 
     .wrap {
-      max-width: 1100px;
+      width: min(100%, 1240px);
+      max-width: 1240px;
       margin: 0 auto;
       display: grid;
-      gap: 18px;
+      gap: 14px;
+      min-width: 0;
     }
 
     .panel {
+      min-width: 0;
       background: var(--color-card);
       border: 1px solid var(--color-border);
       border-radius: 10px;
-      padding: 16px 18px;
-      box-shadow: 0 6px 18px rgba(32, 43, 32, 0.05);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(32, 43, 32, 0.08);
     }
 
     .header-row {
@@ -2236,6 +3015,7 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       grid-template-columns: 1fr auto;
       gap: 16px;
       align-items: start;
+      min-width: 0;
     }
 
     .title {
@@ -2280,6 +3060,7 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
+      min-width: 0;
     }
 
     .civ-chip {
@@ -2291,6 +3072,9 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       border-radius: 999px;
       padding: 6px 10px;
       background: #fff;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      white-space: normal;
     }
 
     .swatch {
@@ -2322,6 +3106,7 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
     }
 
     .metric-card {
+      min-width: 0;
       border: 1px solid var(--color-border);
       background: #fff;
       border-radius: 8px;
@@ -2332,6 +3117,7 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       font-size: 13px;
       color: var(--color-muted);
       margin-bottom: 8px;
+      overflow-wrap: anywhere;
     }
 
     .metric-value {
@@ -2344,6 +3130,7 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       margin-top: 6px;
       font-size: 12px;
       color: var(--color-muted);
+      overflow-wrap: anywhere;
     }
 
     .section-title {
@@ -2352,9 +3139,84 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
     }
 
     .section-note {
-      margin: 6px 0 12px;
+      max-width: 76ch;
+      margin: 6px 0 10px;
+      color: var(--color-muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .allocation-read-guide {
+      margin: 8px 0 10px;
+      border: 1px solid #dde6da;
+      border-radius: 8px;
+      background: #fff;
       color: var(--color-muted);
       font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .allocation-read-guide-summary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      color: #253226;
+      font-weight: 800;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .allocation-read-guide-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .allocation-read-guide-summary::before {
+      content: "";
+      width: 0;
+      height: 0;
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+      border-left: 6px solid #5B6257;
+      transition: transform 140ms ease;
+      flex: none;
+    }
+
+    .allocation-read-guide[open] .allocation-read-guide-summary {
+      border-bottom: 1px solid #edf1ea;
+    }
+
+    .allocation-read-guide[open] .allocation-read-guide-summary::before {
+      transform: rotate(90deg);
+    }
+
+    .allocation-read-guide-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px 12px;
+      padding: 10px;
+    }
+
+    .allocation-read-guide-title {
+      grid-column: 1 / -1;
+      color: #253226;
+      font-weight: 800;
+    }
+
+    .allocation-read-guide-item {
+      min-width: 0;
+    }
+
+    .allocation-read-guide-item strong {
+      display: block;
+      color: #253226;
+      font-size: 13px;
+      margin-bottom: 1px;
+    }
+
+    .allocation-read-guide-item span {
+      display: block;
+      overflow-wrap: anywhere;
     }
 
     .legend-row {
@@ -2380,6 +3242,10 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       height: 10px;
       border-radius: 999px;
       display: inline-block;
+    }
+
+    .destroyed-dot {
+      background: #a85e42;
     }
 
     .chart-head {
@@ -2430,23 +3296,68 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       font-size: 12px;
     }
 
-    .pool-chart,
-    .strategy-chart,
-    .gather-chart {
-      width: 100%;
-      height: auto;
-      display: block;
-    }
+	    .pool-chart,
+	    .strategy-chart,
+	    .leader-strip,
+	    .gather-chart {
+	      width: 100%;
+	      max-width: 100%;
+	      height: auto;
+	      display: block;
+	    }
 
-    .trajectory-grid {
+	    .leader-strip {
+	      margin-bottom: 10px;
+	    }
+
+	    .allocation-leader-segment {
+	      opacity: 0.9;
+	      transition: opacity 160ms ease;
+	    }
+
+		    .allocation-leader-segment:hover {
+		      opacity: 1;
+		    }
+
+		    .allocation-lane-bg {
+		      fill: #edf4f6;
+		      opacity: 0.7;
+		    }
+
+		    .allocation-lane-destroyed .allocation-lane-bg {
+		      fill: #f8ece7;
+		    }
+
+		    .allocation-lane-overall .allocation-lane-bg {
+		      fill: #eef3f5;
+		    }
+
+		    .allocation-lane-float .allocation-lane-bg {
+		      fill: #ecf5ed;
+		    }
+
+		    .allocation-lane-divider {
+		      stroke: #b8c3bd;
+		      stroke-width: 1;
+		      stroke-dasharray: 4 5;
+		    }
+
+		    .allocation-lane-overall path {
+		      stroke-width: 2.8;
+		    }
+
+	    .trajectory-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) clamp(330px, 34vw, 380px);
-      gap: 14px;
+      grid-template-columns: minmax(0, 1fr) clamp(300px, 30vw, 340px);
+      gap: 12px;
       align-items: start;
     }
 
     .chart-stack {
       min-width: 0;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      -webkit-overflow-scrolling: touch;
     }
 
     .hover-inspector {
@@ -2455,10 +3366,11 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       border: 1px solid var(--color-border);
       border-radius: 8px;
       background: #fff;
-      padding: 12px;
+      max-height: calc(100vh - 24px);
+      padding: 10px 12px;
       box-shadow: 0 1px 3px rgba(32, 43, 32, 0.08);
       font-variant-numeric: tabular-nums;
-      overflow: hidden;
+      overflow: auto;
     }
 
     .inspector-eyebrow {
@@ -2484,6 +3396,173 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       line-height: 1.35;
     }
 
+    .event-impact {
+      margin: 8px 0 12px;
+      padding: 9px 10px;
+      border: 1px solid #ecd2c7;
+      border-radius: 8px;
+      background: #fff8f5;
+    }
+
+    .event-impact-heading {
+      margin-bottom: 5px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #7b3f32;
+    }
+
+    .event-impact-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #253226;
+    }
+
+    .event-impact-description {
+      margin: 4px 0 8px;
+      color: #465447;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .event-impact-loss-detail {
+      margin: 8px 0;
+      padding: 7px;
+      border: 1px solid #eadbd4;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.62);
+    }
+
+    .event-impact-loss-detail-title {
+      margin-bottom: 5px;
+      color: #7b3f32;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .event-impact-loss-columns {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .event-impact-loss-column {
+      min-width: 0;
+    }
+
+    .event-impact-loss-column-heading {
+      margin-bottom: 3px;
+      color: #465447;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .event-impact-loss-summary {
+      display: grid;
+      gap: 3px;
+      margin: 0 0 6px;
+      padding: 0 0 6px;
+      border-bottom: 1px solid #f0e2dc;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .event-impact-loss-summary div {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 7px;
+      align-items: baseline;
+    }
+
+    .event-impact-loss-summary dt {
+      min-width: 0;
+      color: var(--color-muted);
+      font-size: 9.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }
+
+    .event-impact-loss-summary dd {
+      margin: 0;
+      color: #253226;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .event-impact-loss-list {
+      display: grid;
+      gap: 2px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .event-impact-loss-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: baseline;
+      color: #253226;
+      font-size: 12px;
+    }
+
+    .event-impact-loss-name {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .event-impact-loss-value {
+      color: #7b3f32;
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+    }
+
+    .event-impact-loss-row-empty {
+      display: block;
+      color: var(--color-muted);
+    }
+
+    @media (max-width: 760px) {
+      .event-impact-loss-columns {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .event-impact-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 10px;
+      margin: 0;
+    }
+
+    .event-impact-metrics div {
+      min-width: 0;
+    }
+
+    .event-impact-metrics dt {
+      color: var(--color-muted);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .event-impact-metrics dd {
+      margin: 1px 0 0;
+      color: #253226;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .event-impact-losses {
+      margin-top: 7px;
+      color: var(--color-muted);
+      font-size: 12px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
     .inspector-table-wrap {
       overflow-x: auto;
       border-radius: 6px;
@@ -2500,12 +3579,12 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
-      font-size: 12px;
+      font-size: 13px;
     }
 
     .inspector-table th,
     .inspector-table td {
-      padding: 5px 0;
+      padding: 6px 0;
       border-top: 1px solid #edf1ea;
       text-align: right;
       white-space: nowrap;
@@ -2523,11 +3602,11 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       width: 18%;
     }
 
-    .band-toggle {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      width: 100%;
+	    .band-toggle {
+	      display: inline-flex;
+	      align-items: center;
+	      gap: 6px;
+	      width: 100%;
       margin: -2px 0;
       padding: 2px 0;
       border: 0;
@@ -2535,8 +3614,53 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       color: inherit;
       font: inherit;
       cursor: pointer;
-      text-align: left;
-    }
+	      text-align: left;
+	    }
+
+	    .allocation-category-row th,
+	    .allocation-category-row td {
+	      color: #253226;
+	      font-weight: 800;
+	      border-top-color: #d6ddd1;
+	      background: #f6f8f4;
+	    }
+
+	    .allocation-category-toggle {
+	      display: inline-flex;
+	      align-items: center;
+	      gap: 7px;
+	      width: 100%;
+	      margin: -2px 0;
+	      padding: 2px 0;
+	      border: 0;
+	      background: transparent;
+	      color: inherit;
+	      font: inherit;
+	      cursor: pointer;
+	      text-align: left;
+	    }
+
+	    .category-caret {
+	      width: 0;
+	      height: 0;
+	      border-top: 4px solid transparent;
+	      border-bottom: 4px solid transparent;
+	      border-left: 6px solid #5B6257;
+	      transform: rotate(90deg);
+	      transition: transform 140ms ease;
+	      flex: none;
+	    }
+
+	    .allocation-category-toggle[aria-expanded="false"] .category-caret {
+	      transform: rotate(0deg);
+	    }
+
+	    .allocation-category-toggle:focus-visible,
+	    .band-toggle:focus-visible {
+	      outline: 2px solid #8fb6dc;
+	      outline-offset: 2px;
+	      border-radius: 4px;
+	    }
 
     .band-row.is-selected th,
     .band-row.is-selected td {
@@ -2580,6 +3704,13 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       border-top-color: #d6ddd1;
     }
 
+    .inspector-destroyed-row th,
+    .inspector-destroyed-row td {
+      color: #5e2f22;
+      font-weight: 800;
+      border-top-color: #d6ddd1;
+    }
+
     .inspector-adjusted-row th,
     .inspector-adjusted-row td {
       color: #1f3551;
@@ -2608,7 +3739,7 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
     }
 
     .band-breakdown-head {
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 700;
       color: #253226;
       margin-bottom: 6px;
@@ -2622,7 +3753,7 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
 
     .band-breakdown-cols h4 {
       margin: 0 0 4px;
-      font-size: 11px;
+      font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.04em;
       color: var(--color-muted);
@@ -2635,8 +3766,8 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       max-height: 160px;
       overflow: auto;
       display: grid;
-      gap: 4px;
-      font-size: 11px;
+      gap: 5px;
+      font-size: 12px;
     }
 
     .band-breakdown-list li {
@@ -2650,7 +3781,7 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
     }
 
     .band-breakdown-list .band-breakdown-group {
-      font-size: 10px;
+      font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 0.04em;
       color: #5b6257;
@@ -2715,6 +3846,37 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       cursor: crosshair;
     }
 
+    .significant-event-marker {
+      cursor: pointer;
+      outline: none;
+    }
+
+    .significant-event-stem {
+      stroke-width: 1.4;
+      stroke-dasharray: 3 4;
+      opacity: 0.72;
+      pointer-events: none;
+    }
+
+    .significant-event-dot {
+      stroke: #fff;
+      stroke-width: 2;
+      filter: drop-shadow(0 1px 2px rgba(32, 43, 32, 0.24));
+    }
+
+    .significant-event-glyph {
+      fill: #fff;
+      font-size: 10px;
+      font-weight: 900;
+      pointer-events: none;
+    }
+
+    .significant-event-marker:hover .significant-event-dot,
+    .significant-event-marker:focus-visible .significant-event-dot {
+      stroke: #1f2a1f;
+      stroke-width: 2.4;
+    }
+
     .hover-active-line {
       stroke: #1F2A1F;
       stroke-width: 1.35;
@@ -2724,11 +3886,11 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
 
     .hover-value-label {
       pointer-events: none;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 800;
       paint-order: stroke;
       stroke: #F7FAF8;
-      stroke-width: 4px;
+      stroke-width: 3.5px;
       stroke-linejoin: round;
       font-variant-numeric: tabular-nums;
     }
@@ -2945,6 +4107,61 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       background: var(--color-background-secondary);
     }
 
+    .secondary-panel {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .secondary-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 48px;
+      padding: 12px 16px;
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
+    }
+
+    .secondary-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .secondary-summary::before {
+      content: "";
+      width: 0;
+      height: 0;
+      border-top: 5px solid transparent;
+      border-bottom: 5px solid transparent;
+      border-left: 7px solid #5B6257;
+      transition: transform 140ms ease;
+      flex: none;
+    }
+
+    .secondary-panel[open] .secondary-summary {
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .secondary-panel[open] .secondary-summary::before {
+      transform: rotate(90deg);
+    }
+
+    .secondary-summary .section-title {
+      flex: 1;
+    }
+
+    .secondary-summary-meta {
+      color: var(--color-muted);
+      font-size: 13px;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    .secondary-body {
+      padding: 12px 16px 16px;
+    }
+
     .story-label {
       font-size: 12px;
       color: var(--color-muted);
@@ -3121,8 +4338,9 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       .outcome { text-align: left; }
       .trajectory-grid { grid-template-columns: 1fr; }
       .hover-inspector { position: static; }
-      .band-breakdown-cols { grid-template-columns: 1fr; }
-      .strategy-readout-grid { grid-template-columns: 1fr; }
+	      .band-breakdown-cols { grid-template-columns: 1fr; }
+	      .allocation-read-guide-grid { grid-template-columns: 1fr; }
+	      .strategy-readout-grid { grid-template-columns: 1fr; }
       .strategy-state-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .villager-opportunity-grid { grid-template-columns: 1fr; }
     }
@@ -3220,6 +4438,23 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
         padding: 5px 3px;
       }
     }
+
+    @media (max-width: 520px) {
+      body { padding: 12px; }
+      .wrap { width: calc(100vw - 24px); max-width: calc(100vw - 24px); }
+      .panel { padding: 12px; }
+      .chips { flex-direction: column; align-items: stretch; }
+      .civ-chip { width: 100%; }
+      .metrics { grid-template-columns: 1fr; }
+      .section-title { font-size: 19px; }
+      .chart-stack .leader-strip,
+      .chart-stack .strategy-chart { min-width: 680px; }
+      .secondary-summary {
+        align-items: flex-start;
+        padding: 12px;
+      }
+      .secondary-summary-meta { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -3266,9 +4501,33 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
     </section>
 
     <section class="panel">
-      <h2 class="section-title">Deployed resource pool over time</h2>
-      <p class="section-note">Band height is market-value committed on the board. Declines are destruction. Free production is counted at market value.</p>
-      <div class="legend-row">${legendHtml}</div>
+      <h2 class="section-title">Allocation lead and mix over time</h2>
+      <p class="section-note">Bands are remapped into Economic, Technology, Military, and Other. The first three charts show share of strategic allocation; Overall is absolute deployed resource value after subtracting Destroyed.</p>
+      <details class="allocation-read-guide" aria-label="Allocation chart legend">
+        <summary class="allocation-read-guide-summary">How to read this chart</summary>
+        <div class="allocation-read-guide-grid">
+          <div class="allocation-read-guide-item" aria-label="Leader strip: absolute deployed-value leader by 30-second block">
+            <strong>Leader strip</strong>
+            <span>Absolute deployed-value leader by 30-second block.</span>
+          </div>
+          <div class="allocation-read-guide-item" aria-label="Economic, Technology, and Military: percentage share of strategic allocation">
+            <strong>Category lanes</strong>
+            <span>Economic, Technology, and Military show percentage share.</span>
+          </div>
+          <div class="allocation-read-guide-item" aria-label="Destroyed: cumulative value assumed destroyed by opponent">
+            <strong>Destroyed lane</strong>
+            <span>Destroyed is cumulative value assumed destroyed by opponent.</span>
+          </div>
+          <div class="allocation-read-guide-item" aria-label="Overall: absolute deployed resource value, including Other">
+            <strong>Overall lane</strong>
+            <span>Overall: absolute deployed resource value after subtracting Destroyed.</span>
+          </div>
+          <div class="allocation-read-guide-item" aria-label="Float (not deployed): gathered resources not currently committed">
+            <strong>Float lane</strong>
+            <span>Float (not deployed) is gathered resources not currently committed.</span>
+          </div>
+        </div>
+      </details>
       <div class="age-legend">
         <strong>Age timings</strong>
         <span class="age-key"><span class="age-line" style="border-color:#378ADD"></span>You age-up</span>
@@ -3276,51 +4535,23 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       </div>
       <div class="trajectory-grid">
         <div class="chart-stack">
-          ${buildPoolComparisonSvg(
-            model.trajectory.youSeries,
-            model.trajectory.opponentSeries,
+          ${buildAllocationLeaderStripSvg(hoverSnapshots, model.trajectory.durationSeconds)}
+          ${buildStrategyAllocationSvg(
+            hoverSnapshots,
             model.trajectory.durationSeconds,
-            model.trajectory.yAxisMax,
-            model.trajectory.ageMarkers,
-            hoverSnapshots
+            model.trajectory.ageMarkers
           )}
         </div>
         ${buildHoverInspectorHtml(defaultHoverSnapshot)}
       </div>
     </section>
 
-    <section class="panel">
-      <h2 class="section-title">Strategic allocation state</h2>
-      <p class="section-note">Compares the percentage of each player&apos;s non-defensive committed resources in Economy, Military, and Technology. Technology combines all research plus advancement. Military combines active army plus military buildings.</p>
-      <div class="gather-legend">
-        <span class="line-chip"><span class="line-swatch" style="border-color:#378ADD"></span>You</span>
-        <span class="line-chip"><span class="line-swatch dashed" style="border-color:#D85A30"></span>Opponent</span>
-      </div>
-      ${buildStrategyAllocationSvg(
-        hoverSnapshots,
-        model.trajectory.durationSeconds,
-        model.trajectory.ageMarkers
-      )}
-      <div class="strategy-readout-grid" aria-live="polite">
-        ${strategyBucketDefs
-          .map(bucket => {
-            const row = defaultHoverSnapshot.strategy[bucket.key];
-            return `
-              <article class="strategy-readout-card">
-                <h3>${escapeHtml(bucket.label)}</h3>
-                <div class="strategy-readout-row"><span>You</span><strong data-hover-field="strategy.${bucket.key}.you">${formatStrategyShare(row.you)}</strong></div>
-                <div class="strategy-readout-row"><span>Opponent</span><strong data-hover-field="strategy.${bucket.key}.opponent">${formatStrategyShare(row.opponent)}</strong></div>
-                <div class="strategy-readout-row"><span>Delta</span><strong data-hover-field="strategy.${bucket.key}.delta">${formatSignedPercentagePoints(row.delta)}</strong></div>
-              </article>
-            `;
-          })
-          .join('')}
-      </div>
-      ${buildStrategyStateSummary(hoverSnapshots)}
-    </section>
-
-    <section class="panel">
-      <h2 class="section-title">Gather rate</h2>
+    <details class="panel secondary-panel" data-secondary-section="gather-rate">
+      <summary class="secondary-summary">
+        <span class="section-title">Gather rate</span>
+        <span class="secondary-summary-meta">Income trajectory detail</span>
+      </summary>
+      <div class="secondary-body">
       <p class="section-note">Villager losses live here — as flat spots and slow recovery — rather than as large pool drops.</p>
       ${buildGatherRateSvg(
         model.gatherRate.youSeries,
@@ -3334,21 +4565,32 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
         <span class="line-chip"><span class="line-swatch dashed" style="border-color:#D85A30"></span>Opponent</span>
       </div>
       <div class="section-note">Rate / min</div>
-    </section>
+      </div>
+    </details>
 
     ${buildVillagerOpportunitySection(model, hoverSnapshots)}
 
     ${buildAdjustedMilitaryBreakdownSection(defaultHoverSnapshot)}
 
-    <section class="panel">
-      <h2 class="section-title">Where the gap came from</h2>
+    <details class="panel secondary-panel" data-secondary-section="gap-events">
+      <summary class="secondary-summary">
+        <span class="section-title">Where the gap came from</span>
+        <span class="secondary-summary-meta">Event-level explanations</span>
+      </summary>
+      <div class="secondary-body">
       <div class="events-grid">${eventsHtml}</div>
-    </section>
+      </div>
+    </details>
 
-    <section class="panel story-card">
-      <div class="story-label">One-line story</div>
+    <details class="panel secondary-panel story-card" data-secondary-section="one-line-story">
+      <summary class="secondary-summary">
+        <span class="section-title">One-line story</span>
+        <span class="secondary-summary-meta">Generated summary</span>
+      </summary>
+      <div class="secondary-body">
       <p class="story-body">${escapeHtml(model.oneLineStory)}</p>
-    </section>
+      </div>
+    </details>
   </main>
   ${buildHoverInteractionScript(hoverSnapshots)}
 </body>

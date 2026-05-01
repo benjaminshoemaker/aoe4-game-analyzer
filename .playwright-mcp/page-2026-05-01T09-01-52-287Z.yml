@@ -1,0 +1,290 @@
+- main [ref=e2]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - heading "Match recap" [level=1] [ref=e7]
+        - link "AoE4World summary" [ref=e8] [cursor=pointer]:
+          - /url: https://aoe4world.com/players/111/games/123456?sig=testsig
+      - generic [ref=e9]: Ranked 1v1 · 10:00 · Dry Arabia
+      - generic [ref=e10]:
+        - generic [ref=e11]: You · English
+        - generic [ref=e13]: Opponent · French
+    - generic [ref=e15]: Defeated 10:00
+  - generic [ref=e16]:
+    - heading "Allocation lead and mix over time" [level=2] [ref=e17]
+    - paragraph [ref=e18]: Bands are remapped into Economic, Technology, Military, and Other. The first three charts show share of strategic allocation; Overall is absolute deployed resource value after subtracting Destroyed.
+    - group "Allocation chart legend" [ref=e19]:
+      - generic "How to read this chart" [ref=e20] [cursor=pointer]
+    - generic [ref=e21]:
+      - strong [ref=e22]: Age timings
+      - generic [ref=e23]: You age-up
+      - generic [ref=e25]: Opponent age-up
+    - generic [ref=e27]:
+      - generic [ref=e28]:
+        - img "Thirty-second leader strip by allocation category" [ref=e29]:
+          - generic [ref=e31]:
+            - generic [ref=e32]: Economic
+            - 'generic "Economic 0:00-0:30: You 50, Opp 50" [ref=e33]'
+            - 'generic "Economic 0:30-1:00: You 50, Opp 50" [ref=e34]'
+            - 'generic "Economic 1:00-1:30: You 50, Opp 50" [ref=e35]'
+            - 'generic "Economic 1:30-2:00: You 50, Opp 50" [ref=e36]'
+            - 'generic "Economic 2:00-2:30: You 50, Opp 50" [ref=e37]'
+            - 'generic "Economic 2:30-3:00: You 50, Opp 50" [ref=e38]'
+            - 'generic "Economic 3:00-3:30: You 50, Opp 50" [ref=e39]'
+            - 'generic "Economic 3:30-4:00: You 50, Opp 50" [ref=e40]'
+            - 'generic "Economic 4:00-4:30: You 50, Opp 50" [ref=e41]'
+            - 'generic "Economic 4:30-5:00: You 50, Opp 50" [ref=e42]'
+            - 'generic "Economic 5:00-5:30: You 50, Opp 50" [ref=e43]'
+            - 'generic "Economic 5:30-6:00: You 50, Opp 50" [ref=e44]'
+            - 'generic "Economic 6:00-6:30: You 50, Opp 50" [ref=e45]'
+            - 'generic "Economic 6:30-7:00: You 50, Opp 50" [ref=e46]'
+            - 'generic "Economic 7:00-7:30: You 50, Opp 50" [ref=e47]'
+            - 'generic "Economic 7:30-8:00: You 50, Opp 50" [ref=e48]'
+            - 'generic "Economic 8:00-8:30: You 50, Opp 50" [ref=e49]'
+            - 'generic "Economic 8:30-9:00: You 50, Opp 50" [ref=e50]'
+            - 'generic "Economic 9:00-9:30: You 50, Opp 50" [ref=e51]'
+            - 'generic "Economic 9:30-10:00: You 50, Opp 50" [ref=e52]'
+          - generic [ref=e53]:
+            - generic [ref=e54]: Technology
+            - 'generic "Technology 0:00-0:30: You 600, Opp 500" [ref=e55]'
+            - 'generic "Technology 0:30-1:00: You 600, Opp 500" [ref=e56]'
+            - 'generic "Technology 1:00-1:30: You 600, Opp 500" [ref=e57]'
+            - 'generic "Technology 1:30-2:00: You 600, Opp 500" [ref=e58]'
+            - 'generic "Technology 2:00-2:30: You 600, Opp 500" [ref=e59]'
+            - 'generic "Technology 2:30-3:00: You 600, Opp 500" [ref=e60]'
+            - 'generic "Technology 3:00-3:30: You 600, Opp 500" [ref=e61]'
+            - 'generic "Technology 3:30-4:00: You 600, Opp 500" [ref=e62]'
+            - 'generic "Technology 4:00-4:30: You 600, Opp 500" [ref=e63]'
+            - 'generic "Technology 4:30-5:00: You 600, Opp 500" [ref=e64]'
+            - 'generic "Technology 5:00-5:30: You 600, Opp 500" [ref=e65]'
+            - 'generic "Technology 5:30-6:00: You 600, Opp 500" [ref=e66]'
+            - 'generic "Technology 6:00-6:30: You 600, Opp 500" [ref=e67]'
+            - 'generic "Technology 6:30-7:00: You 600, Opp 500" [ref=e68]'
+            - 'generic "Technology 7:00-7:30: You 600, Opp 500" [ref=e69]'
+            - 'generic "Technology 7:30-8:00: You 600, Opp 500" [ref=e70]'
+            - 'generic "Technology 8:00-8:30: You 600, Opp 500" [ref=e71]'
+            - 'generic "Technology 8:30-9:00: You 600, Opp 500" [ref=e72]'
+            - 'generic "Technology 9:00-9:30: You 600, Opp 500" [ref=e73]'
+            - 'generic "Technology 9:30-10:00: You 600, Opp 500" [ref=e74]'
+          - generic [ref=e75]:
+            - generic [ref=e76]: Military
+            - 'generic "Military 0:00-0:30: You 168, Opp 120" [ref=e77]'
+            - 'generic "Military 0:30-1:00: You 168, Opp 120" [ref=e78]'
+            - 'generic "Military 1:00-1:30: You 168, Opp 120" [ref=e79]'
+            - 'generic "Military 1:30-2:00: You 168, Opp 120" [ref=e80]'
+            - 'generic "Military 2:00-2:30: You 168, Opp 120" [ref=e81]'
+            - 'generic "Military 2:30-3:00: You 168, Opp 120" [ref=e82]'
+            - 'generic "Military 3:00-3:30: You 168, Opp 120" [ref=e83]'
+            - 'generic "Military 3:30-4:00: You 168, Opp 120" [ref=e84]'
+            - 'generic "Military 4:00-4:30: You 168, Opp 120" [ref=e85]'
+            - 'generic "Military 4:30-5:00: You 168, Opp 120" [ref=e86]'
+            - 'generic "Military 5:00-5:30: You 168, Opp 120" [ref=e87]'
+            - 'generic "Military 5:30-6:00: You 168, Opp 120" [ref=e88]'
+            - 'generic "Military 6:00-6:30: You 168, Opp 120" [ref=e89]'
+            - 'generic "Military 6:30-7:00: You 168, Opp 120" [ref=e90]'
+            - 'generic "Military 7:00-7:30: You 168, Opp 120" [ref=e91]'
+            - 'generic "Military 7:30-8:00: You 168, Opp 120" [ref=e92]'
+            - 'generic "Military 8:00-8:30: You 168, Opp 120" [ref=e93]'
+            - 'generic "Military 8:30-9:00: You 168, Opp 120" [ref=e94]'
+            - 'generic "Military 9:00-9:30: You 168, Opp 120" [ref=e95]'
+            - 'generic "Military 9:30-10:00: You 168, Opp 120" [ref=e96]'
+          - generic [ref=e97]:
+            - generic [ref=e99]: 0:00
+            - generic [ref=e100]: 2:30
+            - generic [ref=e101]: 5:00
+            - generic [ref=e102]: 7:30
+            - generic [ref=e103]: 10:00
+        - img "Allocation comparison chart" [ref=e104]:
+          - generic [ref=e106]: 0:00
+          - generic [ref=e107]: 2:30
+          - generic [ref=e108]: 5:00
+          - generic [ref=e109]: 7:30
+          - generic [ref=e110]: 10:00
+          - generic [ref=e111]:
+            - generic [ref=e112]: Economic
+            - generic [ref=e113]: 10.0%
+            - generic [ref=e114]: 5.0%
+            - generic [ref=e115]: 0%
+            - generic: Economic Δ -1.4pp
+          - generic [ref=e116]:
+            - generic [ref=e117]: Technology
+            - generic [ref=e118]: 75.0%
+            - generic [ref=e119]: 37.5%
+            - generic [ref=e120]: 0%
+            - generic: Technology Δ -1.3pp
+          - generic [ref=e121]:
+            - generic [ref=e122]: Military
+            - generic [ref=e123]: 25.0%
+            - generic [ref=e124]: 12.5%
+            - generic [ref=e125]: 0%
+            - generic: Military Δ +2.6pp
+          - generic [ref=e126]:
+            - generic [ref=e128]: Destroyed
+            - generic [ref=e129]: "1"
+            - generic [ref=e130]: "1"
+            - generic [ref=e131]: "0"
+            - generic: Destroyed Δ 0
+          - generic [ref=e132]:
+            - generic [ref=e134]: Overall
+            - generic [ref=e135]: "820"
+            - generic [ref=e136]: "410"
+            - generic [ref=e137]: "0"
+            - generic: Overall Δ +148
+          - generic [ref=e138]:
+            - generic [ref=e140]: Float
+            - generic [ref=e141]: 1,000
+            - generic [ref=e142]: "500"
+            - generic [ref=e143]: "0"
+            - generic: Float Δ -500
+          - generic [ref=e144]:
+            - generic [ref=e146]: Opportunity lost
+            - generic [ref=e147]: "140"
+            - generic [ref=e148]: "70"
+            - generic [ref=e149]: "0"
+            - generic: Opportunity lost Δ -50
+          - generic [ref=e150]:
+            - generic: 0:00
+          - 'generic "0:00 - Economic: You 6.1%, Opp 7.5%, Delta -1.4pp | Technology: You 73.3%, Opp 74.6%, Delta -1.3pp | Military: You 20.5%, Opp 17.9%, Delta +2.6pp | Destroyed: You 0, Opp 0, Delta 0 | Overall: You 818, Opp 670, Delta +148 | Float: You 500, Opp 1,000, Delta -500 | Opportunity lost: You 90, Opp 140, Delta -50" [ref=e151]'
+      - complementary [ref=e152]:
+        - generic [ref=e153]: Selected time
+        - generic [ref=e154]: 0:00
+        - generic [ref=e155]: Select a timestamp to inspect allocation values.
+        - group [ref=e156]:
+          - generic [ref=e157]:
+            - generic [ref=e158]: Allocation
+            - region "Selected timestamp values table" [ref=e159]:
+              - table [ref=e160]:
+                - rowgroup [ref=e161]:
+                  - row "Category / band You Opp Delta" [ref=e162]:
+                    - columnheader "Category / band" [ref=e163]
+                    - columnheader "You" [ref=e164]
+                    - columnheader "Opp" [ref=e165]
+                    - columnheader "Delta" [ref=e166]
+                - rowgroup [ref=e167]:
+                  - row "Economic 50 50 0" [ref=e168]:
+                    - rowheader "Economic" [ref=e169]:
+                      - button "Economic" [expanded] [ref=e170] [cursor=pointer]:
+                        - generic [ref=e171]: ▾
+                        - text: Economic
+                    - cell "50" [ref=e172]
+                    - cell "50" [ref=e173]
+                    - cell "0" [ref=e174]
+                  - row "Economic 50 50 0" [ref=e175]:
+                    - rowheader "Economic" [ref=e176]:
+                      - button "Economic" [pressed] [ref=e177] [cursor=pointer]: Economic
+                    - cell "50" [ref=e179]
+                    - cell "50" [ref=e180]
+                    - cell "0" [ref=e181]
+                  - row "Technology 600 500 +100" [ref=e182]:
+                    - rowheader "Technology" [ref=e183]:
+                      - button "Technology" [ref=e184] [cursor=pointer]:
+                        - generic [ref=e185]: ▾
+                        - text: Technology
+                    - cell "600" [ref=e186]
+                    - cell "500" [ref=e187]
+                    - cell "+100" [ref=e188]
+                  - row "Military 168 120 +48" [ref=e189]:
+                    - rowheader "Military" [ref=e190]:
+                      - button "Military" [ref=e191] [cursor=pointer]:
+                        - generic [ref=e192]: ▾
+                        - text: Military
+                    - cell "168" [ref=e193]
+                    - cell "120" [ref=e194]
+                    - cell "+48" [ref=e195]
+                  - row "Other 0 0 0" [ref=e196]:
+                    - rowheader "Other" [ref=e197]:
+                      - button "Other" [ref=e198] [cursor=pointer]:
+                        - generic [ref=e199]: ▾
+                        - text: Other
+                    - cell "0" [ref=e200]
+                    - cell "0" [ref=e201]
+                    - cell "0" [ref=e202]
+                  - row "Destroyed 0 0 0" [ref=e203]:
+                    - rowheader "Destroyed" [ref=e204]:
+                      - button "Destroyed" [ref=e205] [cursor=pointer]: Destroyed
+                    - cell "0" [ref=e207]
+                    - cell "0" [ref=e208]
+                    - cell "0" [ref=e209]
+                  - row "Total Pool 818 670 +148" [ref=e210]:
+                    - rowheader "Total Pool" [ref=e211]
+                    - cell "818" [ref=e212]
+                    - cell "670" [ref=e213]
+                    - cell "+148" [ref=e214]
+                  - row "Float (not deployed) 500 1,000 -500" [ref=e215]:
+                    - rowheader "Float (not deployed)" [ref=e216]
+                    - cell "500" [ref=e217]
+                    - cell "1,000" [ref=e218]
+                    - cell "-500" [ref=e219]
+                  - row "Opportunity lost 90 140 -50" [ref=e220]:
+                    - rowheader "Opportunity lost" [ref=e221]:
+                      - button "Opportunity lost" [ref=e222] [cursor=pointer]:
+                        - 'generic "Total villager opportunity cost: resources missing villagers would have gathered by this timestamp. Event scores scale-adjust future gathering lost from killed villagers by the deployed-resource size at the event time; direct villager death value is shown in Destroyed." [ref=e224]': Opportunity lost
+                    - cell "90" [ref=e225]
+                    - cell "140" [ref=e226]
+                    - cell "-50" [ref=e227]
+                  - row "Gather/min 500 480 +20" [ref=e228]:
+                    - rowheader "Gather/min" [ref=e229]
+                    - cell "500" [ref=e230]
+                    - cell "480" [ref=e231]
+                    - cell "+20" [ref=e232]
+            - generic [ref=e233]:
+              - generic [ref=e234]: Economic composition
+              - generic [ref=e235]:
+                - generic [ref=e236]: Economic
+                - generic [ref=e237]:
+                  - text: You
+                  - strong [ref=e238]: "50"
+                - generic [ref=e239]:
+                  - text: Opp
+                  - strong [ref=e240]: "50"
+                - generic [ref=e241]:
+                  - text: Delta
+                  - strong [ref=e242]: "0"
+              - generic [ref=e243]:
+                - generic [ref=e244]:
+                  - heading "You" [level=4] [ref=e245]
+                  - list [ref=e246]:
+                    - listitem [ref=e247]:
+                      - generic "Villager" [ref=e248]
+                      - generic [ref=e249]: 50 (100.0%)
+                - generic [ref=e250]:
+                  - heading "Opponent" [level=4] [ref=e251]
+                  - list [ref=e252]:
+                    - listitem [ref=e253]: No active items
+  - generic [ref=e254]:
+    - article [ref=e255]:
+      - generic [ref=e256]: Dark age
+      - generic [ref=e257]: 0:00-2:00
+      - generic [ref=e258]:
+        - generic [ref=e259]: "Gap widened: Tied -> You +148."
+        - generic [ref=e260]: "Allocation: your edge was Technology +100; Military was similar."
+        - generic [ref=e261]: "Destruction: neither player destroyed measurable value."
+        - generic [ref=e262]: "Meaning: No major conversion signal inside this shared window."
+    - article [ref=e263]:
+      - generic [ref=e264]: Feudal age
+      - generic [ref=e265]: 2:00-7:00
+      - generic [ref=e266]:
+        - generic [ref=e267]: "Gap held: You +148 -> You +148."
+        - generic [ref=e268]: "Allocation: no major allocation difference."
+        - generic [ref=e269]: "Destruction: neither player destroyed measurable value."
+        - generic [ref=e270]: "Meaning: No major conversion signal inside this shared window."
+    - article [ref=e271]:
+      - generic [ref=e272]: Castle age
+      - generic [ref=e273]: 7:00-10:00
+      - generic [ref=e274]:
+        - generic [ref=e275]: "Gap held: You +148 -> You +148."
+        - generic [ref=e276]: "Allocation: no major allocation difference."
+        - generic [ref=e277]: "Destruction: neither player destroyed measurable value."
+        - generic [ref=e278]: "Meaning: No major conversion signal inside this shared window."
+    - article [ref=e279]:
+      - generic [ref=e280]: Imperial age
+      - generic [ref=e281]: No shared window
+      - generic [ref=e282]:
+        - generic [ref=e283]: Only you reached Imperial, so there was no shared Imperial window to compare.
+        - generic [ref=e284]: You reached Imperial; opponent did not.
+        - generic [ref=e285]: No shared window to evaluate destruction.
+        - generic [ref=e286]: No shared window to evaluate conversion.
+    - article [ref=e287]:
+      - generic [ref=e288]: Final pool delta
+      - generic [ref=e289]: "+148"
+      - generic [ref=e290]: at surrender/end

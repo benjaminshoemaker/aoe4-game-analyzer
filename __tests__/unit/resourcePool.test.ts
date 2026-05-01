@@ -475,6 +475,41 @@ describe('buildPlayerDeployedPoolSeries', () => {
     expect(at240?.total).toBe(600);
   });
 
+  it('ignores destroyed events that arrive before an item is produced', () => {
+    const player = makePlayer('Macedonian Dynasty');
+    player.resources.timestamps = [0, 175, 283, 360];
+
+    const result = buildPlayerDeployedPoolSeries(
+      player,
+      makeBuildOrder([
+        makeItem({
+          type: 'building',
+          id: 'hippodrome-of-constantinople-2',
+          name: 'Hippodrome of Constantinople',
+          classes: ['building', 'landmark'],
+          cost: { food: 0, wood: 400, gold: 200, stone: 0, total: 600 },
+          produced: [283],
+          destroyed: [175],
+        }),
+      ]),
+      360
+    );
+
+    const beforeProduced = result.series.find(point => point.timestamp === 175);
+    const afterProduced = result.series.find(point => point.timestamp === 283);
+    expect(beforeProduced?.advancement).toBe(0);
+    expect(beforeProduced?.total).toBe(0);
+    expect(afterProduced?.advancement).toBe(600);
+    expect(afterProduced?.total).toBe(600);
+    expect(result.bandItemDeltas).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        band: 'advancement',
+        itemLabel: 'Hippodrome of Constantinople',
+        deltaValue: -600,
+      }),
+    ]));
+  });
+
   it('attaches research categories for breakdown rendering', () => {
     const result = buildPlayerDeployedPoolSeries(
       makePlayer(),

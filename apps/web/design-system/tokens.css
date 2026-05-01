@@ -1,0 +1,26 @@
+:root {
+  --aoe-color-bg: #f7f2e8;
+  --aoe-color-bg-accent: #efe1cb;
+  --aoe-color-surface: #fffdf9;
+  --aoe-color-report-bg: #f2f4ee;
+  --aoe-color-report-surface: #fbfcf9;
+  --aoe-color-text: #1f1a14;
+  --aoe-color-report-text: #1f2a1f;
+  --aoe-color-muted: #5f5345;
+  --aoe-color-border: #d9c9ad;
+  --aoe-color-primary: #9d2f1b;
+  --aoe-color-you: #378add;
+  --aoe-color-opponent: #d85a30;
+  --aoe-radius-sm: 4px;
+  --aoe-radius-md: 8px;
+  --aoe-radius-lg: 10px;
+  --aoe-space-1: 4px;
+  --aoe-space-2: 8px;
+  --aoe-space-3: 12px;
+  --aoe-space-4: 16px;
+  --aoe-space-6: 24px;
+  --aoe-shadow-panel: 0 1px 3px rgba(32, 43, 32, 0.08);
+  --aoe-shadow-home-panel: 0 10px 30px rgba(62, 45, 22, 0.08);
+  --aoe-font-display: "Trebuchet MS", "Avenir Next", "Gill Sans", sans-serif;
+  --aoe-font-report: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}

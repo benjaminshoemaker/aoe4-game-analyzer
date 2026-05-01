@@ -379,6 +379,24 @@ function addTimestamp(timestampSet: Set<number>, value: number): void {
   timestampSet.add(value);
 }
 
+type LifecycleEventKind = 'produced' | 'destroyed';
+
+interface LifecycleEvent {
+  timestamp: number;
+  kind: LifecycleEventKind;
+}
+
+function buildLifecycleEvents(item: ResolvedBuildItem): LifecycleEvent[] {
+  return [
+    ...item.produced.map(timestamp => ({ timestamp, kind: 'produced' as const })),
+    ...item.destroyed.map(timestamp => ({ timestamp, kind: 'destroyed' as const })),
+  ].sort((a, b) => {
+    if (a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
+    if (a.kind === b.kind) return 0;
+    return a.kind === 'produced' ? -1 : 1;
+  });
+}
+
 function itemMarketValue(item: ResolvedBuildItem): number {
   if (item.type !== 'unit') {
     return item.cost.total;
@@ -682,41 +700,46 @@ export function buildPlayerDeployedPoolSeries(
     const itemKey = `${item.type}:${item.id}`;
     const itemLabel = item.name;
 
-    for (const timestamp of item.produced) {
-      addTimestamp(timestampSet, timestamp);
+    let activeCount = 0;
+    for (const event of buildLifecycleEvents(item)) {
+      if (event.kind === 'produced') {
+        activeCount += 1;
+        addTimestamp(timestampSet, event.timestamp);
+        for (const allocation of allocations) {
+          const value = baseValue * allocation.ratio;
+          if (!Number.isFinite(value) || value === 0) continue;
+
+          applyDelta(deltasByTimestamp, event.timestamp, allocation.band, value);
+          applyBandItemDelta(bandItemDeltasByKey, {
+            timestamp: event.timestamp,
+            band: allocation.band,
+            itemKey,
+            itemLabel,
+            itemCategory: allocation.band === 'research' ? classifyResearchCategory(item) : undefined,
+            deltaValue: value,
+            deltaCount: 1,
+          });
+        }
+
+        if (detectFreeProductionAt(player.civilization, item, event.timestamp, militarySchoolConstructedAt)) {
+          const existing = freeValueByTimestamp.get(event.timestamp) ?? 0;
+          freeValueByTimestamp.set(event.timestamp, existing + baseValue);
+        }
+        continue;
+      }
+
+      if (activeCount <= 0) continue;
+      activeCount -= 1;
+
       for (const allocation of allocations) {
+        if (allocation.band === 'research') continue;
         const value = baseValue * allocation.ratio;
         if (!Number.isFinite(value) || value === 0) continue;
 
-        applyDelta(deltasByTimestamp, timestamp, allocation.band, value);
+        addTimestamp(timestampSet, event.timestamp);
+        applyDelta(deltasByTimestamp, event.timestamp, allocation.band, -value);
         applyBandItemDelta(bandItemDeltasByKey, {
-          timestamp,
-          band: allocation.band,
-          itemKey,
-          itemLabel,
-          itemCategory: allocation.band === 'research' ? classifyResearchCategory(item) : undefined,
-          deltaValue: value,
-          deltaCount: 1,
-        });
-      }
-
-      if (detectFreeProductionAt(player.civilization, item, timestamp, militarySchoolConstructedAt)) {
-        const existing = freeValueByTimestamp.get(timestamp) ?? 0;
-        freeValueByTimestamp.set(timestamp, existing + baseValue);
-      }
-    }
-
-    for (const allocation of allocations) {
-      if (allocation.band === 'research') continue;
-
-      for (const timestamp of item.destroyed) {
-        const value = baseValue * allocation.ratio;
-        if (!Number.isFinite(value) || value === 0) continue;
-
-        addTimestamp(timestampSet, timestamp);
-        applyDelta(deltasByTimestamp, timestamp, allocation.band, -value);
-        applyBandItemDelta(bandItemDeltasByKey, {
-          timestamp,
+          timestamp: event.timestamp,
           band: allocation.band,
           itemKey,
           itemLabel,
