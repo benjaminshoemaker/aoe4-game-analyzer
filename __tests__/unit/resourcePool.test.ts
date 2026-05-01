@@ -552,6 +552,48 @@ describe('buildPlayerDeployedPoolSeries', () => {
     ]));
   });
 
+  it('preserves same-timestamp production and destruction as separate item deltas', () => {
+    const player = makePlayer();
+    player.resources.timestamps = [0, 100, 120];
+
+    const result = buildPlayerDeployedPoolSeries(
+      player,
+      makeBuildOrder([
+        makeItem({
+          type: 'unit',
+          id: 'mounted-samurai-1',
+          name: 'Mounted Samurai',
+          classes: ['military', 'cavalry'],
+          cost: { food: 189, wood: 0, gold: 135, stone: 0, total: 324 },
+          produced: [100],
+          destroyed: [100]
+        })
+      ]),
+      120
+    );
+
+    const at100 = result.series.find(point => point.timestamp === 100);
+    expect(at100?.militaryActive).toBe(0);
+    expect(at100?.total).toBe(0);
+    expect(result.bandItemDeltas).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        timestamp: 100,
+        band: 'militaryActive',
+        itemLabel: 'Mounted Samurai',
+        deltaValue: 324,
+        deltaCount: 1
+      }),
+      expect.objectContaining({
+        timestamp: 100,
+        band: 'militaryActive',
+        itemLabel: 'Mounted Samurai',
+        deltaValue: -324,
+        deltaCount: -1
+      })
+    ]));
+    expect(result.bandItemSnapshots?.find(point => point.timestamp === 100)?.bands.militaryActive).toEqual([]);
+  });
+
   it('attaches research categories for breakdown rendering', () => {
     const result = buildPlayerDeployedPoolSeries(
       makePlayer(),

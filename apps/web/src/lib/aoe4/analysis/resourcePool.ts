@@ -361,7 +361,8 @@ function applyBandItemDelta(
   deltasByKey: Map<string, BandItemDeltaEvent>,
   event: BandItemDeltaEvent
 ): void {
-  const key = `${event.timestamp}|${event.band}|${event.itemKey}`;
+  const direction = event.deltaValue < 0 || event.deltaCount < 0 ? 'loss' : 'gain';
+  const key = `${event.timestamp}|${event.band}|${event.itemKey}|${direction}`;
   const existing = deltasByKey.get(key);
   if (existing) {
     existing.deltaValue += event.deltaValue;
@@ -814,7 +815,12 @@ export function buildPlayerDeployedPoolSeries(
 
   const bandItemDeltas = [...bandItemDeltasByKey.values()]
     .filter(event => Math.abs(event.deltaValue) > 1e-9)
-    .sort((a, b) => a.timestamp - b.timestamp || a.band.localeCompare(b.band) || a.itemKey.localeCompare(b.itemKey));
+    .sort((a, b) =>
+      a.timestamp - b.timestamp ||
+      a.band.localeCompare(b.band) ||
+      a.itemKey.localeCompare(b.itemKey) ||
+      Number(a.deltaValue < 0) - Number(b.deltaValue < 0)
+    );
 
   const bandItemEventsByTimestamp = new Map<number, BandItemDeltaEvent[]>();
   for (const event of bandItemDeltas) {
