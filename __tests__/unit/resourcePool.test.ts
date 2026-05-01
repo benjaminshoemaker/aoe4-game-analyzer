@@ -119,6 +119,48 @@ describe('resource pool band classifier', () => {
     expect(classifyResolvedItemBand(official, { hasNavalMilitaryProduction: false })).toBe('economic');
   });
 
+  it('classifies Sengoku Yatai as deployed economic value', () => {
+    const yatai = makeItem({
+      originalEntry: {
+        id: '11266336',
+        icon: 'icons/races/sengoku/units/yatai',
+        pbgid: 9001316,
+        type: 'Unit',
+        finished: [],
+        constructed: [],
+        destroyed: [],
+        unknown: {
+          '14': [61, 116, 159]
+        }
+      },
+      type: 'unit',
+      id: 'yatai',
+      name: 'Yatai',
+      classes: ['human', 'mobile_building', 'packable_building', 'yatai'],
+      cost: { food: 0, wood: 125, gold: 0, stone: 0, total: 125 },
+      produced: [61, 116, 159]
+    });
+
+    expect(classifyResolvedItemBand(yatai, { hasNavalMilitaryProduction: false })).toBe('economic');
+
+    const result = buildPlayerDeployedPoolSeries(
+      makePlayer('sengoku_daimyo'),
+      makeBuildOrder([yatai]),
+      180
+    );
+
+    expect(result.series.find(point => point.timestamp === 159)?.economic).toBe(375);
+    expect(result.series.find(point => point.timestamp === 159)?.militaryActive).toBe(0);
+    expect(result.bandItemDeltas).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        timestamp: 61,
+        band: 'economic',
+        itemLabel: 'Yatai',
+        deltaValue: 125
+      })
+    ]));
+  });
+
   it('classifies military production buildings as military capacity', () => {
     const barracks = makeItem({
       type: 'building',

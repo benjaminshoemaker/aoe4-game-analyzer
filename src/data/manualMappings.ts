@@ -63,6 +63,14 @@ export const manualMappings: ManualMapping[] = [
   },
   // Sengoku Daimyo units
   {
+    pbgid: 9001316,
+    name: 'Yatai',
+    id: 'yatai',
+    cost: { food: 0, wood: 125, gold: 0, stone: 0, total: 125 },
+    classes: ['human', 'mobile_building', 'packable_building', 'yatai'],
+    civs: ['sen', 'sengoku_daimyo']
+  },
+  {
     pbgid: 5174026,
     name: 'Shinobi',
     id: 'shinobi',

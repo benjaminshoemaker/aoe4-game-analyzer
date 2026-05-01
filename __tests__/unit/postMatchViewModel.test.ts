@@ -381,6 +381,16 @@ describe('significant resource loss timeline events', () => {
             topLosses: [{ label: 'Spearman', value: 300, count: 4, band: 'militaryActive' }],
           },
         },
+        preEncounterArmies: {
+          player1: {
+            totalValue: 1200,
+            units: [{ label: 'Knight', value: 1200, count: 5, band: 'militaryActive' }],
+          },
+          player2: {
+            totalValue: 450,
+            units: [{ label: 'Spearman', value: 450, count: 5, band: 'militaryActive' }],
+          },
+        },
       }),
     ];
 
@@ -393,11 +403,10 @@ describe('significant resource loss timeline events', () => {
     expect(model.trajectory.significantEvents).toHaveLength(1);
     expect(model.trajectory.significantEvents?.[0]).toEqual(expect.objectContaining({
       id: 'fight',
-      headline: 'French took a favorable fight against English.',
+      headline: 'French took a favorable fight against English, despite significantly fewer deployed military resources.',
       player1Civilization: 'English',
       player2Civilization: 'French',
       favorableUnderdogFight: {
-        summary: 'Despite significantly fewer deployed military resources.',
         details: 'French won this encounter despite having significantly fewer deployed military resources than English. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where French found an advantage, healing, stronger micro, or a favorable unit matchup.',
       },
       encounterLosses: {
@@ -413,6 +422,55 @@ describe('significant resource loss timeline events', () => {
     });
     expect(shortGameRaidModel.trajectory.significantEvents?.[0]?.headline)
       .toBe('English raided French and killed one villager.');
+
+    const exactDoubleModel = buildPostMatchViewModel({
+      summary: summaryForSignificantEvents(duration),
+      analysis: analysisForSignificantEvents(duration, [
+        significantEvent({
+          id: 'exact-double-fight',
+          timestamp: 120,
+          kind: 'fight',
+          victimPlayer: 1,
+          grossImpact: 1000,
+          playerImpacts: {
+            player1: {
+              immediateLoss: 700,
+              villagerOpportunityLoss: 0,
+              grossLoss: 700,
+              denominator: 1000,
+              pctOfDeployed: 70,
+              villagerDeaths: 0,
+              losses: [{ label: 'Knight', value: 700, count: 3, band: 'militaryActive' }],
+              topLosses: [{ label: 'Knight', value: 700, count: 3, band: 'militaryActive' }],
+            },
+            player2: {
+              immediateLoss: 300,
+              villagerOpportunityLoss: 0,
+              grossLoss: 300,
+              denominator: 1000,
+              pctOfDeployed: 30,
+              villagerDeaths: 0,
+              losses: [{ label: 'Spearman', value: 300, count: 4, band: 'militaryActive' }],
+              topLosses: [{ label: 'Spearman', value: 300, count: 4, band: 'militaryActive' }],
+            },
+          },
+          preEncounterArmies: {
+            player1: {
+              totalValue: 900,
+              units: [{ label: 'Knight', value: 900, count: 4, band: 'militaryActive' }],
+            },
+            player2: {
+              totalValue: 450,
+              units: [{ label: 'Spearman', value: 450, count: 5, band: 'militaryActive' }],
+            },
+          },
+        }),
+      ]),
+      perspectiveProfileId: 1,
+    });
+    expect(exactDoubleModel.trajectory.significantEvents?.[0]?.favorableUnderdogFight).toBeUndefined();
+    expect(exactDoubleModel.trajectory.significantEvents?.[0]?.headline)
+      .not.toContain('despite significantly fewer deployed military resources');
   });
 });
 

@@ -69,7 +69,6 @@ export interface AgeMarker {
 }
 
 export interface FavorableUnderdogFightContext {
-  summary: string;
   details: string;
 }
 
@@ -254,6 +253,10 @@ export interface PostMatchHoverSnapshot {
       opponent: HoverBandBreakdownEntry[];
     };
     destroyed?: {
+      you: HoverBandBreakdownEntry[];
+      opponent: HoverBandBreakdownEntry[];
+    };
+    float?: {
       you: HoverBandBreakdownEntry[];
       opponent: HoverBandBreakdownEntry[];
     };
@@ -468,6 +471,68 @@ function cumulativeValueAtOrBefore(series: CumulativeGatheredPoint[], timestamp:
   }
 
   return candidate;
+}
+
+type StockpileResourceKey = 'food' | 'wood' | 'gold' | 'stone' | 'oliveoil';
+
+const stockpileResourceDefs: Array<{ key: StockpileResourceKey; label: string }> = [
+  { key: 'food', label: 'Food' },
+  { key: 'wood', label: 'Wood' },
+  { key: 'gold', label: 'Gold' },
+  { key: 'stone', label: 'Stone' },
+  { key: 'oliveoil', label: 'Olive oil' },
+];
+
+function resourceSeriesIndexAtOrBefore(
+  player: GameSummary['players'][number],
+  timestamp: number
+): number | null {
+  const timestamps = player.resources.timestamps;
+  if (timestamps.length === 0) return null;
+
+  let candidate = 0;
+  for (let i = 0; i < timestamps.length; i += 1) {
+    if (timestamps[i] > timestamp) break;
+    candidate = i;
+  }
+
+  return candidate;
+}
+
+function stockpileValueAtIndex(
+  player: GameSummary['players'][number],
+  key: StockpileResourceKey,
+  index: number
+): number {
+  const series = player.resources[key];
+  const value = series?.[index] ?? 0;
+  return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+}
+
+function buildFloatBreakdownEntries(
+  player: GameSummary['players'][number],
+  timestamp: number
+): HoverBandBreakdownEntry[] {
+  const index = resourceSeriesIndexAtOrBefore(player, timestamp);
+  if (index === null) return [];
+
+  const entries = stockpileResourceDefs
+    .map(def => ({
+      label: def.label,
+      value: stockpileValueAtIndex(player, def.key, index),
+      category: 'resource-stockpile',
+    }))
+    .filter(entry => entry.value > 0);
+  const total = entries.reduce((sum, entry) => sum + entry.value, 0);
+
+  return entries.map(entry => ({
+    ...entry,
+    percent: total > 0 ? Number(((entry.value / total) * 100).toFixed(1)) : 0,
+  }));
+}
+
+function floatBreakdownTotal(entries: HoverBandBreakdownEntry[]): number {
+  return entries.reduce((sum, entry) => sum + entry.value, 0);
 }
 
 function buildCumulativeGatheredSeries(
@@ -758,7 +823,7 @@ function significantEventHeadline(event: SignificantResourceLossEvent, context: 
     if (context.favorableUnderdogFight && underdogPlayer) {
       const underdogCivilization = underdogPlayer === 1 ? context.player1Civilization : context.player2Civilization;
       const opponentCivilization = underdogPlayer === 1 ? context.player2Civilization : context.player1Civilization;
-      return `${underdogCivilization} took a favorable fight against ${opponentCivilization}.`;
+      return `${underdogCivilization} took a favorable fight against ${opponentCivilization}, despite significantly fewer deployed military resources.`;
     }
 
     if (perspectiveImpact.grossLoss > otherImpact.grossLoss) {
@@ -789,7 +854,7 @@ function favorableUnderdogFightPlayer(event: SignificantResourceLossEvent): 1 | 
   const favorableArmy = event.preEncounterArmies[favorableKey].totalValue;
   const otherArmy = event.preEncounterArmies[otherKey].totalValue;
 
-  if (favorableArmy <= 0 || otherArmy < favorableArmy * 2) return null;
+  if (favorableArmy <= 0 || otherArmy <= favorableArmy * 2) return null;
   return favorablePlayer;
 }
 
@@ -804,7 +869,6 @@ function favorableUnderdogFightContext(event: SignificantResourceLossEvent, cont
   const opponentCivilization = favorablePlayer === 1 ? context.player2Civilization : context.player1Civilization;
 
   return {
-    summary: 'Despite significantly fewer deployed military resources.',
     details: `${underdogCivilization} won this encounter despite having significantly fewer deployed military resources than ${opponentCivilization}. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where ${underdogCivilization} found an advantage, healing, stronger micro, or a favorable unit matchup.`,
   };
 }
@@ -1075,7 +1139,8 @@ function cumulativeDestroyedByBandAtOrBefore(
 function buildResourceAccountingValues(
   point: PoolSeriesPoint,
   destroyedByBand: Record<PoolBand, number>,
-  gatheredValue: number
+  gatheredValue: number,
+  floatValue: number
 ): ResourceAccountingValues {
   const grossBands = accountingBands.reduce<Record<PoolBand, number>>((values, band) => {
     values[band] = Math.max(0, Math.round(point[band] + destroyedByBand[band]));
@@ -1085,7 +1150,7 @@ function buildResourceAccountingValues(
   const grossTotal = accountingBands.reduce((sum, band) => sum + grossBands[band], 0);
   const total = Math.max(0, Math.round(grossTotal - destroyed));
   const gathered = Math.max(0, Math.round(gatheredValue));
-  const float = Math.max(0, gathered - total - destroyed);
+  const float = Math.max(0, Math.round(floatValue));
 
   return {
     economic: grossBands.economic,
@@ -1725,6 +1790,8 @@ export function buildPostMatchViewModel(params: {
     ...opponentPool.gatherRateSeries.map(point => point.timestamp),
     ...yourCumulativeGatheredSeries.map(point => point.timestamp),
     ...opponentCumulativeGatheredSeries.map(point => point.timestamp),
+    ...yourPlayer.resources.timestamps,
+    ...opponentPlayer.resources.timestamps,
     ...adjustedMilitarySeries.map(point => point.timestamp),
     ...ageMarkers.map(marker => marker.timestamp),
     ...significantEvents.map(event => event.timestamp),
@@ -1736,15 +1803,19 @@ export function buildPostMatchViewModel(params: {
     const opponentPoint = pointAtOrBefore(opponentPool.series, timestamp);
     const you = toHoverBandValues(youPoint);
     const opponent = toHoverBandValues(opponentPoint);
+    const youFloatBreakdown = buildFloatBreakdownEntries(yourPlayer, timestamp);
+    const opponentFloatBreakdown = buildFloatBreakdownEntries(opponentPlayer, timestamp);
     const youAccounting = buildResourceAccountingValues(
       youPoint,
       cumulativeDestroyedByBandAtOrBefore(yourPool.bandItemDeltas, timestamp),
-      cumulativeValueAtOrBefore(yourCumulativeGatheredSeries, timestamp)
+      cumulativeValueAtOrBefore(yourCumulativeGatheredSeries, timestamp),
+      floatBreakdownTotal(youFloatBreakdown)
     );
     const opponentAccounting = buildResourceAccountingValues(
       opponentPoint,
       cumulativeDestroyedByBandAtOrBefore(opponentPool.bandItemDeltas, timestamp),
-      cumulativeValueAtOrBefore(opponentCumulativeGatheredSeries, timestamp)
+      cumulativeValueAtOrBefore(opponentCumulativeGatheredSeries, timestamp),
+      floatBreakdownTotal(opponentFloatBreakdown)
     );
     const adjusted = adjustedMilitaryAtOrBefore(adjustedMilitarySeries, timestamp);
     const youBreakdown = bandSnapshotsAtOrBefore(yourPool.bandItemSnapshots, timestamp);
@@ -1842,6 +1913,10 @@ export function buildPostMatchViewModel(params: {
         destroyed: {
           you: toDestroyedBreakdownEntries(yourPool.bandItemDeltas, timestamp),
           opponent: toDestroyedBreakdownEntries(opponentPool.bandItemDeltas, timestamp),
+        },
+        float: {
+          you: youFloatBreakdown,
+          opponent: opponentFloatBreakdown,
         },
       },
       significantEvent,

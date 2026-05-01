@@ -7,6 +7,7 @@ import { buildPostMatchViewModel } from '../../src/analysis/postMatchViewModel';
 import { renderPostMatchHtml } from '../../src/formatters/postMatchHtml';
 import { sampleUnits, sampleBuildings, sampleTechnologies } from '../helpers/testData';
 import { makeMalianCattleFixture } from '../helpers/malianCattleFixture';
+import { makeSengokuYataiFixture } from '../helpers/sengokuYataiFixture';
 import {
   makeSplitVillagerDeathsFixture,
   makeSplitVillagerStaticDataCache
@@ -150,7 +151,7 @@ describe('post-match view integration', () => {
     expect(html).toContain('Economic, Technology, and Military: percentage share of strategic allocation');
     expect(html).toContain('Destroyed: cumulative value assumed destroyed by opponent');
     expect(html).toContain('Overall: absolute deployed resource value after subtracting Destroyed');
-    expect(html).toContain('Float (not deployed): gathered resources not currently committed');
+    expect(html).toContain('Float (not deployed): live stockpile resources not currently committed');
     expect(html).toContain('class="allocation-lane allocation-lane-overall"');
     expect(html).toContain('class="allocation-lane allocation-lane-destroyed"');
     expect(html).toContain('class="allocation-lane allocation-lane-float"');
@@ -173,12 +174,16 @@ describe('post-match view integration', () => {
     expect(html).toContain('data-hover-field="allocation.float.delta"');
     expect(html).toContain('data-inspector-row="destroyed"');
     expect(html).toContain('data-band-key="destroyed"');
+    expect(html).toContain('data-inspector-row="float"');
+    expect(html).toContain('data-band-key="float"');
     const otherRowIndex = html.indexOf('data-allocation-category-row="other"');
     const destroyedRowIndex = html.indexOf('data-inspector-row="destroyed"');
     const totalPoolIndex = html.indexOf('data-total-pool-tooltip');
+    const floatRowIndex = html.indexOf('data-inspector-row="float"');
     expect(otherRowIndex).toBeGreaterThanOrEqual(0);
     expect(destroyedRowIndex).toBeGreaterThan(otherRowIndex);
     expect(totalPoolIndex).toBeGreaterThan(destroyedRowIndex);
+    expect(floatRowIndex).toBeGreaterThan(totalPoolIndex);
     expect(html).toContain('Bands are remapped into Economic, Technology, Military, and Other');
     expect(html).toContain('Overall is absolute deployed resource value after subtracting Destroyed');
     expect(html).toContain('data-total-pool-tooltip');
@@ -219,11 +224,18 @@ describe('post-match view integration', () => {
       }),
       overall: expect.objectContaining({ you: finalHover.accounting.you.total }),
     }));
-    expect(
-      finalHover.accounting.you.total +
-      finalHover.accounting.you.destroyed +
-      finalHover.accounting.you.float
-    ).toBeCloseTo(summary.players[0].totalResourcesGathered.total, 0);
+    const finalTimestamp = finalHover.timestamp;
+    let finalResourceIndex = 0;
+    summary.players[0].resources.timestamps.forEach((timestamp, index) => {
+      if (timestamp <= finalTimestamp) finalResourceIndex = index;
+    });
+    const resourceKeys = ['food', 'wood', 'gold', 'stone', 'oliveoil'] as const;
+    const expectedFloat = resourceKeys
+      .reduce((sum, key) => sum + Math.max(0, Math.round(summary.players[0].resources[key]?.[finalResourceIndex] ?? 0)), 0);
+    const floatBreakdownTotal = finalHover.bandBreakdown.float.you
+      .reduce((sum: number, entry: { value: number }) => sum + entry.value, 0);
+    expect(finalHover.accounting.you.float).toBe(expectedFloat);
+    expect(floatBreakdownTotal).toBe(expectedFloat);
     expect(html).toContain('id="villager-opportunity-you"');
     expect(html).toContain('id="villager-opportunity-opponent"');
     expect(html).toContain('Expected villager rate');
@@ -310,6 +322,36 @@ describe('post-match view integration', () => {
 
     expect(html).toContain('"label":"Cattle"');
     expect(html).toContain('"value":180');
+  });
+
+  it('renders Sengoku Yatai as economic deployed resource pool value', async () => {
+    const summary = parseGameSummary(makeSengokuYataiFixture());
+    const analysis = await analyzeGame('111', 229727104, { skipNarrative: true, summary });
+
+    const yataiDeltas = analysis.deployedResourcePools.player1.bandItemDeltas ?? [];
+    expect(yataiDeltas).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        band: 'economic',
+        itemLabel: 'Yatai',
+        deltaValue: 125,
+      }),
+    ]));
+
+    const finalPoint = analysis.deployedResourcePools.player1.series[
+      analysis.deployedResourcePools.player1.series.length - 1
+    ];
+    expect(finalPoint.economic).toBeGreaterThanOrEqual(375);
+
+    const model = buildPostMatchViewModel({
+      summary,
+      analysis,
+      perspectiveProfileId: '8139502-Beasty',
+      summarySig: 'abc123sig',
+    });
+    const html = renderPostMatchHtml(model);
+
+    expect(html).toContain('"label":"Yatai"');
+    expect(html).toContain('"value":375');
   });
 
   it('does not double-subtract villager deaths after splitting starting assets from trained workers', async () => {

@@ -65,6 +65,10 @@ export interface PostMatchPlayerDisplay {
   civilization: string;
   label: string;
   shortLabel: string;
+  compactLabel: string;
+  compactShortLabel: string;
+  ageLabel: string;
+  ageShortLabel: string;
   color: string;
 }
 
@@ -90,7 +94,6 @@ export interface MetricAgeAnalysisCard {
 }
 
 export interface FavorableUnderdogFightContext {
-  summary: string;
   details: string;
 }
 
@@ -278,6 +281,10 @@ export interface PostMatchHoverSnapshot {
       opponent: HoverBandBreakdownEntry[];
     };
     destroyed?: {
+      you: HoverBandBreakdownEntry[];
+      opponent: HoverBandBreakdownEntry[];
+    };
+    float?: {
       you: HoverBandBreakdownEntry[];
       opponent: HoverBandBreakdownEntry[];
     };
@@ -503,6 +510,68 @@ function cumulativeValueAtOrBefore(series: CumulativeGatheredPoint[], timestamp:
   return candidate;
 }
 
+type StockpileResourceKey = 'food' | 'wood' | 'gold' | 'stone' | 'oliveoil';
+
+const stockpileResourceDefs: Array<{ key: StockpileResourceKey; label: string }> = [
+  { key: 'food', label: 'Food' },
+  { key: 'wood', label: 'Wood' },
+  { key: 'gold', label: 'Gold' },
+  { key: 'stone', label: 'Stone' },
+  { key: 'oliveoil', label: 'Olive oil' },
+];
+
+function resourceSeriesIndexAtOrBefore(
+  player: GameSummary['players'][number],
+  timestamp: number
+): number | null {
+  const timestamps = player.resources.timestamps;
+  if (timestamps.length === 0) return null;
+
+  let candidate = 0;
+  for (let i = 0; i < timestamps.length; i += 1) {
+    if (timestamps[i] > timestamp) break;
+    candidate = i;
+  }
+
+  return candidate;
+}
+
+function stockpileValueAtIndex(
+  player: GameSummary['players'][number],
+  key: StockpileResourceKey,
+  index: number
+): number {
+  const series = player.resources[key];
+  const value = series?.[index] ?? 0;
+  return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+}
+
+function buildFloatBreakdownEntries(
+  player: GameSummary['players'][number],
+  timestamp: number
+): HoverBandBreakdownEntry[] {
+  const index = resourceSeriesIndexAtOrBefore(player, timestamp);
+  if (index === null) return [];
+
+  const entries = stockpileResourceDefs
+    .map(def => ({
+      label: def.label,
+      value: stockpileValueAtIndex(player, def.key, index),
+      category: 'resource-stockpile',
+    }))
+    .filter(entry => entry.value > 0);
+  const total = entries.reduce((sum, entry) => sum + entry.value, 0);
+
+  return entries.map(entry => ({
+    ...entry,
+    percent: total > 0 ? Number(((entry.value / total) * 100).toFixed(1)) : 0,
+  }));
+}
+
+function floatBreakdownTotal(entries: HoverBandBreakdownEntry[]): number {
+  return entries.reduce((sum, entry) => sum + entry.value, 0);
+}
+
 function buildCumulativeGatheredSeries(
   player: GameSummary['players'][number],
   duration: number
@@ -640,6 +709,10 @@ function civilizationLabel(civilization: string): string {
     .join(' ');
 }
 
+function normalizeName(value: string): string {
+  return value.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
 function playerDisplay(
   player: GameSummary['players'][number] | undefined,
   fallbackName: string,
@@ -652,6 +725,10 @@ function playerDisplay(
     civilization,
     label: `${name} · ${civilization}`,
     shortLabel: name,
+    compactLabel: civilization,
+    compactShortLabel: civilization,
+    ageLabel: `${name} · ${civilization}`,
+    ageShortLabel: name,
     color,
   };
 }
@@ -660,9 +737,21 @@ function buildPlayerDisplays(summary: GameSummary): {
   player1: PostMatchPlayerDisplay;
   player2: PostMatchPlayerDisplay;
 } {
+  const player1 = playerDisplay(summary.players[0], 'Player 1', playerColors.player1);
+  const player2 = playerDisplay(summary.players[1], 'Player 2', playerColors.player2);
+  const usePlayerNamesForCompactLabels =
+    normalizeName(player1.civilization) === normalizeName(player2.civilization);
+  const withCompactLabel = (display: PostMatchPlayerDisplay): PostMatchPlayerDisplay => ({
+    ...display,
+    compactLabel: usePlayerNamesForCompactLabels ? display.name : display.civilization,
+    compactShortLabel: usePlayerNamesForCompactLabels ? display.shortLabel : display.civilization,
+    ageLabel: display.label,
+    ageShortLabel: display.shortLabel,
+  });
+
   return {
-    player1: playerDisplay(summary.players[0], 'Player 1', playerColors.player1),
-    player2: playerDisplay(summary.players[1], 'Player 2', playerColors.player2),
+    player1: withCompactLabel(player1),
+    player2: withCompactLabel(player2),
   };
 }
 
@@ -683,12 +772,12 @@ export function buildAgeMarkers(
 ): AgeMarker[] {
   const ages: AgeMarkerAge[] = ['Feudal', 'Castle', 'Imperial'];
   const playerSpecs: { player: PostMatchPlayerKey; summaryIndex: 0 | 1; label: string; shortPrefix: string }[] = [
-    { player: 'you', summaryIndex: youIndex, label: labels.you.label, shortPrefix: labels.you.shortLabel },
+    { player: 'you', summaryIndex: youIndex, label: labels.you.ageLabel, shortPrefix: labels.you.ageShortLabel },
     {
       player: 'opponent',
       summaryIndex: youIndex === 0 ? 1 : 0,
-      label: labels.opponent.label,
-      shortPrefix: labels.opponent.shortLabel,
+      label: labels.opponent.ageLabel,
+      shortPrefix: labels.opponent.ageShortLabel,
     },
   ];
 
@@ -732,8 +821,8 @@ function buildSignificantTimelineEvents(
   const displays = buildPlayerDisplays(summary);
   const player1Civilization = displays.player1.civilization;
   const player2Civilization = displays.player2.civilization;
-  const player1Label = displays.player1.label;
-  const player2Label = displays.player2.label;
+  const player1Label = displays.player1.compactLabel;
+  const player2Label = displays.player2.compactLabel;
   return (events ?? [])
     .map(event => {
       const victimSummaryIndex = event.victimPlayer - 1;
@@ -850,7 +939,7 @@ function significantEventHeadline(event: SignificantResourceLossEvent, context: 
     if (context.favorableUnderdogFight && underdogPlayer) {
       const underdogLabel = underdogPlayer === 1 ? context.player1Label : context.player2Label;
       const opponentLabel = underdogPlayer === 1 ? context.player2Label : context.player1Label;
-      return `${underdogLabel} took a favorable fight against ${opponentLabel}.`;
+      return `${underdogLabel} took a favorable fight against ${opponentLabel}, despite significantly fewer deployed military resources.`;
     }
 
     if (perspectiveImpact.grossLoss > otherImpact.grossLoss) {
@@ -881,7 +970,7 @@ function favorableUnderdogFightPlayer(event: SignificantResourceLossEvent): 1 | 
   const favorableArmy = event.preEncounterArmies[favorableKey].totalValue;
   const otherArmy = event.preEncounterArmies[otherKey].totalValue;
 
-  if (favorableArmy <= 0 || otherArmy < favorableArmy * 2) return null;
+  if (favorableArmy <= 0 || otherArmy <= favorableArmy * 2) return null;
   return favorablePlayer;
 }
 
@@ -898,7 +987,6 @@ function favorableUnderdogFightContext(event: SignificantResourceLossEvent, cont
   const opponentLabel = favorablePlayer === 1 ? context.player2Label : context.player1Label;
 
   return {
-    summary: 'Despite significantly fewer deployed military resources.',
     details: `${underdogLabel} won this encounter despite having significantly fewer deployed military resources than ${opponentLabel}. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where ${underdogLabel} found an advantage, healing, stronger micro, or a favorable unit matchup.`,
   };
 }
@@ -1169,7 +1257,8 @@ function cumulativeDestroyedByBandAtOrBefore(
 function buildResourceAccountingValues(
   point: PoolSeriesPoint,
   destroyedByBand: Record<PoolBand, number>,
-  gatheredValue: number
+  gatheredValue: number,
+  floatValue: number
 ): ResourceAccountingValues {
   const grossBands = accountingBands.reduce<Record<PoolBand, number>>((values, band) => {
     values[band] = Math.max(0, Math.round(point[band] + destroyedByBand[band]));
@@ -1179,7 +1268,7 @@ function buildResourceAccountingValues(
   const grossTotal = accountingBands.reduce((sum, band) => sum + grossBands[band], 0);
   const total = Math.max(0, Math.round(grossTotal - destroyed));
   const gathered = Math.max(0, Math.round(gatheredValue));
-  const float = Math.max(0, gathered - total - destroyed);
+  const float = Math.max(0, Math.round(floatValue));
 
   return {
     economic: grossBands.economic,
@@ -1362,25 +1451,26 @@ function ageDisplayName(age: AgeAnalysisAge): string {
   return age;
 }
 
-function ageGapText(value: number): string {
+function ageGapText(value: number, labels: Record<PostMatchPlayerKey, PostMatchPlayerDisplay>): string {
   const rounded = Math.round(value);
   if (rounded === 0) return 'Tied';
-  if (rounded > 0) return `You +${rounded}`;
-  return `Opponent +${Math.abs(rounded)}`;
+  if (rounded > 0) return `${labels.you.compactLabel} +${rounded}`;
+  return `${labels.opponent.compactLabel} +${Math.abs(rounded)}`;
 }
 
 function buildGapSummary(
   yourSeries: PoolSeriesPoint[],
   opponentSeries: PoolSeriesPoint[],
   start: number,
-  end: number
+  end: number,
+  labels: Record<PostMatchPlayerKey, PostMatchPlayerDisplay>
 ): string {
   const startGap = totalGapAt(yourSeries, opponentSeries, start);
   const endGap = totalGapAt(yourSeries, opponentSeries, end);
   const absStart = Math.abs(Math.round(startGap));
   const absEnd = Math.abs(Math.round(endGap));
   const trend = absEnd > absStart ? 'widened' : absEnd < absStart ? 'narrowed' : 'held';
-  return `Gap ${trend}: ${ageGapText(startGap)} -> ${ageGapText(endGap)}.`;
+  return `Gap ${trend}: ${ageGapText(startGap, labels)} -> ${ageGapText(endGap, labels)}.`;
 }
 
 function ageCategoryValue(point: PoolSeriesPoint, category: AgeAllocationCategory): number {
@@ -1433,7 +1523,10 @@ function similarAgeCategory(
     ?? deltas[0];
 }
 
-function buildAgeAllocationSummary(deltas: AgeAllocationDelta[]): string {
+function buildAgeAllocationSummary(
+  deltas: AgeAllocationDelta[],
+  labels: Record<PostMatchPlayerKey, PostMatchPlayerDisplay>
+): string {
   const yourEdge = [...deltas].sort((a, b) => b.edge - a.edge)[0];
   const opponentEdge = [...deltas].sort((a, b) => a.edge - b.edge)[0];
   const hasYourEdge = yourEdge.edge >= 100;
@@ -1441,18 +1534,18 @@ function buildAgeAllocationSummary(deltas: AgeAllocationDelta[]): string {
 
   if (hasYourEdge && hasOpponentEdge && yourEdge.key !== opponentEdge.key) {
     const similar = similarAgeCategory(deltas, [yourEdge, opponentEdge]);
-    return `Allocation: your edge was ${formatAgeEdge(yourEdge)}, while opponent's edge was ${formatAgeEdge(opponentEdge)}; ${similar.label} was similar.`;
+    return `Allocation: ${labels.you.compactLabel} led by ${formatAgeEdge(yourEdge)}, while ${labels.opponent.compactLabel} led by ${formatAgeEdge(opponentEdge)}; ${similar.label} was similar.`;
   }
 
   if (hasYourEdge) {
     const similar = deltas.find(delta => delta.key === 'military' && delta.key !== yourEdge.key)
       ?? similarAgeCategory(deltas, [yourEdge]);
-    return `Allocation: your edge was ${formatAgeEdge(yourEdge)}; ${similar.label} was similar.`;
+    return `Allocation: ${labels.you.compactLabel} led by ${formatAgeEdge(yourEdge)}; ${similar.label} was similar.`;
   }
 
   if (hasOpponentEdge) {
     const similar = similarAgeCategory(deltas, [opponentEdge]);
-    return `Allocation: opponent's edge was ${formatAgeEdge(opponentEdge)}; ${similar.label} was similar.`;
+    return `Allocation: ${labels.opponent.compactLabel} led by ${formatAgeEdge(opponentEdge)}; ${similar.label} was similar.`;
   }
 
   return 'Allocation: no major allocation edge; Economy was similar.';
@@ -1468,7 +1561,8 @@ function buildAgeDestructionSummary(
   yourEvents: BandItemDeltaEvent[] | undefined,
   opponentEvents: BandItemDeltaEvent[] | undefined,
   start: number,
-  end: number
+  end: number,
+  labels: Record<PostMatchPlayerKey, PostMatchPlayerDisplay>
 ): string {
   const yourLosses = lossValueDuring(yourEvents, start, end);
   const opponentLosses = lossValueDuring(opponentEvents, start, end);
@@ -1476,7 +1570,7 @@ function buildAgeDestructionSummary(
     return 'Destruction: neither player destroyed measurable value.';
   }
 
-  return `Destruction: you destroyed ${Math.round(opponentLosses)} value; opponent destroyed ${Math.round(yourLosses)} value.`;
+  return `Destruction: ${labels.you.compactLabel} destroyed ${Math.round(opponentLosses)} value; ${labels.opponent.compactLabel} destroyed ${Math.round(yourLosses)} value.`;
 }
 
 function minGatherRateInWindow(series: GatherRatePoint[], start: number, end: number): number {
@@ -1512,21 +1606,20 @@ function buildAgeConversionSummary(params: {
   const opponentDestroyed = lossValueDuring(params.yourEvents, params.start, params.end);
   const opponentGatherDrop = gatherRateDropPct(params.opponentGatherRateSeries, params.start, params.end);
   const yourGatherDrop = gatherRateDropPct(params.yourGatherRateSeries, params.start, params.end);
-
   if (yourMilitaryDelta > 0 && opponentGatherDrop >= 0.1) {
-    return `Meaning: Your military converted: opponent gather/min fell ${Math.round(opponentGatherDrop * 100)}% inside the window.`;
+    return `Meaning: ${params.labels.you.compactLabel} military converted: ${params.labels.opponent.compactLabel} gather/min fell ${Math.round(opponentGatherDrop * 100)}% inside the window.`;
   }
 
   if (opponentMilitaryDelta > 0 && yourGatherDrop >= 0.1) {
-    return `Meaning: Opponent's military converted: your gather/min fell ${Math.round(yourGatherDrop * 100)}% inside the window.`;
+    return `Meaning: ${params.labels.opponent.compactLabel} military converted: ${params.labels.you.compactLabel} gather/min fell ${Math.round(yourGatherDrop * 100)}% inside the window.`;
   }
 
   if (yourMilitaryDelta >= 100 && yourDestroyed < 100) {
-    return `Meaning: Your ${ageDisplayName(params.age)} military did not convert: +${Math.round(yourMilitaryDelta)} Military destroyed ${Math.round(yourDestroyed)} value and caused no major gather-rate drop.`;
+    return `Meaning: ${params.labels.you.compactLabel} ${ageDisplayName(params.age)} military did not convert: +${Math.round(yourMilitaryDelta)} Military destroyed ${Math.round(yourDestroyed)} value and caused no major gather-rate drop.`;
   }
 
   if (opponentMilitaryDelta >= 100 && opponentDestroyed < 100) {
-    return `Meaning: Opponent's ${ageDisplayName(params.age)} military did not convert: +${Math.round(opponentMilitaryDelta)} Military destroyed ${Math.round(opponentDestroyed)} value and caused no major gather-rate drop.`;
+    return `Meaning: ${params.labels.opponent.compactLabel} ${ageDisplayName(params.age)} military did not convert: +${Math.round(opponentMilitaryDelta)} Military destroyed ${Math.round(opponentDestroyed)} value and caused no major gather-rate drop.`;
   }
 
   return 'Meaning: No major conversion signal inside this shared window.';
@@ -1535,10 +1628,11 @@ function buildAgeConversionSummary(params: {
 function playerReachedAgeLabel(
   age: AgeMarkerAge,
   yourTime: number | null,
-  opponentTime: number | null
+  opponentTime: number | null,
+  labels: Record<PostMatchPlayerKey, PostMatchPlayerDisplay>
 ): string {
-  if (yourTime !== null && opponentTime === null) return `Only you reached ${age}`;
-  if (opponentTime !== null && yourTime === null) return `Only opponent reached ${age}`;
+  if (yourTime !== null && opponentTime === null) return `Only ${labels.you.compactLabel} reached ${age}`;
+  if (opponentTime !== null && yourTime === null) return `Only ${labels.opponent.compactLabel} reached ${age}`;
   return `No shared ${age} window`;
 }
 
@@ -1583,7 +1677,7 @@ function buildAgeAnalyses(params: {
       const opponentReached = ageTimes.opponent[age] !== null;
       if (!yourReached && !opponentReached) continue;
       if (!yourReached || !opponentReached) {
-        const reason = `${playerReachedAgeLabel(age, ageTimes.you[age], ageTimes.opponent[age])}, so there was no shared ${age} window to compare.`;
+        const reason = `${playerReachedAgeLabel(age, ageTimes.you[age], ageTimes.opponent[age], params.labels)}, so there was no shared ${age} window to compare.`;
         cards.push({
           age,
           startTime: null,
@@ -1627,9 +1721,9 @@ function buildAgeAnalyses(params: {
     }
 
     const deltas = buildAgeAllocationDeltas(params.yourSeries, params.opponentSeries, ageStart, ageEnd);
-    const gapSummary = buildGapSummary(params.yourSeries, params.opponentSeries, ageStart, ageEnd);
-    const allocationSummary = buildAgeAllocationSummary(deltas);
-    const destructionSummary = buildAgeDestructionSummary(params.yourEvents, params.opponentEvents, ageStart, ageEnd);
+    const gapSummary = buildGapSummary(params.yourSeries, params.opponentSeries, ageStart, ageEnd, params.labels);
+    const allocationSummary = buildAgeAllocationSummary(deltas, params.labels);
+    const destructionSummary = buildAgeDestructionSummary(params.yourEvents, params.opponentEvents, ageStart, ageEnd, params.labels);
     const conversionSummary = buildAgeConversionSummary({
       age,
       deltas,
@@ -2197,6 +2291,8 @@ export function buildPostMatchViewModel(params: {
     ...opponentPool.gatherRateSeries.map(point => point.timestamp),
     ...yourCumulativeGatheredSeries.map(point => point.timestamp),
     ...opponentCumulativeGatheredSeries.map(point => point.timestamp),
+    ...yourPlayer.resources.timestamps,
+    ...opponentPlayer.resources.timestamps,
     ...yourVillagerOpportunityResourceSeries.map(point => point.timestamp),
     ...opponentVillagerOpportunityResourceSeries.map(point => point.timestamp),
     ...adjustedMilitarySeries.map(point => point.timestamp),
@@ -2210,15 +2306,19 @@ export function buildPostMatchViewModel(params: {
     const opponentPoint = pointAtOrBefore(opponentPool.series, timestamp);
     const you = toHoverBandValues(youPoint);
     const opponent = toHoverBandValues(opponentPoint);
+    const youFloatBreakdown = buildFloatBreakdownEntries(yourPlayer, timestamp);
+    const opponentFloatBreakdown = buildFloatBreakdownEntries(opponentPlayer, timestamp);
     const youAccounting = buildResourceAccountingValues(
       youPoint,
       cumulativeDestroyedByBandAtOrBefore(yourPool.bandItemDeltas, timestamp),
-      cumulativeValueAtOrBefore(yourCumulativeGatheredSeries, timestamp)
+      cumulativeValueAtOrBefore(yourCumulativeGatheredSeries, timestamp),
+      floatBreakdownTotal(youFloatBreakdown)
     );
     const opponentAccounting = buildResourceAccountingValues(
       opponentPoint,
       cumulativeDestroyedByBandAtOrBefore(opponentPool.bandItemDeltas, timestamp),
-      cumulativeValueAtOrBefore(opponentCumulativeGatheredSeries, timestamp)
+      cumulativeValueAtOrBefore(opponentCumulativeGatheredSeries, timestamp),
+      floatBreakdownTotal(opponentFloatBreakdown)
     );
     const adjusted = adjustedMilitaryAtOrBefore(adjustedMilitarySeries, timestamp);
     const youBreakdown = bandSnapshotsAtOrBefore(yourPool.bandItemSnapshots, timestamp);
@@ -2316,6 +2416,10 @@ export function buildPostMatchViewModel(params: {
         destroyed: {
           you: toDestroyedBreakdownEntries(yourPool.bandItemDeltas, timestamp),
           opponent: toDestroyedBreakdownEntries(opponentPool.bandItemDeltas, timestamp),
+        },
+        float: {
+          you: youFloatBreakdown,
+          opponent: opponentFloatBreakdown,
         },
         opportunityLost: {
           you: toOpportunityLostBreakdownEntries(yourVillagerOpportunityResourceSeries, timestamp),

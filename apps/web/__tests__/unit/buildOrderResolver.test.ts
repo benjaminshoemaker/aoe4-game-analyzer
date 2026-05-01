@@ -103,4 +103,42 @@ describe('resolveAllBuildOrders (web)', () => {
       }),
     ]));
   });
+
+  it('resolves Sengoku Yatai production from AoE4World unknown bucket 14', () => {
+    const player = makePlayer([{
+      id: '11266336',
+      icon: 'icons/races/sengoku/units/yatai',
+      pbgid: 9001316,
+      type: 'Unit',
+      finished: [],
+      constructed: [],
+      destroyed: [],
+      unknown: {
+        '14': [61, 116, 159],
+      },
+    }]);
+    player.name = 'Sengoku';
+    player.civilization = 'sengoku_daimyo';
+
+    const resolved = resolveAllBuildOrders(player, makeStaticData());
+    const pool = buildPlayerDeployedPoolSeries(player, resolved, 360);
+
+    expect(resolved.unresolved).toEqual([]);
+    expect(resolved.resolved[0]).toEqual(expect.objectContaining({
+      type: 'unit',
+      name: 'Yatai',
+      cost: expect.objectContaining({ wood: 125, total: 125 }),
+      produced: [61, 116, 159],
+    }));
+    expect(pool.series.find(point => point.timestamp === 159)?.economic).toBe(375);
+    expect(pool.series.find(point => point.timestamp === 159)?.militaryActive).toBe(0);
+    expect(pool.bandItemDeltas).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        timestamp: 61,
+        band: 'economic',
+        itemLabel: 'Yatai',
+        deltaValue: 125,
+      }),
+    ]));
+  });
 });

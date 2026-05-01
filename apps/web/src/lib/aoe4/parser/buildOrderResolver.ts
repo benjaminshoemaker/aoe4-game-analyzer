@@ -5,6 +5,12 @@ import { manualMappings, ManualMapping } from '../data/manualMappings';
 
 const MALIAN_CATTLE_PBGID = 2059966;
 const MALIAN_CATTLE_PRODUCED_UNKNOWN_BUCKET = '14';
+const SENGOKU_YATAI_PBGID = 9001316;
+const SENGOKU_YATAI_PRODUCED_UNKNOWN_BUCKET = '14';
+const producedUnknownBucketByPbgid = new Map<number, string>([
+  [MALIAN_CATTLE_PBGID, MALIAN_CATTLE_PRODUCED_UNKNOWN_BUCKET],
+  [SENGOKU_YATAI_PBGID, SENGOKU_YATAI_PRODUCED_UNKNOWN_BUCKET],
+]);
 
 export interface ItemCost {
   food: number;
@@ -135,8 +141,9 @@ function mergeTimestamps(...groups: number[][]): number[] {
 }
 
 function getProducedTimestamps(entry: BuildOrderEntry, type: ResolvedBuildItem['type']): number[] {
-  if (entry.pbgid === MALIAN_CATTLE_PBGID) {
-    return mergeTimestamps(entry.finished, entry.unknown?.[MALIAN_CATTLE_PRODUCED_UNKNOWN_BUCKET] ?? []);
+  const unknownBucket = producedUnknownBucketByPbgid.get(entry.pbgid);
+  if (unknownBucket) {
+    return mergeTimestamps(entry.finished, entry.unknown?.[unknownBucket] ?? []);
   }
 
   if (type === 'building') {

@@ -62,6 +62,53 @@ describe('buildOrderResolver', () => {
     ]));
   });
 
+  it('resolves Sengoku Yatai production from AoE4World unknown bucket 14', () => {
+    const fixture = makeSplitVillagerDeathsFixture();
+    fixture.players[1].profileId = 8139502;
+    fixture.players[1].name = 'Beasty';
+    fixture.players[1].civilization = 'sengoku_daimyo';
+    fixture.players[1].buildOrder = [{
+      id: '11266336',
+      icon: 'icons/races/sengoku/units/yatai',
+      pbgid: 9001316,
+      type: 'Unit',
+      finished: [],
+      constructed: [],
+      destroyed: [],
+      unknown: {
+        '14': [61, 116, 159],
+      },
+    }];
+
+    const summary = parseGameSummary(fixture);
+    const player = summary.players[1];
+    const resolved = resolveAllBuildOrders(player, {
+      fetchedAt: new Date().toISOString(),
+      units: [],
+      buildings: [],
+      technologies: [],
+    });
+    const pool = buildPlayerDeployedPoolSeries(player, resolved, summary.duration);
+
+    expect(resolved.unresolved).toEqual([]);
+    expect(resolved.resolved[0]).toEqual(expect.objectContaining({
+      type: 'unit',
+      name: 'Yatai',
+      cost: expect.objectContaining({ wood: 125, total: 125 }),
+      produced: [61, 116, 159],
+    }));
+    expect(pool.series.find(point => point.timestamp === 159)?.economic).toBe(375);
+    expect(pool.series.find(point => point.timestamp === 159)?.militaryActive).toBe(0);
+    expect(pool.bandItemDeltas).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        timestamp: 61,
+        band: 'economic',
+        itemLabel: 'Yatai',
+        deltaValue: 125,
+      }),
+    ]));
+  });
+
   it('does not duplicate destroyed events when splitting starting and later production', () => {
     const summary = parseGameSummary(makeSplitVillagerDeathsFixture());
     const player = summary.players[1];

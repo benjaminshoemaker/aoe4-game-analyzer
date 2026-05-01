@@ -129,7 +129,7 @@ describe('renderPostMatchHtml (web mvp)', () => {
       player2Civilization: 'French',
       victimCivilization: 'French',
       actorCivilization: 'English',
-      headline: 'French took a favorable fight against English.',
+      headline: 'French took a favorable fight against English, despite significantly fewer deployed military resources.',
       kind: 'fight',
       label: 'Fight',
       shortLabel: 'Fight',
@@ -145,10 +145,10 @@ describe('renderPostMatchHtml (web mvp)', () => {
       topLosses: [{ label: 'Knight', value: 240, count: 1, band: 'militaryActive' }],
       preEncounterArmies: {
         player1: {
-          totalValue: 640,
+          totalValue: 1300,
           units: [
-            { label: 'Longbowman', value: 480, count: 6, band: 'militaryActive' },
-            { label: 'Spearman', value: 160, count: 2, band: 'militaryActive' },
+            { label: 'Longbowman', value: 960, count: 12, band: 'militaryActive' },
+            { label: 'Spearman', value: 340, count: 4, band: 'militaryActive' },
           ],
         },
         player2: {
@@ -160,7 +160,6 @@ describe('renderPostMatchHtml (web mvp)', () => {
         },
       },
       favorableUnderdogFight: {
-        summary: 'Despite significantly fewer deployed military resources.',
         details: 'French won this encounter despite having significantly fewer deployed military resources than English. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where French found an advantage, healing, stronger micro, or a favorable unit matchup.',
       },
       encounterLosses: {
@@ -196,16 +195,19 @@ describe('renderPostMatchHtml (web mvp)', () => {
 
     const html = renderPostMatchHtml(model);
     const eventIndex = html.indexOf('Event impact');
-    const underdogNoteIndex = html.indexOf('Despite significantly fewer deployed military resources.');
+    const visibleHeadline = '<span data-hover-field="significantEvent.label">French took a favorable fight against English, despite significantly fewer deployed military resources.</span>';
+    const headlineIndex = html.indexOf(visibleHeadline);
     const armyIndex = html.indexOf('Pre-encounter armies');
     const lossesIndex = html.indexOf('Encounter losses');
     const underdogDetailsIndex = html.indexOf('Why this fight is notable');
     const allocationIndex = html.indexOf('data-inspector-section="allocation"');
 
     expect(html).toContain('data-significant-event-marker');
-    expect(html).toContain('aria-label="Fight at 0:00: French took a favorable fight against English."');
+    expect(html).toContain('aria-label="Fight at 0:00: French took a favorable fight against English, despite significantly fewer deployed military resources."');
+    expect(html).toContain(visibleHeadline);
     expect(html).toContain('data-significant-event-armies');
-    expect(html).toContain('data-significant-event-underdog-note');
+    expect(html).not.toContain('data-significant-event-underdog-note');
+    expect(html).not.toContain('data-significant-event-underdog-summary');
     expect(html).toContain('data-significant-event-underdog-toggle');
     expect(html).toContain('aria-label="Why did the smaller army win this fight?"');
     expect(html).toContain('data-significant-event-underdog-details');
@@ -214,9 +216,9 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).toContain('Pre-encounter armies');
     expect(html).toContain('English army before fight');
     expect(html).toContain('French army before fight');
-    expect(html).toContain('data-significant-event-army-total="player1">640</dd>');
+    expect(html).toContain('data-significant-event-army-total="player1">1,300</dd>');
     expect(html).toContain('data-significant-event-army-total="player2">640</dd>');
-    expect(html).toContain('Longbowman x6');
+    expect(html).toContain('Longbowman x12');
     expect(html).toContain('Knight x2');
     expect(html).toContain('Encounter losses');
     expect(html).toContain('data-significant-event-losses');
@@ -236,7 +238,7 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).toContain('data-villager-opportunity-event-tooltip');
     expect(html).toContain('future missed gathering from killed villagers');
     expect(eventIndex).toBeGreaterThanOrEqual(0);
-    expect(underdogNoteIndex).toBeGreaterThan(eventIndex);
+    expect(headlineIndex).toBeGreaterThan(eventIndex);
     expect(armyIndex).toBeGreaterThan(eventIndex);
     expect(lossesIndex).toBeGreaterThan(armyIndex);
     expect(underdogDetailsIndex).toBeGreaterThan(lossesIndex);
@@ -253,8 +255,8 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html.indexOf('Castle age')).toBeLessThan(html.indexOf('Imperial age'));
     expect(html.indexOf('Imperial age')).toBeLessThan(html.indexOf('Final pool delta'));
     expect(html).toContain('Final pool delta');
-    expect(html).toContain('Gap widened: Tied -&gt; You +148.');
-    expect(html).toContain('Allocation: your edge was Technology +100; Military was similar.');
+    expect(html).toContain('Gap widened: Tied -&gt; English +148.');
+    expect(html).toContain('Allocation: English led by Technology +100; Military was similar.');
     expect(html).toContain('Destruction: neither player destroyed measurable value.');
     expect(html).toContain('Meaning: No major conversion signal inside this shared window.');
     expect(html).toContain('No shared window');
@@ -297,12 +299,15 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).toContain('data-hover-field="allocation.opportunityLost.delta"');
     expect(html).toContain('data-inspector-row="destroyed"');
     expect(html).toContain('data-band-key="destroyed"');
+    expect(html).toContain('data-inspector-row="float"');
+    expect(html).toContain('data-band-key="float"');
+    expect(html).toContain("float: 'Float'");
     expect(html).toContain('data-inspector-row="opportunityLost"');
     expect(html).toContain('data-band-key="opportunityLost"');
     const otherRowIndex = html.indexOf('data-allocation-category-row="other"');
     const destroyedRowIndex = html.indexOf('data-inspector-row="destroyed"');
     const totalPoolIndex = html.indexOf('data-total-pool-tooltip');
-    const floatRowIndex = html.indexOf('inspector-float-row');
+    const floatRowIndex = html.indexOf('data-inspector-row="float"');
     const opportunityLostRowIndex = html.indexOf('data-inspector-row="opportunityLost"');
     const gatherRowIndex = html.indexOf('<th>Gather/min</th>');
     expect(otherRowIndex).toBeGreaterThanOrEqual(0);
@@ -368,6 +373,11 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(payload[0].bandBreakdown.opportunityLost.you).toEqual([
       expect.objectContaining({ label: '0:00-0:30', value: 90, count: 1 }),
     ]);
+    expect(payload[0].bandBreakdown.float.you).toEqual([
+      expect.objectContaining({ label: 'Food', value: 120, percent: 24 }),
+      expect.objectContaining({ label: 'Wood', value: 180, percent: 36 }),
+      expect.objectContaining({ label: 'Gold', value: 200, percent: 40 }),
+    ]);
     expect(html).toContain('.band-breakdown-cols {\n      display: grid;\n      grid-template-columns: 1fr;');
     expect(html).toContain('.band-item-label-truncated {\n      display: block;');
     expect(html).toContain('white-space: normal;');
@@ -387,27 +397,27 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).not.toContain('data-open-adjusted-explainer');
   });
 
-  it('renders neutral player and civilization labels instead of perspective headers', () => {
+  it('keeps full player labels only in the header and age timing legend when civilizations differ', () => {
     const model = makeMvpModelFixture();
-    (model.header as any).youPlayer = {
-      name: 'RepleteCactus',
-      civilization: 'English',
-      label: 'RepleteCactus · English',
-      shortLabel: 'RepleteCactus',
-      color: '#378ADD',
-    };
-    (model.header as any).opponentPlayer = {
-      name: 'Mista',
-      civilization: 'French',
-      label: 'Mista · French',
-      shortLabel: 'Mista',
-      color: '#D85A30',
-    };
 
     const html = renderPostMatchHtml(model);
 
     expect(html).toContain('RepleteCactus · English');
     expect(html).toContain('Mista · French');
+    expect(html.match(/RepleteCactus · English/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(html.match(/Mista · French/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(html).toContain('RepleteCactus · English age-up');
+    expect(html).toContain('Mista · French age-up');
+    expect(html).toContain('<th>English</th>');
+    expect(html).toContain('<th>French</th>');
+    expect(html).toContain('<h4>English</h4>');
+    expect(html).toContain('<h4>French</h4>');
+    expect(html).toContain('data-cell-label="English"');
+    expect(html).toContain('data-cell-label="French"');
+    expect(html).not.toContain('<th>RepleteCactus · English</th>');
+    expect(html).not.toContain('<th>Mista · French</th>');
+    expect(html).not.toContain('<h4>RepleteCactus · English</h4>');
+    expect(html).not.toContain('<h4>Mista · French</h4>');
     expect(html).not.toContain('You · English');
     expect(html).not.toContain('Opponent · French');
     expect(html).not.toContain('<th>You</th>');
@@ -416,5 +426,34 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).not.toContain('<h4>Opponent</h4>');
     expect(html).not.toContain('You age-up');
     expect(html).not.toContain('Opponent age-up');
+    expect(html).toContain('.inspector-table thead th {\n      white-space: normal;');
+    expect(html).toContain('overflow-wrap: anywhere;\n      line-height: 1.15;');
+    expect(html).toContain('.inspector-table tbody td {\n      white-space: nowrap;');
+  });
+
+  it('uses player names as compact labels when both players share a civilization', () => {
+    const model = makeMvpModelFixture();
+    model.header.opponentCivilization = 'English';
+    model.header.opponentPlayer = {
+      ...model.header.opponentPlayer,
+      civilization: 'English',
+      label: 'Mista · English',
+    };
+    model.header.player2 = {
+      ...model.header.player2,
+      civilization: 'English',
+      label: 'Mista · English',
+    };
+
+    const html = renderPostMatchHtml(model);
+
+    expect(html).toContain('RepleteCactus · English');
+    expect(html).toContain('Mista · English');
+    expect(html).toContain('<th>RepleteCactus</th>');
+    expect(html).toContain('<th>Mista</th>');
+    expect(html).toContain('<h4>RepleteCactus</h4>');
+    expect(html).toContain('<h4>Mista</h4>');
+    expect(html).toContain('data-cell-label="RepleteCactus"');
+    expect(html).toContain('data-cell-label="Mista"');
   });
 });

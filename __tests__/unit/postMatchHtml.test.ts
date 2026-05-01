@@ -391,6 +391,17 @@ describe('renderPostMatchHtml', () => {
               you: [{ label: 'Castle Age Advancement', value: 500, percent: 100, count: 1 }],
               opponent: [],
             },
+            float: {
+              you: [
+                { label: 'Food', value: 120, percent: 24, category: 'resource-stockpile' },
+                { label: 'Wood', value: 180, percent: 36, category: 'resource-stockpile' },
+                { label: 'Gold', value: 200, percent: 40, category: 'resource-stockpile' },
+              ],
+              opponent: [
+                { label: 'Food', value: 600, percent: 60, category: 'resource-stockpile' },
+                { label: 'Wood', value: 400, percent: 40, category: 'resource-stockpile' },
+              ],
+            },
           },
         }],
         ageMarkers: [],
@@ -496,7 +507,7 @@ describe('renderPostMatchHtml', () => {
       player2Civilization: 'French',
       victimCivilization: 'French',
       actorCivilization: 'English',
-      headline: 'French took a favorable fight against English.',
+      headline: 'French took a favorable fight against English, despite significantly fewer deployed military resources.',
       kind: 'fight',
       label: 'Fight',
       shortLabel: 'Fight',
@@ -512,10 +523,10 @@ describe('renderPostMatchHtml', () => {
       topLosses: [{ label: 'Knight', value: 240, count: 1, band: 'militaryActive' }],
       preEncounterArmies: {
         player1: {
-          totalValue: 640,
+          totalValue: 1300,
           units: [
-            { label: 'Longbowman', value: 480, count: 6, band: 'militaryActive' },
-            { label: 'Spearman', value: 160, count: 2, band: 'militaryActive' },
+            { label: 'Longbowman', value: 960, count: 12, band: 'militaryActive' },
+            { label: 'Spearman', value: 340, count: 4, band: 'militaryActive' },
           ],
         },
         player2: {
@@ -527,7 +538,6 @@ describe('renderPostMatchHtml', () => {
         },
       },
       favorableUnderdogFight: {
-        summary: 'Despite significantly fewer deployed military resources.',
         details: 'French won this encounter despite having significantly fewer deployed military resources than English. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where French found an advantage, healing, stronger micro, or a favorable unit matchup.',
       },
       encounterLosses: {
@@ -582,7 +592,7 @@ describe('renderPostMatchHtml', () => {
     expect(html).toContain('Economic, Technology, and Military: percentage share of strategic allocation');
     expect(html).toContain('Overall: absolute deployed resource value, including Other');
     expect(html).toContain('Destroyed: cumulative value assumed destroyed by opponent');
-    expect(html).toContain('Float (not deployed): gathered resources not currently committed');
+    expect(html).toContain('Float (not deployed): live stockpile resources not currently committed');
     expect(html).toContain('class="allocation-lane allocation-lane-overall"');
     expect(html).toContain('class="allocation-lane allocation-lane-destroyed"');
     expect(html).toContain('class="allocation-lane allocation-lane-float"');
@@ -620,16 +630,20 @@ describe('renderPostMatchHtml', () => {
     expect(html).toContain('data-hover-field="allocation.float.delta"');
     expect(html).toContain('data-inspector-row="destroyed"');
     expect(html).toContain('data-band-key="destroyed"');
+    expect(html).toContain('data-inspector-row="float"');
+    expect(html).toContain('data-band-key="float"');
+    expect(html).toContain('data-band-key="float" aria-pressed="false"');
     expect(html).toContain('data-significant-event-armies');
-    expect(html).toContain('data-significant-event-underdog-note');
+    expect(html).not.toContain('data-significant-event-underdog-note');
     expect(html).toContain('data-significant-event-underdog-toggle');
     expect(html).toContain('data-significant-event-underdog-details');
+    expect(html).toContain('French took a favorable fight against English, despite significantly fewer deployed military resources.');
     expect(html).toContain('Why this fight is notable');
     expect(html).toContain('French won this encounter despite having significantly fewer deployed military resources than English.');
     expect(html).toContain('Pre-encounter armies');
     expect(html.indexOf('Pre-encounter armies')).toBeLessThan(html.indexOf('Encounter losses'));
     expect(html.indexOf('Why this fight is notable')).toBeGreaterThan(html.indexOf('Encounter losses'));
-    expect(html).toContain('data-significant-event-army-total="player1">640</dd>');
+    expect(html).toContain('data-significant-event-army-total="player1">1,300</dd>');
     expect(html).toContain('data-significant-event-army-total="player2">640</dd>');
     expect(html).toContain('data-significant-event-loss-summary="player2"');
     expect(html).toContain('data-significant-event-loss-immediate="player2">240</dd>');

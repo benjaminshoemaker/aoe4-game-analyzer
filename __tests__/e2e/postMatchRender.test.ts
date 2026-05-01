@@ -73,7 +73,7 @@ describe('post-match render CLI end-to-end', () => {
     expect(html).toContain('Economic, Technology, and Military: percentage share of strategic allocation');
     expect(html).toContain('Destroyed: cumulative value assumed destroyed by opponent');
     expect(html).toContain('Overall: absolute deployed resource value after subtracting Destroyed');
-    expect(html).toContain('Float (not deployed): gathered resources not currently committed');
+    expect(html).toContain('Float (not deployed): live stockpile resources not currently committed');
     expect(html).toContain('class="allocation-lane allocation-lane-overall"');
     expect(html).toContain('class="allocation-lane allocation-lane-destroyed"');
     expect(html).toContain('class="allocation-lane allocation-lane-float"');
@@ -187,6 +187,18 @@ describe('post-match render CLI end-to-end', () => {
     expect(html).toContain('Allocation lead and mix over time');
     expect(html).toContain('"label":"Cattle"');
     expect(html).toContain('"value":180');
+  });
+
+  it('renders Sengoku Yatai in the economic deployed pool breakdown', () => {
+    const result = runCli(['render-post-match', '111', '229727104', '--out', outputPath]);
+
+    expect(result.status).toBe(0);
+    expect(fs.existsSync(outputPath)).toBe(true);
+
+    const html = fs.readFileSync(outputPath, 'utf-8');
+    expect(html).toContain('Allocation lead and mix over time');
+    expect(html).toContain('"label":"Yatai"');
+    expect(html).toContain('"value":375');
   });
 
   it('renders worker deaths once when starting and trained workers share one build-order entry', () => {

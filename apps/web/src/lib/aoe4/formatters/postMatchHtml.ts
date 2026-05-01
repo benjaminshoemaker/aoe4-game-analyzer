@@ -15,7 +15,7 @@ interface BandDef {
 }
 
 type HoverBandKey = BandDef['key'];
-type BreakdownKey = HoverBandKey | 'destroyed' | 'opportunityLost';
+type BreakdownKey = HoverBandKey | 'destroyed' | 'float' | 'opportunityLost';
 
 const bandDefs: BandDef[] = [
   { key: 'economic', label: 'Economic', color: '#5DCAA5' },
@@ -226,7 +226,7 @@ interface HoverSnapshot {
     }>;
     matrix: AdjustedMatrixPayload;
   };
-  bandBreakdown: Record<HoverBandKey, BandBreakdownPayload> & Partial<Record<'destroyed' | 'opportunityLost', BandBreakdownPayload>>;
+  bandBreakdown: Record<HoverBandKey, BandBreakdownPayload> & Partial<Record<'destroyed' | 'float' | 'opportunityLost', BandBreakdownPayload>>;
 }
 
 type ClientHoverSnapshot = Pick<
@@ -320,17 +320,37 @@ function fallbackPlayerDisplay(
     civilization: safeCivilization,
     label: `${safeName} · ${safeCivilization}`,
     shortLabel: safeName,
+    compactLabel: safeCivilization,
+    compactShortLabel: safeCivilization,
+    ageLabel: `${safeName} · ${safeCivilization}`,
+    ageShortLabel: safeName,
     color,
   };
 }
 
+function normalizeLabel(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 function renderPlayerLabels(header: PostMatchViewModel['header']): RenderPlayerLabels {
   const partialHeader = header as Partial<PostMatchViewModel['header']>;
+  const you = partialHeader.youPlayer
+    ?? fallbackPlayerDisplay('Player 1', header.youCivilization, '#378ADD');
+  const opponent = partialHeader.opponentPlayer
+    ?? fallbackPlayerDisplay('Player 2', header.opponentCivilization, '#D85A30');
+  const usePlayerNamesForCompactLabels =
+    normalizeLabel(you.civilization) === normalizeLabel(opponent.civilization);
+  const withPolicy = (display: PostMatchPlayerDisplay): PostMatchPlayerDisplay => ({
+    ...display,
+    compactLabel: usePlayerNamesForCompactLabels ? display.name : display.civilization,
+    compactShortLabel: usePlayerNamesForCompactLabels ? display.shortLabel : display.civilization,
+    ageLabel: display.label,
+    ageShortLabel: display.shortLabel,
+  });
+
   return {
-    you: partialHeader.youPlayer
-      ?? fallbackPlayerDisplay('Player 1', header.youCivilization, '#378ADD'),
-    opponent: partialHeader.opponentPlayer
-      ?? fallbackPlayerDisplay('Player 2', header.opponentCivilization, '#D85A30'),
+    you: withPolicy(you),
+    opponent: withPolicy(opponent),
   };
 }
 
@@ -648,8 +668,8 @@ function fallbackAccountingSnapshot(
 function totalPoolTooltipText(allocation: AllocationComparison, labels: RenderPlayerLabels): string {
   return [
     'Economic + Technology + Military + Other - Destroyed = Total pool',
-    `${labels.you.label}: ${formatNumber(allocation.economic.you)} + ${formatNumber(allocation.technology.you)} + ${formatNumber(allocation.military.you)} + ${formatNumber(allocation.other.you)} - ${formatNumber(allocation.destroyed.you)} = ${formatNumber(allocation.overall.you)}`,
-    `${labels.opponent.label}: ${formatNumber(allocation.economic.opponent)} + ${formatNumber(allocation.technology.opponent)} + ${formatNumber(allocation.military.opponent)} + ${formatNumber(allocation.other.opponent)} - ${formatNumber(allocation.destroyed.opponent)} = ${formatNumber(allocation.overall.opponent)}`,
+    `${labels.you.compactLabel}: ${formatNumber(allocation.economic.you)} + ${formatNumber(allocation.technology.you)} + ${formatNumber(allocation.military.you)} + ${formatNumber(allocation.other.you)} - ${formatNumber(allocation.destroyed.you)} = ${formatNumber(allocation.overall.you)}`,
+    `${labels.opponent.compactLabel}: ${formatNumber(allocation.economic.opponent)} + ${formatNumber(allocation.technology.opponent)} + ${formatNumber(allocation.military.opponent)} + ${formatNumber(allocation.other.opponent)} - ${formatNumber(allocation.destroyed.opponent)} = ${formatNumber(allocation.overall.opponent)}`,
   ].join(' | ');
 }
 
@@ -1080,13 +1100,13 @@ function significantEventArmyValue(event: SignificantTimelineEvent | null, playe
   return event?.preEncounterArmies?.[playerKey]?.totalValue ?? 0;
 }
 
-function significantEventUnderdogNoteHtml(event: SignificantTimelineEvent | null): string {
+function significantEventTitleHtml(event: SignificantTimelineEvent | null): string {
   const context = event?.favorableUnderdogFight;
   const hiddenAttr = context ? '' : ' hidden';
   return `
-            <div class="event-impact-underdog-note" data-significant-event-underdog-note${hiddenAttr}>
-              <span data-significant-event-underdog-summary>${escapeHtml(context?.summary ?? '')}</span>
-              <button type="button" class="event-impact-help-button" data-significant-event-underdog-toggle aria-controls="event-impact-underdog-details" aria-label="Why did the smaller army win this fight?" title="Why did the smaller army win this fight?">?</button>
+            <div class="event-impact-title">
+              <span data-hover-field="significantEvent.label">${escapeHtml(significantEventTitle(event))}</span>
+              <button type="button" class="event-impact-help-button" data-significant-event-underdog-toggle${hiddenAttr} aria-controls="event-impact-underdog-details" aria-label="Why did the smaller army win this fight?" title="Why did the smaller army win this fight?">?</button>
             </div>`;
 }
 
@@ -1145,8 +1165,7 @@ function buildSignificantEventImpactHtml(event: SignificantTimelineEvent | null)
   return `
           <section class="event-impact" data-significant-event${hiddenAttr}>
             <div class="event-impact-heading">Event impact</div>
-            <div class="event-impact-title" data-hover-field="significantEvent.label">${escapeHtml(significantEventTitle(event))}</div>
-            ${significantEventUnderdogNoteHtml(event)}
+            ${significantEventTitleHtml(event)}
             ${significantEventPreEncounterArmiesHtml(event)}
             ${significantEventLossesHtml(event)}
             ${significantEventUnderdogDetailsHtml(event)}
@@ -1154,7 +1173,7 @@ function buildSignificantEventImpactHtml(event: SignificantTimelineEvent | null)
 }
 
 function mobileSummaryDetail(row: AllocationComparisonRow, labels: RenderPlayerLabels): string {
-  return `${labels.you.shortLabel} ${formatNumber(row.you)} · ${labels.opponent.shortLabel} ${formatNumber(row.opponent)}`;
+  return `${labels.you.compactShortLabel} ${formatNumber(row.you)} · ${labels.opponent.compactShortLabel} ${formatNumber(row.opponent)}`;
 }
 
 function buildMobileSummaryCard(
@@ -1265,10 +1284,10 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot, labels: RenderPlayerLa
     opponent: snapshot.opponent.economic,
     delta: snapshot.you.economic - snapshot.opponent.economic,
   };
-  const youLabel = labels.you.label;
-  const opponentLabel = labels.opponent.label;
-  const youShortLabel = labels.you.shortLabel;
-  const opponentShortLabel = labels.opponent.shortLabel;
+  const youLabel = labels.you.compactLabel;
+  const opponentLabel = labels.opponent.compactLabel;
+  const youShortLabel = labels.you.compactShortLabel;
+  const opponentShortLabel = labels.opponent.compactShortLabel;
 
   const renderBandRow = (band: BandDef, categoryKey: AllocationCategoryKey, collapsed: boolean): string => {
       const isSelected = band.key === 'economic';
@@ -1383,8 +1402,12 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot, labels: RenderPlayerLa
                   <td data-cell-label="${escapeHtml(opponentLabel)}" data-hover-field="allocation.overall.opponent">${formatNumber(allocation.overall.opponent)}</td>
                   <td data-cell-label="Delta" data-hover-field="allocation.overall.delta">${formatSigned(allocation.overall.delta)}</td>
                 </tr>
-                <tr class="inspector-float-row">
-                  <th>Float (not deployed)</th>
+                <tr class="band-row inspector-float-row" data-inspector-row="float">
+                  <th>
+                    <button type="button" class="band-toggle" data-band-key="float" aria-pressed="false">
+                      <span class="legend-dot float-dot"></span>Float (not deployed)
+                    </button>
+                  </th>
                   <td data-cell-label="${escapeHtml(youLabel)}" data-hover-field="allocation.float.you">${formatNumber(allocation.float.you)}</td>
                   <td data-cell-label="${escapeHtml(opponentLabel)}" data-hover-field="allocation.float.opponent">${formatNumber(allocation.float.opponent)}</td>
                   <td data-cell-label="Delta" data-hover-field="allocation.float.delta">${formatSigned(allocation.float.delta)}</td>
@@ -2066,7 +2089,7 @@ function buildAllocationLeaderStripSvg(
           const startX = x(segment.start);
           const endX = x(segment.end);
           const widthPx = Math.max(1, endX - startX);
-          const title = `${category.label} ${formatTime(segment.start)}-${formatTime(segment.end)}: ${labels.you.label} ${formatNumber(segment.you)}, ${labels.opponent.label} ${formatNumber(segment.opponent)}`;
+          const title = `${category.label} ${formatTime(segment.start)}-${formatTime(segment.end)}: ${labels.you.compactLabel} ${formatNumber(segment.you)}, ${labels.opponent.compactLabel} ${formatNumber(segment.opponent)}`;
           return `<rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="${category.key}" data-leader="${segment.leader}" data-hover-timestamp="${segment.hoverTimestamp}" x="${startX.toFixed(2)}" y="${rowTop.toFixed(2)}" width="${widthPx.toFixed(2)}" height="${leaderStripRowHeight}" fill="${leaderColor(segment.leader)}" pointer-events="all"><title>${escapeHtml(title)}</title></rect>`;
         })
         .join('');
@@ -2160,9 +2183,9 @@ function buildStrategyAllocationSvg(
         .map(graph => {
           const row = snapshot.allocation[graph.key];
           if (graph.mode === 'absolute') {
-            return `${graph.label}: ${labels.you.label} ${formatNumber(row.you)}, ${labels.opponent.label} ${formatNumber(row.opponent)}, Delta ${formatSigned(row.delta)}`;
+            return `${graph.label}: ${labels.you.compactLabel} ${formatNumber(row.you)}, ${labels.opponent.compactLabel} ${formatNumber(row.opponent)}, Delta ${formatSigned(row.delta)}`;
           }
-          return `${graph.label}: ${labels.you.label} ${formatStrategyShare(row.youShare)}, ${labels.opponent.label} ${formatStrategyShare(row.opponentShare)}, Delta ${formatSignedPercentagePoints(row.shareDelta)}`;
+          return `${graph.label}: ${labels.you.compactLabel} ${formatStrategyShare(row.youShare)}, ${labels.opponent.compactLabel} ${formatStrategyShare(row.opponentShare)}, Delta ${formatSignedPercentagePoints(row.shareDelta)}`;
         })
         .join(' | ');
 
@@ -2629,6 +2652,7 @@ function badgeClass(category: string): string {
 
 function buildHoverInteractionScript(
   hoverSnapshots: ClientHoverSnapshot[],
+  labels: RenderPlayerLabels,
   hoverDataUrl?: string
 ): string {
   const hoverDataUrlScript = hoverDataUrl
@@ -2649,6 +2673,10 @@ function buildHoverInteractionScript(
       var currentTimestamp = null;
       var scheduledTimestamp = null;
       var framePending = false;
+      var playerLabels = ${escapeJsonForScript({
+        you: labels.you.compactShortLabel,
+        opponent: labels.opponent.compactShortLabel,
+      })};
       var bandLabels = {
         economic: 'Economic',
         populationCap: 'Population cap',
@@ -2658,6 +2686,7 @@ function buildHoverInteractionScript(
         research: 'Research',
         advancement: 'Advancement',
         destroyed: 'Destroyed',
+        float: 'Float',
         opportunityLost: 'Opportunity lost'
       };
       var allocationGraphDefs = {
@@ -2787,7 +2816,7 @@ function buildHoverInteractionScript(
         setText('[data-mobile-summary-value="' + key + '"]', formatSigned(safeRow.delta));
         setText(
           '[data-mobile-summary-detail="' + key + '"]',
-          'You ' + formatNumber(safeRow.you) + ' · Opp ' + formatNumber(safeRow.opponent)
+          playerLabels.you + ' ' + formatNumber(safeRow.you) + ' · ' + playerLabels.opponent + ' ' + formatNumber(safeRow.opponent)
         );
       }
 
@@ -2838,7 +2867,7 @@ function buildHoverInteractionScript(
           ? point.bandBreakdown[selectedBand]
           : { you: [], opponent: [] };
         var bandLabel = bandLabels[selectedBand] || selectedBand;
-        var selectedValues = selectedBand === 'destroyed' || selectedBand === 'opportunityLost'
+        var selectedValues = selectedBand === 'destroyed' || selectedBand === 'float' || selectedBand === 'opportunityLost'
           ? ((point.allocation && point.allocation[selectedBand]) || { you: 0, opponent: 0, delta: 0 })
           : {
               you: point.you && Number.isFinite(Number(point.you[selectedBand])) ? Number(point.you[selectedBand]) : 0,
@@ -2973,11 +3002,8 @@ function buildHoverInteractionScript(
 
       function updateSignificantEventUnderdog(event) {
         var context = event && event.favorableUnderdogFight ? event.favorableUnderdogFight : null;
-        document.querySelectorAll('[data-significant-event-underdog-note]').forEach(function (el) {
+        document.querySelectorAll('[data-significant-event-underdog-toggle]').forEach(function (el) {
           el.hidden = !context;
-        });
-        document.querySelectorAll('[data-significant-event-underdog-summary]').forEach(function (el) {
-          el.textContent = context ? context.summary || '' : '';
         });
         document.querySelectorAll('[data-significant-event-underdog-details]').forEach(function (el) {
           el.hidden = !context;
@@ -3029,8 +3055,8 @@ function buildHoverInteractionScript(
       }
 
       function updateSignificantEventLosses(event) {
-        var player1Label = event && event.player1Civilization ? event.player1Civilization : 'Player 1';
-        var player2Label = event && event.player2Civilization ? event.player2Civilization : 'Player 2';
+        var player1Label = event && (event.player1Label || event.player1Civilization) ? (event.player1Label || event.player1Civilization) : 'Player 1';
+        var player2Label = event && (event.player2Label || event.player2Civilization) ? (event.player2Label || event.player2Civilization) : 'Player 2';
         document.querySelectorAll('[data-significant-event-loss-heading="player1"]').forEach(function (el) {
           el.textContent = player1Label + ' losses';
         });
@@ -3049,8 +3075,8 @@ function buildHoverInteractionScript(
 
       function updateSignificantEventArmies(event) {
         var showArmies = !!(event && event.kind === 'fight' && event.preEncounterArmies);
-        var player1Label = event && event.player1Civilization ? event.player1Civilization : 'Player 1';
-        var player2Label = event && event.player2Civilization ? event.player2Civilization : 'Player 2';
+        var player1Label = event && (event.player1Label || event.player1Civilization) ? (event.player1Label || event.player1Civilization) : 'Player 1';
+        var player2Label = event && (event.player2Label || event.player2Civilization) ? (event.player2Label || event.player2Civilization) : 'Player 2';
         document.querySelectorAll('[data-significant-event-armies]').forEach(function (el) {
           el.hidden = !showArmies;
         });
@@ -3345,7 +3371,8 @@ export function renderPostMatchHtml(
   model: PostMatchViewModel,
   options: RenderPostMatchHtmlOptions = {}
 ): string {
-  const hoverSnapshots = buildHoverSnapshots(model);
+  const playerLabels = renderPlayerLabels(model.header);
+  const hoverSnapshots = buildHoverSnapshots(model, playerLabels);
   const defaultHoverSnapshot = hoverSnapshots[0];
   const clientHoverSnapshots = buildClientHoverSnapshots(hoverSnapshots);
   const inlineHoverSnapshots = options.hoverDataUrl
@@ -3684,6 +3711,10 @@ export function renderPostMatchHtml(
       background: #C56C52;
     }
 
+    .float-dot {
+      background: #9C7A35;
+    }
+
     .chart-head {
       font-size: 12px;
       margin: 10px 0 5px;
@@ -3903,22 +3934,16 @@ export function renderPostMatchHtml(
     }
 
     .event-impact-title {
+      display: flex;
+      gap: 6px;
+      align-items: center;
       font-size: 13px;
       font-weight: 800;
       color: #253226;
     }
 
-    .event-impact-underdog-note {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-      margin-top: 6px;
-      color: #465447;
-      font-size: 12px;
-      line-height: 1.35;
-    }
-
     .event-impact-help-button {
+      flex: none;
       width: 18px;
       height: 18px;
       border: 1px solid #d8bdae;
@@ -4168,6 +4193,22 @@ export function renderPostMatchHtml(
       width: 18%;
     }
 
+    .inspector-table thead th {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      line-height: 1.15;
+      vertical-align: bottom;
+    }
+
+    .inspector-table tbody th:first-child {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    .inspector-table tbody td {
+      white-space: nowrap;
+    }
+
     .band-toggle {
       display: inline-flex;
       align-items: center;
@@ -4267,6 +4308,13 @@ export function renderPostMatchHtml(
     .inspector-destroyed-row th,
     .inspector-destroyed-row td {
       color: #5e2f22;
+      font-weight: 800;
+      border-top-color: #d6ddd1;
+    }
+
+    .inspector-float-row th,
+    .inspector-float-row td {
+      color: #5c4720;
       font-weight: 800;
       border-top-color: #d6ddd1;
     }
@@ -4740,8 +4788,8 @@ export function renderPostMatchHtml(
           </div>
           <div class="meta-line">${escapeHtml(model.header.mode)} · ${escapeHtml(model.header.durationLabel)} · ${escapeHtml(model.header.map)}</div>
           <div class="chips">
-            <span class="civ-chip"><span class="swatch" style="background:#378ADD"></span>You · ${escapeHtml(model.header.youCivilization)}</span>
-            <span class="civ-chip"><span class="swatch" style="background:#D85A30"></span>Opponent · ${escapeHtml(model.header.opponentCivilization)}</span>
+            <span class="civ-chip"><span class="swatch" style="background:${escapeHtml(playerLabels.you.color)}"></span>${escapeHtml(playerLabels.you.label)}</span>
+            <span class="civ-chip"><span class="swatch" style="background:${escapeHtml(playerLabels.opponent.color)}"></span>${escapeHtml(playerLabels.opponent.label)}</span>
           </div>
         </div>
         <div class="outcome">${escapeHtml(model.header.outcome)}</div>
@@ -4763,17 +4811,17 @@ export function renderPostMatchHtml(
             <strong>Category lanes</strong>
             <span>Economic, Technology, and Military show percentage share.</span>
           </div>
-          <div class="allocation-read-guide-item" aria-label="Destroyed: cumulative value assumed destroyed by opponent">
+          <div class="allocation-read-guide-item" aria-label="Destroyed: cumulative value removed from the tracked deployed pool">
             <strong>Destroyed lane</strong>
-            <span>Destroyed is cumulative value assumed destroyed by opponent.</span>
+            <span>Destroyed is cumulative value removed from the tracked deployed pool.</span>
           </div>
           <div class="allocation-read-guide-item" aria-label="Overall: absolute deployed resource value, including Other">
             <strong>Overall lane</strong>
             <span>Overall: absolute deployed resource value after subtracting Destroyed.</span>
           </div>
-          <div class="allocation-read-guide-item" aria-label="Float (not deployed): gathered resources not currently committed">
+          <div class="allocation-read-guide-item" aria-label="Float (not deployed): live stockpile resources not currently committed">
             <strong>Float lane</strong>
-            <span>Float (not deployed) is gathered resources not currently committed.</span>
+            <span>Float (not deployed) is live stockpile resources not currently committed.</span>
           </div>
           <div class="allocation-read-guide-item" aria-label="Opportunity lost: total villager opportunity cost">
             <strong>Opportunity lost lane</strong>
@@ -4783,20 +4831,21 @@ export function renderPostMatchHtml(
       </details>
       <div class="age-legend">
         <strong>Age timings</strong>
-        <span class="age-key"><span class="age-line" style="border-color:#378ADD"></span>You age-up</span>
-        <span class="age-key"><span class="age-line dashed" style="border-color:#D85A30"></span>Opponent age-up</span>
+        <span class="age-key"><span class="age-line" style="border-color:${escapeHtml(playerLabels.you.color)}"></span>${escapeHtml(playerLabels.you.ageLabel)} age-up</span>
+        <span class="age-key"><span class="age-line dashed" style="border-color:${escapeHtml(playerLabels.opponent.color)}"></span>${escapeHtml(playerLabels.opponent.ageLabel)} age-up</span>
       </div>
       <div class="trajectory-grid">
         <div class="chart-stack">
-          ${buildAllocationLeaderStripSvg(hoverSnapshots, model.trajectory.durationSeconds)}
+          ${buildAllocationLeaderStripSvg(hoverSnapshots, model.trajectory.durationSeconds, playerLabels)}
           ${buildStrategyAllocationSvg(
             hoverSnapshots,
             model.trajectory.durationSeconds,
-            model.trajectory.ageMarkers
+            model.trajectory.ageMarkers,
+            playerLabels
           )}
           ${buildMobileTimelineControlHtml(hoverSnapshots, defaultHoverSnapshot)}
         </div>
-        ${buildHoverInspectorHtml(defaultHoverSnapshot)}
+        ${buildHoverInspectorHtml(defaultHoverSnapshot, playerLabels)}
       </div>
     </section>
 
@@ -4810,7 +4859,7 @@ export function renderPostMatchHtml(
     </section>
 
   </main>
-  ${buildHoverInteractionScript(inlineHoverSnapshots, options.hoverDataUrl)}
+  ${buildHoverInteractionScript(inlineHoverSnapshots, playerLabels, options.hoverDataUrl)}
   <script id="web-vitals-monitor">${buildWebVitalsScript('/api/web-vitals')}</script>
 </body>
 </html>`;

@@ -96,8 +96,8 @@ function makeSummary(duration: number, youAgeUps: number[], opponentAgeUps: numb
     startedAt: 0,
     finishedAt: duration,
     players: [
-      makePlayer(1, 'You', youAgeUps, duration),
-      makePlayer(2, 'Opponent', opponentAgeUps, duration),
+      makePlayer(1, 'RepleteCactus', youAgeUps, duration),
+      makePlayer(2, 'Mista', opponentAgeUps, duration),
     ],
   };
 }
@@ -123,7 +123,7 @@ function makeAnalysis(
     duration,
     winReason: 'Surrender',
     player1: {
-      name: 'You',
+      name: 'RepleteCactus',
       civilization: 'English',
       result: 'win',
       apm: 0,
@@ -135,7 +135,7 @@ function makeAnalysis(
       unitsProduced: 0,
     },
     player2: {
-      name: 'Opponent',
+      name: 'Mista',
       civilization: 'French',
       result: 'loss',
       apm: 0,
@@ -154,7 +154,7 @@ function makeAnalysis(
     deployedResourcePools: {
       player1: {
         profileId: 1,
-        playerName: 'You',
+        playerName: 'RepleteCactus',
         civilization: 'English',
         deferredNotices: [],
         gatherRateSeries: gatherRateSeries.you ?? [],
@@ -164,7 +164,7 @@ function makeAnalysis(
       },
       player2: {
         profileId: 2,
-        playerName: 'Opponent',
+        playerName: 'Mista',
         civilization: 'French',
         deferredNotices: [],
         gatherRateSeries: gatherRateSeries.opponent ?? [],
@@ -308,11 +308,63 @@ describe('buildPostMatchViewModel age investment cards', () => {
     });
 
     expect(fightModel.trajectory.significantEvents?.[0]?.headline)
-      .toBe('French took a favorable fight against English.');
+      .toBe('French took a favorable fight against English, despite significantly fewer deployed military resources.');
     expect(fightModel.trajectory.significantEvents?.[0]?.favorableUnderdogFight).toEqual({
-      summary: 'Despite significantly fewer deployed military resources.',
       details: 'French won this encounter despite having significantly fewer deployed military resources than English. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where French found an advantage, healing, stronger micro, or a favorable unit matchup.',
     });
+
+    const exactDoubleModel = buildPostMatchViewModel({
+      summary: makeSummary(180, [], []),
+      analysis: makeAnalysis(180, [point(0, {}), point(180, { economic: 1000 })], [
+        point(0, {}),
+        point(180, { economic: 1000 }),
+      ], {}, {}, [
+        significantEvent({
+          id: 'exact-double-fight',
+          timestamp: 120,
+          kind: 'fight',
+          victimPlayer: 1,
+          grossImpact: 1000,
+          playerImpacts: {
+            player1: {
+              immediateLoss: 700,
+              villagerOpportunityLoss: 0,
+              grossLoss: 700,
+              denominator: 1000,
+              pctOfDeployed: 70,
+              villagerDeaths: 0,
+              losses: [],
+              topLosses: [],
+            },
+            player2: {
+              immediateLoss: 300,
+              villagerOpportunityLoss: 0,
+              grossLoss: 300,
+              denominator: 1000,
+              pctOfDeployed: 30,
+              villagerDeaths: 0,
+              losses: [],
+              topLosses: [],
+            },
+          },
+          preEncounterArmies: {
+            player1: {
+              totalValue: 900,
+              units: [{ label: 'Longbowman', value: 900, count: 9, band: 'militaryActive' }],
+            },
+            player2: {
+              totalValue: 450,
+              units: [{ label: 'Spearman', value: 450, count: 5, band: 'militaryActive' }],
+            },
+          },
+        }),
+      ]),
+      perspectiveProfileId: 1,
+    });
+
+    expect(exactDoubleModel.trajectory.significantEvents?.[0]?.favorableUnderdogFight).toBeUndefined();
+    expect(exactDoubleModel.trajectory.significantEvents?.[0]?.headline)
+      .not.toContain('despite significantly fewer deployed military resources');
   });
 
   it('builds age cards from shared age windows and includes in-progress advancement in the window delta', () => {
@@ -361,11 +413,11 @@ describe('buildPostMatchViewModel age investment cards', () => {
       endTime: 420,
       timeRangeLabel: '2:30-7:00',
     }));
-    expect(feudal?.gapSummary).toBe('Gap widened: You +110 -> You +240.');
-    expect(feudal?.allocationSummary).toBe('Allocation: your edge was Technology +100; Military was similar.');
+    expect(feudal?.gapSummary).toBe('Gap widened: English +110 -> English +240.');
+    expect(feudal?.allocationSummary).toBe('Allocation: English led by Technology +100; Military was similar.');
     expect(feudal?.destructionSummary).toBe('Destruction: neither player destroyed measurable value.');
-    expect(feudal?.conversionSummary).toBe('Meaning: Your military converted: opponent gather/min fell 20% inside the window.');
-    expect(feudal?.summary).toBe('Gap widened: You +110 -> You +240. Allocation: your edge was Technology +100; Military was similar. Destruction: neither player destroyed measurable value. Meaning: Your military converted: opponent gather/min fell 20% inside the window.');
+    expect(feudal?.conversionSummary).toBe('Meaning: English military converted: French gather/min fell 20% inside the window.');
+    expect(feudal?.summary).toBe('Gap widened: English +110 -> English +240. Allocation: English led by Technology +100; Military was similar. Destruction: neither player destroyed measurable value. Meaning: English military converted: French gather/min fell 20% inside the window.');
 
     const imperial = model.metricCards.ageAnalyses.find(card => card.age === 'Imperial');
     expect(imperial).toEqual(expect.objectContaining({
@@ -373,7 +425,7 @@ describe('buildPostMatchViewModel age investment cards', () => {
       endTime: null,
       timeRangeLabel: 'No shared window',
     }));
-    expect(imperial?.summary).toContain('Only you reached Imperial');
+    expect(imperial?.summary).toContain('Only English reached Imperial');
   });
 
   it('omits age cards when neither player reaches that age', () => {
@@ -432,13 +484,13 @@ describe('buildPostMatchViewModel age investment cards', () => {
       endTime: 253,
       timeRangeLabel: '0:00-4:13',
     }));
-    expect(dark?.gapSummary).toBe('Gap widened: You +25 -> You +310.');
-    expect(dark?.allocationSummary).toBe('Allocation: your edge was Technology +600, while opponent\'s edge was Military +390; Economy was similar.');
+    expect(dark?.gapSummary).toBe('Gap widened: English +25 -> English +310.');
+    expect(dark?.allocationSummary).toBe('Allocation: English led by Technology +600, while French led by Military +390; Economy was similar.');
     expect(dark?.destructionSummary).toBe('Destruction: neither player destroyed measurable value.');
-    expect(dark?.conversionSummary).toBe('Meaning: Opponent\'s Dark military did not convert: +390 Military destroyed 0 value and caused no major gather-rate drop.');
+    expect(dark?.conversionSummary).toBe('Meaning: French Dark military did not convert: +390 Military destroyed 0 value and caused no major gather-rate drop.');
   });
 
-  it('uses player and civilization labels instead of perspective labels in age summaries', () => {
+  it('uses compact civilization labels in age summaries when civilizations differ', () => {
     const summary = makeSummary(600, [120, 420], [150]);
     summary.players[0].name = 'RepleteCactus';
     summary.players[1].name = 'Mista';
@@ -466,12 +518,55 @@ describe('buildPostMatchViewModel age investment cards', () => {
     expect(model.header.youPlayer.label).toBe('RepleteCactus · English');
     expect(model.header.opponentPlayer.label).toBe('Mista · French');
     expect(model.trajectory.ageMarkers[0].label).toBe('RepleteCactus · English Feudal 2:00');
+    expect(model.trajectory.ageMarkers[0].shortLabel).toBe('RepleteCactus Feudal');
 
     const visibleAgeText = model.metricCards.ageAnalyses
       .flatMap(card => [card.gapSummary, card.allocationSummary, card.destructionSummary, card.conversionSummary])
       .join(' ');
-    expect(visibleAgeText).toContain('RepleteCactus · English');
-    expect(visibleAgeText).toContain('Mista · French');
+    expect(visibleAgeText).toContain('English');
+    expect(visibleAgeText).toContain('French');
+    expect(visibleAgeText).not.toContain('RepleteCactus');
+    expect(visibleAgeText).not.toContain('Mista');
     expect(visibleAgeText).not.toMatch(/\bYou\b|\byour\b|\bOpponent\b|\bopponent\b/);
+  });
+
+  it('uses compact player-name labels in age summaries when civilizations mirror', () => {
+    const summary = makeSummary(600, [120, 420], [150]);
+    summary.players[0].name = 'RepleteCactus';
+    summary.players[1].name = 'Mista';
+    summary.players[1].civilization = 'English';
+
+    const model = buildPostMatchViewModel({
+      summary,
+      analysis: makeAnalysis(
+        600,
+        [
+          point(0, { economic: 50 }),
+          point(120, { economic: 100, research: 100 }),
+          point(420, { economic: 100, research: 100, advancement: 300 }),
+          point(600, { economic: 120, research: 100, advancement: 300 }),
+        ],
+        [
+          point(0, { economic: 50 }),
+          point(120, { economic: 80 }),
+          point(420, { economic: 100, militaryActive: 130 }),
+          point(600, { economic: 100, militaryActive: 130 }),
+        ]
+      ),
+      perspectiveProfileId: 1,
+    });
+
+    expect(model.header.youPlayer.label).toBe('RepleteCactus · English');
+    expect(model.header.opponentPlayer.label).toBe('Mista · English');
+    expect(model.trajectory.ageMarkers[0].label).toBe('RepleteCactus · English Feudal 2:00');
+    expect(model.trajectory.ageMarkers[0].shortLabel).toBe('RepleteCactus Feudal');
+
+    const visibleAgeText = model.metricCards.ageAnalyses
+      .flatMap(card => [card.gapSummary, card.allocationSummary, card.destructionSummary, card.conversionSummary])
+      .join(' ');
+    expect(visibleAgeText).toContain('RepleteCactus');
+    expect(visibleAgeText).toContain('Mista');
+    expect(visibleAgeText).not.toContain('RepleteCactus · English');
+    expect(visibleAgeText).not.toContain('Mista · English');
   });
 });

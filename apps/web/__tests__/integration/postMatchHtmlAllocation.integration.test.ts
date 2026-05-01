@@ -22,7 +22,7 @@ describe('post-match allocation widget integration', () => {
       player2Civilization: 'French',
       victimCivilization: 'French',
       actorCivilization: 'English',
-      headline: 'French took a favorable fight against English.',
+      headline: 'French took a favorable fight against English, despite significantly fewer deployed military resources.',
       kind: 'fight',
       label: 'Fight',
       shortLabel: 'Fight',
@@ -38,10 +38,10 @@ describe('post-match allocation widget integration', () => {
       topLosses: [{ label: 'Knight', value: 240, count: 1, band: 'militaryActive' }],
       preEncounterArmies: {
         player1: {
-          totalValue: 640,
+          totalValue: 1300,
           units: [
-            { label: 'Longbowman', value: 480, count: 6, band: 'militaryActive' },
-            { label: 'Spearman', value: 160, count: 2, band: 'militaryActive' },
+            { label: 'Longbowman', value: 960, count: 12, band: 'militaryActive' },
+            { label: 'Spearman', value: 340, count: 4, band: 'militaryActive' },
           ],
         },
         player2: {
@@ -53,7 +53,6 @@ describe('post-match allocation widget integration', () => {
         },
       },
       favorableUnderdogFight: {
-        summary: 'Despite significantly fewer deployed military resources.',
         details: 'French won this encounter despite having significantly fewer deployed military resources than English. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where French found an advantage, healing, stronger micro, or a favorable unit matchup.',
       },
       encounterLosses: {
@@ -91,7 +90,7 @@ describe('post-match allocation widget integration', () => {
     expect(html.indexOf('Allocation lead and mix over time')).toBeLessThan(html.indexOf('Dark age'));
     expect(html.indexOf('Dark age')).toBeLessThan(html.indexOf('Final pool delta'));
     expect(html.indexOf('Imperial age')).toBeLessThan(html.indexOf('Final pool delta'));
-    expect(html).toContain('Only you reached Imperial, so there was no shared Imperial window to compare.');
+    expect(html).toContain('Only English reached Imperial, so there was no shared Imperial window to compare.');
     expect(html).toContain('<details class="allocation-read-guide" aria-label="Allocation chart legend">');
     expect(html).toContain('<summary class="allocation-read-guide-summary">How to read this chart</summary>');
     expect(html).toContain('class="mobile-timeline-control"');
@@ -107,8 +106,8 @@ describe('post-match allocation widget integration', () => {
     expect(html).toContain('Leader strip: absolute deployed-value leader by 30-second block');
     expect(html).toContain('Economic, Technology, and Military: percentage share of strategic allocation');
     expect(html).toContain('Overall: absolute deployed resource value after subtracting Destroyed');
-    expect(html).toContain('Destroyed: cumulative value assumed destroyed by opponent');
-    expect(html).toContain('Float (not deployed): gathered resources not currently committed');
+    expect(html).toContain('Destroyed: cumulative value removed from the tracked deployed pool');
+    expect(html).toContain('Float (not deployed): live stockpile resources not currently committed');
     expect(html).toContain('Opportunity lost: total villager opportunity cost');
     const leaderStrip = extractSvg(html, 'allocation-leader-strip');
     expect(leaderStrip).toContain('data-category-key="economic"');
@@ -125,15 +124,16 @@ describe('post-match allocation widget integration', () => {
     expect(html).toContain('.mobile-timeline-button');
     expect(html).toContain('data-band-breakdown-summary');
     expect(html).toContain('data-significant-event-armies');
-    expect(html).toContain('data-significant-event-underdog-note');
+    expect(html).not.toContain('data-significant-event-underdog-note');
     expect(html).toContain('data-significant-event-underdog-toggle');
     expect(html).toContain('data-significant-event-underdog-details');
+    expect(html).toContain('French took a favorable fight against English, despite significantly fewer deployed military resources.');
     expect(html).toContain('Why this fight is notable');
     expect(html).toContain('French won this encounter despite having significantly fewer deployed military resources than English.');
     expect(html).toContain('Pre-encounter armies');
     expect(html.indexOf('Pre-encounter armies')).toBeLessThan(html.indexOf('Encounter losses'));
     expect(html.indexOf('Why this fight is notable')).toBeGreaterThan(html.indexOf('Encounter losses'));
-    expect(html).toContain('data-significant-event-army-total="player1">640</dd>');
+    expect(html).toContain('data-significant-event-army-total="player1">1,300</dd>');
     expect(html).toContain('data-significant-event-army-total="player2">640</dd>');
     expect(html).toContain('data-significant-event-loss-summary="player2"');
     expect(html).toContain('data-significant-event-loss-total="player2">240</dd>');
@@ -151,12 +151,14 @@ describe('post-match allocation widget integration', () => {
     expect(html).toContain('data-hover-field="allocation.opportunityLost.delta"');
     expect(html).toContain('data-inspector-row="destroyed"');
     expect(html).toContain('data-band-key="destroyed"');
+    expect(html).toContain('data-inspector-row="float"');
+    expect(html).toContain('data-band-key="float"');
     expect(html).toContain('data-inspector-row="opportunityLost"');
     expect(html).toContain('data-band-key="opportunityLost"');
     const otherRowIndex = html.indexOf('data-allocation-category-row="other"');
     const destroyedRowIndex = html.indexOf('data-inspector-row="destroyed"');
     const totalPoolIndex = html.indexOf('data-total-pool-tooltip');
-    const floatRowIndex = html.indexOf('inspector-float-row');
+    const floatRowIndex = html.indexOf('data-inspector-row="float"');
     const opportunityLostRowIndex = html.indexOf('data-inspector-row="opportunityLost"');
     const gatherRowIndex = html.indexOf('<th>Gather/min</th>');
     expect(otherRowIndex).toBeGreaterThanOrEqual(0);
@@ -186,6 +188,10 @@ describe('post-match allocation widget integration', () => {
     expect(payload[0].bandBreakdown.opportunityLost.opponent).toEqual([
       expect.objectContaining({ label: '0:00-0:30', value: 140, count: 2 }),
     ]);
+    expect(payload[0].bandBreakdown.float.opponent).toEqual([
+      expect.objectContaining({ label: 'Food', value: 600, percent: 60 }),
+      expect.objectContaining({ label: 'Wood', value: 400, percent: 40 }),
+    ]);
     expect(payload[0].significantEvent.preEncounterArmies.player2).toEqual({
       totalValue: 640,
       units: [
@@ -193,8 +199,14 @@ describe('post-match allocation widget integration', () => {
         expect.objectContaining({ label: 'Archer', value: 160, count: 2 }),
       ],
     });
+    expect(payload[0].significantEvent.preEncounterArmies.player1).toEqual({
+      totalValue: 1300,
+      units: [
+        expect.objectContaining({ label: 'Longbowman', value: 960, count: 12 }),
+        expect.objectContaining({ label: 'Spearman', value: 340, count: 4 }),
+      ],
+    });
     expect(payload[0].significantEvent.favorableUnderdogFight).toEqual({
-      summary: 'Despite significantly fewer deployed military resources.',
       details: 'French won this encounter despite having significantly fewer deployed military resources than English. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where French found an advantage, healing, stronger micro, or a favorable unit matchup.',
     });
   });

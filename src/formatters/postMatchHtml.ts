@@ -14,7 +14,7 @@ interface BandDef {
 }
 
 type HoverBandKey = BandDef['key'];
-type BreakdownKey = HoverBandKey | 'destroyed';
+type BreakdownKey = HoverBandKey | 'destroyed' | 'float';
 
 const bandDefs: BandDef[] = [
   { key: 'economic', label: 'Economic', color: '#5DCAA5' },
@@ -214,7 +214,7 @@ interface HoverSnapshot {
     }>;
     matrix: AdjustedMatrixPayload;
   };
-  bandBreakdown: Record<HoverBandKey, BandBreakdownPayload> & Partial<Record<'destroyed', BandBreakdownPayload>>;
+  bandBreakdown: Record<HoverBandKey, BandBreakdownPayload> & Partial<Record<'destroyed' | 'float', BandBreakdownPayload>>;
 }
 
 interface BandBreakdownPayload {
@@ -930,13 +930,13 @@ function significantEventArmyValue(event: SignificantTimelineEvent | null, playe
   return event?.preEncounterArmies?.[playerKey]?.totalValue ?? 0;
 }
 
-function significantEventUnderdogNoteHtml(event: SignificantTimelineEvent | null): string {
+function significantEventTitleHtml(event: SignificantTimelineEvent | null): string {
   const context = event?.favorableUnderdogFight;
   const hiddenAttr = context ? '' : ' hidden';
   return `
-        <div class="event-impact-underdog-note" data-significant-event-underdog-note${hiddenAttr}>
-          <span data-significant-event-underdog-summary>${escapeHtml(context?.summary ?? '')}</span>
-          <button type="button" class="event-impact-help-button" data-significant-event-underdog-toggle aria-controls="event-impact-underdog-details" aria-label="Why did the smaller army win this fight?" title="Why did the smaller army win this fight?">?</button>
+        <div class="event-impact-title">
+          <span data-hover-field="significantEvent.label">${escapeHtml(significantEventTitle(event))}</span>
+          <button type="button" class="event-impact-help-button" data-significant-event-underdog-toggle${hiddenAttr} aria-controls="event-impact-underdog-details" aria-label="Why did the smaller army win this fight?" title="Why did the smaller army win this fight?">?</button>
         </div>`;
 }
 
@@ -995,8 +995,7 @@ function buildSignificantEventImpactHtml(event: SignificantTimelineEvent | null)
   return `
       <section class="event-impact" data-significant-event${hiddenAttr}>
         <div class="event-impact-heading">Event impact</div>
-        <div class="event-impact-title" data-hover-field="significantEvent.label">${escapeHtml(significantEventTitle(event))}</div>
-        ${significantEventUnderdogNoteHtml(event)}
+        ${significantEventTitleHtml(event)}
         ${significantEventPreEncounterArmiesHtml(event)}
         ${significantEventLossesHtml(event)}
         ${significantEventUnderdogDetailsHtml(event)}
@@ -1149,8 +1148,12 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot): string {
               <td data-cell-label="Opp" data-hover-field="allocation.overall.opponent">${formatNumber(allocation.overall.opponent)}</td>
               <td data-cell-label="Delta" data-hover-field="allocation.overall.delta">${formatSigned(allocation.overall.delta)}</td>
             </tr>
-            <tr class="inspector-float-row">
-              <th>Float (not deployed)</th>
+            <tr class="band-row inspector-float-row" data-inspector-row="float">
+              <th>
+                <button type="button" class="band-toggle" data-band-key="float" aria-pressed="false">
+                  <span class="legend-dot float-dot"></span>Float (not deployed)
+                </button>
+              </th>
               <td data-cell-label="You" data-hover-field="allocation.float.you">${formatNumber(allocation.float.you)}</td>
               <td data-cell-label="Opp" data-hover-field="allocation.float.opponent">${formatNumber(allocation.float.opponent)}</td>
               <td data-cell-label="Delta" data-hover-field="allocation.float.delta">${formatSigned(allocation.float.delta)}</td>
@@ -2403,7 +2406,8 @@ function buildHoverInteractionScript(hoverSnapshots: HoverSnapshot[]): string {
         defensive: 'Defensive',
         research: 'Research',
         advancement: 'Advancement',
-        destroyed: 'Destroyed'
+        destroyed: 'Destroyed',
+        float: 'Float'
       };
       var allocationGraphDefs = {
         economic: { label: 'Economic', mode: 'share' },
@@ -2715,11 +2719,8 @@ function buildHoverInteractionScript(hoverSnapshots: HoverSnapshot[]): string {
 
       function updateSignificantEventUnderdog(event) {
         var context = event && event.favorableUnderdogFight ? event.favorableUnderdogFight : null;
-        document.querySelectorAll('[data-significant-event-underdog-note]').forEach(function (el) {
+        document.querySelectorAll('[data-significant-event-underdog-toggle]').forEach(function (el) {
           el.hidden = !context;
-        });
-        document.querySelectorAll('[data-significant-event-underdog-summary]').forEach(function (el) {
-          el.textContent = context ? context.summary || '' : '';
         });
         document.querySelectorAll('[data-significant-event-underdog-details]').forEach(function (el) {
           el.hidden = !context;
@@ -3355,6 +3356,10 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
       background: #a85e42;
     }
 
+    .float-dot {
+      background: #9C7A35;
+    }
+
     .chart-head {
       font-size: 12px;
       margin: 10px 0 5px;
@@ -3521,22 +3526,16 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
     }
 
     .event-impact-title {
+      display: flex;
+      gap: 6px;
+      align-items: center;
       font-size: 13px;
       font-weight: 800;
       color: #253226;
     }
 
-    .event-impact-underdog-note {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-      margin-top: 6px;
-      color: #465447;
-      font-size: 12px;
-      line-height: 1.35;
-    }
-
     .event-impact-help-button {
+      flex: none;
       width: 18px;
       height: 18px;
       border: 1px solid #d8bdae;
@@ -3817,6 +3816,13 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
     .inspector-destroyed-row th,
     .inspector-destroyed-row td {
       color: #5e2f22;
+      font-weight: 800;
+      border-top-color: #d6ddd1;
+    }
+
+    .inspector-float-row th,
+    .inspector-float-row td {
+      color: #5c4720;
       font-weight: 800;
       border-top-color: #d6ddd1;
     }
@@ -4632,9 +4638,9 @@ export function renderPostMatchHtml(model: PostMatchViewModel): string {
             <strong>Overall lane</strong>
             <span>Overall: absolute deployed resource value after subtracting Destroyed.</span>
           </div>
-          <div class="allocation-read-guide-item" aria-label="Float (not deployed): gathered resources not currently committed">
+          <div class="allocation-read-guide-item" aria-label="Float (not deployed): live stockpile resources not currently committed">
             <strong>Float lane</strong>
-            <span>Float (not deployed) is gathered resources not currently committed.</span>
+            <span>Float (not deployed) is live stockpile resources not currently committed.</span>
           </div>
         </div>
       </details>

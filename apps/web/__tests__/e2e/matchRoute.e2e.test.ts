@@ -36,7 +36,7 @@ describe('matches route e2e', () => {
       player2Civilization: 'French',
       victimCivilization: 'French',
       actorCivilization: 'English',
-      headline: 'French took a favorable fight against English.',
+      headline: 'French took a favorable fight against English, despite significantly fewer deployed military resources.',
       kind: 'fight',
       label: 'Fight',
       shortLabel: 'Fight',
@@ -52,10 +52,10 @@ describe('matches route e2e', () => {
       topLosses: [{ label: 'Knight', value: 240, count: 1, band: 'militaryActive' }],
       preEncounterArmies: {
         player1: {
-          totalValue: 640,
+          totalValue: 1300,
           units: [
-            { label: 'Longbowman', value: 480, count: 6, band: 'militaryActive' },
-            { label: 'Spearman', value: 160, count: 2, band: 'militaryActive' },
+            { label: 'Longbowman', value: 960, count: 12, band: 'militaryActive' },
+            { label: 'Spearman', value: 340, count: 4, band: 'militaryActive' },
           ],
         },
         player2: {
@@ -67,7 +67,6 @@ describe('matches route e2e', () => {
         },
       },
       favorableUnderdogFight: {
-        summary: 'Despite significantly fewer deployed military resources.',
         details: 'French won this encounter despite having significantly fewer deployed military resources than English. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where French found an advantage, healing, stronger micro, or a favorable unit matchup.',
       },
       encounterLosses: {
@@ -147,12 +146,14 @@ describe('matches route e2e', () => {
     expect(body).toContain('class="allocation-lane allocation-lane-opportunityLost"');
     expect(body).toContain('data-inspector-row="destroyed"');
     expect(body).toContain('data-band-key="destroyed"');
+    expect(body).toContain('data-inspector-row="float"');
+    expect(body).toContain('data-band-key="float"');
     expect(body).toContain('data-inspector-row="opportunityLost"');
     expect(body).toContain('data-band-key="opportunityLost"');
     const otherRowIndex = body.indexOf('data-allocation-category-row="other"');
     const destroyedRowIndex = body.indexOf('data-inspector-row="destroyed"');
     const totalPoolIndex = body.indexOf('data-total-pool-tooltip');
-    const floatRowIndex = body.indexOf('inspector-float-row');
+    const floatRowIndex = body.indexOf('data-inspector-row="float"');
     const opportunityLostRowIndex = body.indexOf('data-inspector-row="opportunityLost"');
     const gatherRowIndex = body.indexOf('<th>Gather/min</th>');
     expect(otherRowIndex).toBeGreaterThanOrEqual(0);
@@ -165,12 +166,13 @@ describe('matches route e2e', () => {
     expect(body).toContain('data-hover-field="allocation.opportunityLost.delta"');
     expect(body).toContain('data-significant-event-marker');
     expect(body).toContain('Event impact');
-    expect(body).toContain('Despite significantly fewer deployed military resources.');
+    expect(body).toContain('French took a favorable fight against English, despite significantly fewer deployed military resources.');
+    expect(body).not.toContain('data-significant-event-underdog-note');
     expect(body).toContain('data-significant-event-underdog-toggle');
     expect(body).toContain('Why this fight is notable');
     expect(body).toContain('French won this encounter despite having significantly fewer deployed military resources than English.');
     expect(body).toContain('Pre-encounter armies');
-    expect(body).toContain('data-significant-event-army-total="player1">640</dd>');
+    expect(body).toContain('data-significant-event-army-total="player1">1,300</dd>');
     expect(body).toContain('data-significant-event-army-total="player2">640</dd>');
     expect(body.indexOf('Pre-encounter armies')).toBeLessThan(body.indexOf('Encounter losses'));
     expect(body.indexOf('Why this fight is notable')).toBeGreaterThan(body.indexOf('Encounter losses'));
