@@ -307,7 +307,7 @@ describe('significant resource loss timeline events', () => {
       'top-4',
       'top-5',
     ]);
-    expect(model.trajectory.hoverSnapshots.find(snapshot => snapshot.timestamp === 120)).toBeUndefined();
+    expect(model.trajectory.hoverSnapshots.find(snapshot => snapshot.timestamp === 120)?.significantEvent).toBeNull();
   });
 
   it('writes raid and fight headlines with civilization names and carries encounter losses', () => {

@@ -23,6 +23,7 @@ export function makeSengokuYataiFixture(): any {
         destroyed: [],
         unknown: {
           '14': [61, 116, 159],
+          '15': [170],
         },
       },
     ],

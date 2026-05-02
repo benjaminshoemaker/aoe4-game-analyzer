@@ -43,7 +43,30 @@ const resources = {
   society: [0, 0, 0, 0, 0],
 };
 
-function makeSummary() {
+function makeDenseResources() {
+  const timestamps = Array.from({ length: 241 }, (_, index) => index);
+  const linear = timestamps.map(timestamp => timestamp);
+  const zeroes = timestamps.map(() => 0);
+
+  return {
+    timestamps,
+    food: linear,
+    gold: timestamps.map(timestamp => Math.floor(timestamp / 2)),
+    stone: zeroes,
+    wood: timestamps.map(timestamp => Math.floor(timestamp / 3)),
+    foodPerMin: zeroes,
+    goldPerMin: zeroes,
+    stonePerMin: zeroes,
+    woodPerMin: zeroes,
+    total: zeroes,
+    military: zeroes,
+    economy: zeroes,
+    technology: zeroes,
+    society: zeroes,
+  };
+}
+
+function makeSummary(resourceData = resources) {
   return parseGameSummary({
     gameId: 229727104,
     winReason: 'Surrender',
@@ -66,7 +89,7 @@ function makeSummary() {
         scores: zeroScores,
         totalResourcesGathered: zeroTotals,
         totalResourcesSpent: zeroTotals,
-        resources,
+        resources: structuredClone(resourceData),
         buildOrder: [
           {
             id: '11266336',
@@ -78,6 +101,7 @@ function makeSummary() {
             destroyed: [],
             unknown: {
               '14': [61, 116, 159],
+              '15': [170],
             },
           },
         ],
@@ -94,7 +118,7 @@ function makeSummary() {
         scores: zeroScores,
         totalResourcesGathered: zeroTotals,
         totalResourcesSpent: zeroTotals,
-        resources,
+        resources: structuredClone(resourceData),
         buildOrder: [],
       },
     ],
@@ -113,7 +137,7 @@ describe('Sengoku Yatai match route e2e', () => {
   });
 
   it('renders Yatai in the economic deployed pool breakdown for the match route', async () => {
-    mockFetchGameSummaryFromApi.mockResolvedValue(makeSummary());
+    mockFetchGameSummaryFromApi.mockImplementation(() => Promise.resolve(makeSummary()));
 
     const request = new Request('http://localhost/matches/8139502-Beasty/229727104?sig=b6fc');
     const response = await GET(request, {
@@ -126,8 +150,8 @@ describe('Sengoku Yatai match route e2e', () => {
 
     expect(response.status).toBe(200);
     expect(mockFetchGameSummaryFromApi).toHaveBeenCalledWith('8139502-Beasty', 229727104, 'b6fc');
-    expect(body).toContain('id="post-match-hover-data-url"');
-    expect(body).toContain('/matches/8139502-Beasty/229727104/hover-data?sig=b6fc');
+    expect(body).not.toContain('id="post-match-hover-data-url"');
+    expect(body).not.toContain('/matches/8139502-Beasty/229727104/hover-data?sig=b6fc');
     expect(body).toContain('data-band-key="economic"');
 
     const hoverResponse = await GET_HOVER_DATA(
@@ -141,10 +165,14 @@ describe('Sengoku Yatai match route e2e', () => {
     );
     const hoverPayload = await hoverResponse.json();
     const snapshot = hoverPayload.hoverSnapshots.find((point: { timestamp: number }) => point.timestamp === 159);
+    const afterDestroySnapshot = hoverPayload.hoverSnapshots.find((point: { timestamp: number }) => point.timestamp === 240);
 
     expect(hoverResponse.status).toBe(200);
     expect(snapshot?.bandBreakdown.economic.you).toEqual(expect.arrayContaining([
       expect.objectContaining({ label: 'Yatai', value: 375 }),
+    ]));
+    expect(afterDestroySnapshot?.bandBreakdown.economic.you).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: 'Yatai', value: 250 }),
     ]));
     expect(snapshot?.allocation.float.you).toBe(105);
     expect(snapshot?.bandBreakdown.float.you).toEqual([
@@ -152,5 +180,29 @@ describe('Sengoku Yatai match route e2e', () => {
       expect.objectContaining({ label: 'Wood', value: 30, percent: 28.6 }),
       expect.objectContaining({ label: 'Gold', value: 15, percent: 14.3 }),
     ]);
+  });
+
+  it('coarsens dense resource timestamps for the hover-data route', async () => {
+    mockFetchGameSummaryFromApi.mockImplementation(() => Promise.resolve(makeSummary(makeDenseResources())));
+
+    const hoverResponse = await GET_HOVER_DATA(
+      new Request('http://localhost/matches/8139502-Beasty/229727104/hover-data?sig=b6fc'),
+      {
+        params: Promise.resolve({
+          profileSlug: '8139502-Beasty',
+          gameId: '229727104',
+        }),
+      }
+    );
+    const hoverPayload = await hoverResponse.json();
+    const timestamps = hoverPayload.hoverSnapshots.map((point: { timestamp: number }) => point.timestamp);
+
+    expect(hoverResponse.status).toBe(200);
+    expect(timestamps).toEqual(expect.arrayContaining([0, 30, 60, 90, 120, 150, 170, 180, 210, 240]));
+    expect(timestamps).not.toContain(1);
+    expect(timestamps).not.toContain(2);
+    expect(timestamps).not.toContain(61);
+    expect(timestamps).not.toContain(116);
+    expect(timestamps.length).toBeLessThan(30);
   });
 });

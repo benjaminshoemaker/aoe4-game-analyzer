@@ -18,6 +18,7 @@ import { analyzeGame } from './analysis/gameAnalysis';
 import { formatGameAnalysis } from './formatters/analyzeFormatter';
 import { buildPostMatchViewModel } from './analysis/postMatchViewModel';
 import { renderPostMatchHtml } from './formatters/postMatchHtml';
+import { auditUnknownBuildOrderBuckets } from './analysis/unknownBuildOrderAudit';
 
 function createRng(seed: string): () => number {
   let state = 0;
@@ -320,6 +321,44 @@ export async function runCli(argv = process.argv): Promise<void> {
         }
       } catch (error) {
         console.error(chalk.red(`Failed to resolve build order: ${(error as Error).message}`));
+        process.exitCode = 1;
+      }
+    });
+
+  program
+    .command('audit-unknown-build-order')
+    .argument('<json-file>', 'Path to game summary JSON file')
+    .option('--static-data <path>', 'Path to static data JSON cache')
+    .description('Audit game-summary build-order unknown timestamp buckets')
+    .action(async (jsonFile: string, opts: { staticData?: string }) => {
+      try {
+        const summary = loadGameSummaryFromFile(jsonFile);
+        const staticData = opts.staticData
+          ? JSON.parse(await fs.promises.readFile(path.resolve(opts.staticData), 'utf-8'))
+          : await loadStaticData();
+        const findings = auditUnknownBuildOrderBuckets(summary, staticData);
+        const counts = findings.reduce(
+          (acc, finding) => {
+            acc[finding.status] += finding.timestampCount;
+            return acc;
+          },
+          { handled: 0, ignored: 0, 'needs-review': 0 } as Record<'handled' | 'ignored' | 'needs-review', number>
+        );
+
+        console.log(
+          `Unknown build-order bucket audit: ${counts.handled} handled, ${counts.ignored} ignored, ${counts['needs-review']} need review`
+        );
+        for (const finding of findings) {
+          console.log(
+            `${finding.itemName} bucket ${finding.bucket} ${finding.status} (${finding.timestampCount} event${finding.timestampCount === 1 ? '' : 's'})`
+          );
+        }
+
+        if (counts['needs-review'] > 0) {
+          process.exitCode = 1;
+        }
+      } catch (error) {
+        console.error(chalk.red(`Failed to audit unknown build-order buckets: ${(error as Error).message}`));
         process.exitCode = 1;
       }
     });

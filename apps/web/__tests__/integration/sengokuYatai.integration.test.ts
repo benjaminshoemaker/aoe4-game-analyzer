@@ -75,6 +75,7 @@ describe('Sengoku Yatai integration', () => {
               destroyed: [],
               unknown: {
                 '14': [61, 116, 159],
+                '15': [170],
               },
             },
           ],
@@ -105,13 +106,16 @@ describe('Sengoku Yatai integration', () => {
     expect(player1Build.resolved[0]).toEqual(expect.objectContaining({
       name: 'Yatai',
       produced: [61, 116, 159],
+      destroyed: [170],
     }));
     expect(pools.player1.series.find(point => point.timestamp === 159)?.economic).toBe(375);
+    expect(pools.player1.series.find(point => point.timestamp === 240)?.economic).toBe(250);
     expect(pools.player1.series.find(point => point.timestamp === 159)?.militaryActive).toBe(0);
     expect(pools.player1.bandItemDeltas).toEqual(expect.arrayContaining([
       expect.objectContaining({ timestamp: 61, band: 'economic', itemLabel: 'Yatai', deltaValue: 125 }),
       expect.objectContaining({ timestamp: 116, band: 'economic', itemLabel: 'Yatai', deltaValue: 125 }),
       expect.objectContaining({ timestamp: 159, band: 'economic', itemLabel: 'Yatai', deltaValue: 125 }),
+      expect.objectContaining({ timestamp: 170, band: 'economic', itemLabel: 'Yatai', deltaValue: -125 }),
     ]));
   });
 });

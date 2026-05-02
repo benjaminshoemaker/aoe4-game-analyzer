@@ -7,10 +7,40 @@ const MALIAN_CATTLE_PBGID = 2059966;
 const MALIAN_CATTLE_PRODUCED_UNKNOWN_BUCKET = '14';
 const SENGOKU_YATAI_PBGID = 9001316;
 const SENGOKU_YATAI_PRODUCED_UNKNOWN_BUCKET = '14';
+const SENGOKU_YATAI_DESTROYED_UNKNOWN_BUCKET = '15';
+const TRADE_CART_IGNORED_UNKNOWN_BUCKET = '15';
+const AGE_PRODUCED_UNKNOWN_BUCKET = '10';
 const producedUnknownBucketByPbgid = new Map<number, string>([
+  [2762454, '14'],
+  [2631059, '14'],
+  [5000301, '15'],
+  [2141356, '6'],
+  [8635755, '6'],
+  [7804932, '6'],
+  [2140765, '6'],
   [MALIAN_CATTLE_PBGID, MALIAN_CATTLE_PRODUCED_UNKNOWN_BUCKET],
   [SENGOKU_YATAI_PBGID, SENGOKU_YATAI_PRODUCED_UNKNOWN_BUCKET],
 ]);
+const destroyedUnknownBucketByPbgid = new Map<number, string>([
+  [SENGOKU_YATAI_PBGID, SENGOKU_YATAI_DESTROYED_UNKNOWN_BUCKET],
+]);
+const ignoredUnknownBucketsByPbgid = new Map<number, Set<string>>([
+  [9003449, new Set([TRADE_CART_IGNORED_UNKNOWN_BUCKET])],
+]);
+
+export type UnknownBuildOrderBucketHandling = 'produced' | 'destroyed' | 'ignored' | null;
+
+export function getUnknownBuildOrderBucketHandling(
+  pbgid: number,
+  bucket: string,
+  entryType?: BuildOrderEntry['type']
+): UnknownBuildOrderBucketHandling {
+  if (entryType === 'Age' && bucket === AGE_PRODUCED_UNKNOWN_BUCKET) return 'produced';
+  if (producedUnknownBucketByPbgid.get(pbgid) === bucket) return 'produced';
+  if (destroyedUnknownBucketByPbgid.get(pbgid) === bucket) return 'destroyed';
+  if (ignoredUnknownBucketsByPbgid.get(pbgid)?.has(bucket)) return 'ignored';
+  return null;
+}
 
 export interface ItemCost {
   food: number;
@@ -141,6 +171,10 @@ function mergeTimestamps(...groups: number[][]): number[] {
 }
 
 function getProducedTimestamps(entry: BuildOrderEntry, type: ResolvedBuildItem['type']): number[] {
+  if (type === 'age') {
+    return mergeTimestamps(entry.finished, entry.unknown?.[AGE_PRODUCED_UNKNOWN_BUCKET] ?? []);
+  }
+
   const unknownBucket = producedUnknownBucketByPbgid.get(entry.pbgid);
   if (unknownBucket) {
     return mergeTimestamps(entry.finished, entry.unknown?.[unknownBucket] ?? []);
@@ -151,6 +185,15 @@ function getProducedTimestamps(entry: BuildOrderEntry, type: ResolvedBuildItem['
   }
 
   return entry.finished;
+}
+
+function getDestroyedTimestamps(entry: BuildOrderEntry): number[] {
+  const unknownBucket = destroyedUnknownBucketByPbgid.get(entry.pbgid);
+  if (unknownBucket) {
+    return mergeTimestamps(entry.destroyed, entry.unknown?.[unknownBucket] ?? []);
+  }
+
+  return entry.destroyed;
 }
 
 function resolveFromManualMapping(entry: BuildOrderEntry): ResolvedBuildItem | null {
@@ -174,7 +217,7 @@ function resolveFromManualMapping(entry: BuildOrderEntry): ResolvedBuildItem | n
     tierMultiplier: multiplier,
     classes: mapping.classes ?? [],
     produced: getProducedTimestamps(entry, entryType),
-    destroyed: entry.destroyed,
+    destroyed: getDestroyedTimestamps(entry),
     civs: mapping.civs ?? []
   };
 }
@@ -204,7 +247,7 @@ export function resolveBuildOrderItem(
       tier: ageNum,
       tierMultiplier: 1.0,
       classes: ['age'],
-      produced: entry.finished,
+      produced: getProducedTimestamps(entry, 'age'),
       destroyed: [],
       civs: []
     };
@@ -250,7 +293,7 @@ export function resolveBuildOrderItem(
         tierMultiplier: multiplier,
         classes: unit.classes ?? [],
         produced: getProducedTimestamps(entry, 'unit'),
-        destroyed: entry.destroyed,
+        destroyed: getDestroyedTimestamps(entry),
         civs: unit.civs
       };
     }
@@ -268,8 +311,8 @@ export function resolveBuildOrderItem(
         tier,
         tierMultiplier: multiplier,
         classes: building.classes ?? [],
-        produced: entry.constructed,
-        destroyed: entry.destroyed,
+        produced: getProducedTimestamps(entry, 'building'),
+        destroyed: getDestroyedTimestamps(entry),
         civs: building.civs
       };
     }
@@ -324,7 +367,7 @@ export function resolveBuildOrderItem(
         tierMultiplier: multiplier,
         classes: building.classes ?? [],
         produced: getProducedTimestamps(entry, 'building'),
-        destroyed: entry.destroyed,
+        destroyed: getDestroyedTimestamps(entry),
         civs: building.civs
       };
     }
@@ -341,7 +384,7 @@ export function resolveBuildOrderItem(
         tierMultiplier: multiplier,
         classes: unit.classes ?? [],
         produced: getProducedTimestamps(entry, 'unit'),
-        destroyed: entry.destroyed,
+        destroyed: getDestroyedTimestamps(entry),
         civs: unit.civs
       };
     }
@@ -361,7 +404,7 @@ export function resolveBuildOrderItem(
       tierMultiplier: multiplier,
       classes: (item as Unit).classes ?? (item as Building).classes ?? [],
       produced: getProducedTimestamps(entry, type),
-      destroyed: entry.destroyed,
+      destroyed: getDestroyedTimestamps(entry),
       civs: item.civs
     };
   }

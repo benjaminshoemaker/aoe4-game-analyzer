@@ -3,7 +3,7 @@ import postMatchStoryConfigJson from '../data/postMatchStoryConfig.json';
 import { GameAnalysis } from './types';
 import { getAgeUpTime } from './phaseIdentification';
 import { GameSummary } from '../parser/gameSummaryParser';
-import { BandItemDeltaEvent, BandItemSnapshotPoint, GatherRatePoint, PoolBand, PoolSeriesPoint } from './resourcePool';
+import { BandItemDeltaEvent, BandItemSnapshotPoint, EconomicRole, GatherRatePoint, PoolBand, PoolSeriesPoint } from './resourcePool';
 import {
   buildVillagerOpportunityForPlayer,
   VillagerOpportunityForPlayer,
@@ -140,6 +140,7 @@ export interface HoverBandBreakdownEntry {
   percent: number;
   count?: number;
   category?: string;
+  economicRole?: EconomicRole;
 }
 
 export interface ResourceAccountingValues {
@@ -253,6 +254,22 @@ export interface PostMatchHoverSnapshot {
       opponent: HoverBandBreakdownEntry[];
     };
     destroyed?: {
+      you: HoverBandBreakdownEntry[];
+      opponent: HoverBandBreakdownEntry[];
+    };
+    economicDestroyed?: {
+      you: HoverBandBreakdownEntry[];
+      opponent: HoverBandBreakdownEntry[];
+    };
+    technologyDestroyed?: {
+      you: HoverBandBreakdownEntry[];
+      opponent: HoverBandBreakdownEntry[];
+    };
+    militaryDestroyed?: {
+      you: HoverBandBreakdownEntry[];
+      opponent: HoverBandBreakdownEntry[];
+    };
+    otherDestroyed?: {
       you: HoverBandBreakdownEntry[];
       opponent: HoverBandBreakdownEntry[];
     };
@@ -1085,6 +1102,42 @@ function uniqueSortedTimestamps(values: number[]): number[] {
     .sort((a, b) => a - b);
 }
 
+const hoverInteractionIntervalSeconds = 30;
+
+function intervalTimestamps(durationSeconds: number): number[] {
+  const duration = Math.max(0, Math.round(durationSeconds));
+  const timestamps: number[] = [];
+
+  for (let timestamp = 0; timestamp <= duration; timestamp += hoverInteractionIntervalSeconds) {
+    timestamps.push(timestamp);
+  }
+
+  if (timestamps[timestamps.length - 1] !== duration) {
+    timestamps.push(duration);
+  }
+
+  return timestamps;
+}
+
+function hoverInteractionTimestamps(params: {
+  durationSeconds: number;
+  ageMarkerTimestamps: number[];
+  significantEventTimestamps: number[];
+  stateChangeTimestamps: number[];
+}): number[] {
+  return uniqueSortedTimestamps([
+    ...intervalTimestamps(params.durationSeconds),
+    ...params.ageMarkerTimestamps,
+    ...params.significantEventTimestamps,
+    ...params.stateChangeTimestamps,
+  ]);
+}
+
+function sparseResourceTimestamps(player: GameSummary['players'][number]): number[] {
+  const timestamps = player.resources.timestamps ?? [];
+  return timestamps.length <= 120 ? timestamps : [];
+}
+
 function toHoverBandValues(point: PoolSeriesPoint): PostMatchHoverSnapshot['you'] {
   return {
     economic: Math.round(point.economic),
@@ -1213,17 +1266,21 @@ function toHoverBreakdownEntries(
     percent: entry.percent,
     count: entry.count,
     category: entry.itemCategory,
+    economicRole: entry.itemEconomicRole,
   }));
 }
 
 function toDestroyedBreakdownEntries(
   events: BandItemDeltaEvent[] | undefined,
-  timestamp: number
+  timestamp: number,
+  bands?: PoolBand[]
 ): HoverBandBreakdownEntry[] {
-  const byOccurrence = new Map<string, { itemKey: string; label: string; value: number; count: number; category?: string }>();
+  const bandFilter = bands ? new Set<PoolBand>(bands) : null;
+  const byOccurrence = new Map<string, { itemKey: string; label: string; value: number; count: number; category?: string; economicRole?: EconomicRole }>();
   for (const event of events ?? []) {
     if (event.timestamp > timestamp) break;
     if (event.deltaValue >= 0) continue;
+    if (bandFilter && !bandFilter.has(event.band)) continue;
 
     const key = `${event.timestamp}:${event.itemKey}`;
     const existing = byOccurrence.get(key) ?? {
@@ -1232,19 +1289,21 @@ function toDestroyedBreakdownEntries(
       value: 0,
       count: 0,
       category: event.itemCategory,
+      economicRole: event.itemEconomicRole,
     };
     existing.value += Math.abs(event.deltaValue);
     existing.count = Math.max(existing.count, Math.abs(event.deltaCount));
     byOccurrence.set(key, existing);
   }
 
-  const byItem = new Map<string, { label: string; value: number; count: number; category?: string }>();
+  const byItem = new Map<string, { label: string; value: number; count: number; category?: string; economicRole?: EconomicRole }>();
   for (const occurrence of byOccurrence.values()) {
     const existing = byItem.get(occurrence.itemKey) ?? {
       label: occurrence.label,
       value: 0,
       count: 0,
       category: occurrence.category,
+      economicRole: occurrence.economicRole,
     };
     existing.value += occurrence.value;
     existing.count += occurrence.count;
@@ -1260,6 +1319,7 @@ function toDestroyedBreakdownEntries(
       percent: total > 0 ? (entry.value / total) * 100 : 0,
       count: Math.round(entry.count),
       category: entry.category,
+      economicRole: entry.economicRole,
     }))
     .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
 }
@@ -1781,23 +1841,17 @@ export function buildPostMatchViewModel(params: {
     summary
   );
   const significantEvents = selectSignificantTimelineEvents(allSignificantEvents, summary.duration);
-  const hoverTimestamps = uniqueSortedTimestamps([
-    0,
-    summary.duration,
-    ...yourPool.series.map(point => point.timestamp),
-    ...opponentPool.series.map(point => point.timestamp),
-    ...yourPool.gatherRateSeries.map(point => point.timestamp),
-    ...opponentPool.gatherRateSeries.map(point => point.timestamp),
-    ...yourCumulativeGatheredSeries.map(point => point.timestamp),
-    ...opponentCumulativeGatheredSeries.map(point => point.timestamp),
-    ...yourPlayer.resources.timestamps,
-    ...opponentPlayer.resources.timestamps,
-    ...adjustedMilitarySeries.map(point => point.timestamp),
-    ...ageMarkers.map(marker => marker.timestamp),
-    ...significantEvents.map(event => event.timestamp),
-    ...(yourPool.bandItemSnapshots ?? []).map(point => point.timestamp),
-    ...(opponentPool.bandItemSnapshots ?? []).map(point => point.timestamp),
-  ]);
+  const hoverTimestamps = hoverInteractionTimestamps({
+    durationSeconds: summary.duration,
+    ageMarkerTimestamps: ageMarkers.map(marker => marker.timestamp),
+    significantEventTimestamps: significantEvents.map(event => event.timestamp),
+    stateChangeTimestamps: [
+      ...(yourPool.freeProductionSeries ?? []).map(point => point.timestamp),
+      ...(opponentPool.freeProductionSeries ?? []).map(point => point.timestamp),
+      ...sparseResourceTimestamps(yourPlayer),
+      ...sparseResourceTimestamps(opponentPlayer),
+    ],
+  });
   const hoverSnapshots: PostMatchHoverSnapshot[] = hoverTimestamps.map((timestamp) => {
     const youPoint = pointAtOrBefore(yourPool.series, timestamp);
     const opponentPoint = pointAtOrBefore(opponentPool.series, timestamp);
@@ -1913,6 +1967,22 @@ export function buildPostMatchViewModel(params: {
         destroyed: {
           you: toDestroyedBreakdownEntries(yourPool.bandItemDeltas, timestamp),
           opponent: toDestroyedBreakdownEntries(opponentPool.bandItemDeltas, timestamp),
+        },
+        economicDestroyed: {
+          you: toDestroyedBreakdownEntries(yourPool.bandItemDeltas, timestamp, ['economic']),
+          opponent: toDestroyedBreakdownEntries(opponentPool.bandItemDeltas, timestamp, ['economic']),
+        },
+        technologyDestroyed: {
+          you: toDestroyedBreakdownEntries(yourPool.bandItemDeltas, timestamp, ['research', 'advancement']),
+          opponent: toDestroyedBreakdownEntries(opponentPool.bandItemDeltas, timestamp, ['research', 'advancement']),
+        },
+        militaryDestroyed: {
+          you: toDestroyedBreakdownEntries(yourPool.bandItemDeltas, timestamp, ['militaryCapacity', 'militaryActive', 'defensive']),
+          opponent: toDestroyedBreakdownEntries(opponentPool.bandItemDeltas, timestamp, ['militaryCapacity', 'militaryActive', 'defensive']),
+        },
+        otherDestroyed: {
+          you: toDestroyedBreakdownEntries(yourPool.bandItemDeltas, timestamp, ['populationCap']),
+          opponent: toDestroyedBreakdownEntries(opponentPool.bandItemDeltas, timestamp, ['populationCap']),
         },
         float: {
           you: youFloatBreakdown,

@@ -1,5 +1,67 @@
 import { PostMatchViewModel } from '../../src/lib/aoe4/analysis/postMatchViewModel';
 
+function formatBucketTime(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+export function addVerboseOpportunityLostBuckets(model: PostMatchViewModel): PostMatchViewModel {
+  const next = structuredClone(model);
+  const values = [
+    18, 450, 22, 390, 16, 520, 24, 330, 20, 610, 26, 270, 700, 14,
+  ];
+  const entries = values.map((value, index) => {
+    const start = index * 30;
+    const end = start + 30;
+    return {
+      label: `${formatBucketTime(start)}-${formatBucketTime(end)}`,
+      value,
+      percent: value / values.reduce((sum, current) => sum + current, 0) * 100,
+      count: index + 1,
+      category: 'villagers-lost',
+    };
+  });
+
+  next.trajectory.hoverSnapshots[0].bandBreakdown.opportunityLost = {
+    you: entries,
+    opponent: entries.map((entry, index) => ({
+      ...entry,
+      value: values[values.length - 1 - index],
+      count: index + 1,
+    })),
+  };
+
+  return next;
+}
+
+export function makeUnderproductionOnlyOpportunityLostModel(): PostMatchViewModel {
+  const model = makeMvpModelFixture();
+  const snapshot = model.trajectory.hoverSnapshots[0];
+
+  snapshot.villagerOpportunity.you.cumulativeLoss = 1475;
+  snapshot.villagerOpportunity.you.cumulativeResourcesPossible =
+    snapshot.villagerOpportunity.you.cumulativeResourcesGained + 1475;
+  snapshot.villagerOpportunity.opponent.cumulativeLoss = 0;
+  snapshot.villagerOpportunity.opponent.cumulativeResourcesPossible =
+    snapshot.villagerOpportunity.opponent.cumulativeResourcesGained;
+  snapshot.bandBreakdown.opportunityLost = { you: [], opponent: [] };
+  snapshot.villagerOpportunity.you.cumulativeUnderproductionLoss = 1475;
+  snapshot.villagerOpportunity.you.cumulativeDeathLoss = 0;
+  snapshot.villagerOpportunity.opponent.cumulativeUnderproductionLoss = 0;
+  snapshot.villagerOpportunity.opponent.cumulativeDeathLoss = 0;
+  model.villagerOpportunity.resourceSeries.you[0].cumulativeLoss = 1475;
+  model.villagerOpportunity.resourceSeries.you[0].cumulativeResourcesPossible =
+    model.villagerOpportunity.resourceSeries.you[0].cumulativeResourcesGained + 1475;
+  model.villagerOpportunity.resourceSeries.you[0].cumulativeUnderproductionLoss = 1475;
+  model.villagerOpportunity.resourceSeries.you[0].cumulativeDeathLoss = 0;
+  model.villagerOpportunity.resourceSeries.opponent[0].cumulativeLoss = 0;
+  model.villagerOpportunity.resourceSeries.opponent[0].cumulativeResourcesPossible =
+    model.villagerOpportunity.resourceSeries.opponent[0].cumulativeResourcesGained;
+  model.villagerOpportunity.resourceSeries.opponent[0].cumulativeUnderproductionLoss = 0;
+  model.villagerOpportunity.resourceSeries.opponent[0].cumulativeDeathLoss = 0;
+
+  return model;
+}
+
 export function makeMvpModelFixture(): PostMatchViewModel {
   return {
     header: {
@@ -238,8 +300,14 @@ export function makeMvpModelFixture(): PostMatchViewModel {
         },
         bandBreakdown: {
           economic: {
-            you: [{ label: 'Villager', value: 50, percent: 100, count: 1 }],
-            opponent: [],
+            you: [
+              { label: 'Villager', value: 30, percent: 60, count: 1, economicRole: 'resourceGenerator' },
+              { label: 'Farm', value: 20, percent: 40, count: 1, economicRole: 'resourceInfrastructure' },
+            ],
+            opponent: [
+              { label: 'Villager', value: 35, percent: 70, count: 1, economicRole: 'resourceGenerator' },
+              { label: 'Farm', value: 15, percent: 30, count: 1, economicRole: 'resourceInfrastructure' },
+            ],
           },
           populationCap: { you: [], opponent: [] },
           militaryCapacity: { you: [], opponent: [] },

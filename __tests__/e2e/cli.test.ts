@@ -2,12 +2,19 @@ import fs from 'fs';
 import path from 'path';
 import { spawnSync, SpawnSyncReturns } from 'child_process';
 import { sampleUnits, sampleBuildings, sampleTechnologies } from '../helpers/testData';
+import {
+  makeUnknownBucketMechanicsFixture,
+  makeUnknownBucketStaticDataCache,
+} from '../helpers/unknownBucketMechanicsFixture';
 
 const projectRoot = path.resolve(__dirname, '..', '..');
 const cliEntry = path.resolve(projectRoot, 'src/index.ts');
 const cachePath = path.resolve(projectRoot, 'src/data/staticData.json');
 const tsNodeRegister = require.resolve('ts-node/register');
 const setupNock = path.resolve(projectRoot, '__tests__/helpers/setupNock.ts');
+const tmpDir = path.resolve(projectRoot, 'tmp');
+const unknownFixturePath = path.resolve(tmpDir, 'unknown-bucket-audit.fixture.json');
+const unknownStaticDataPath = path.resolve(tmpDir, 'unknown-bucket-static-data.fixture.json');
 
 function runCli(args: string[]): SpawnSyncReturns<string> {
   return spawnSync(
@@ -149,5 +156,25 @@ describe('CLI end-to-end', () => {
     expect(profiles).toContain('unit_id\tunit_name\tcivs\tbonus_targets\tweaknesses');
     expect(profiles).toContain('class:heavy');
     expect(profiles).toContain('horsemen');
+  });
+
+  it('audits unknown build-order buckets from a local summary file', () => {
+    fs.mkdirSync(tmpDir, { recursive: true });
+    fs.writeFileSync(unknownFixturePath, JSON.stringify(makeUnknownBucketMechanicsFixture()), 'utf-8');
+    fs.writeFileSync(unknownStaticDataPath, JSON.stringify(makeUnknownBucketStaticDataCache()), 'utf-8');
+
+    const result = runCli([
+      'audit-unknown-build-order',
+      unknownFixturePath,
+      '--static-data',
+      unknownStaticDataPath,
+    ]);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('Unknown build-order bucket audit: 13 handled, 1 ignored, 0 need review');
+    expect(result.stdout).toContain('Trade Caravan');
+    expect(result.stdout).toContain('Pilgrim');
+    expect(result.stdout).toContain('Yatai bucket 15 handled');
+    expect(result.stdout).toContain('Trade Cart bucket 15 ignored');
   });
 });

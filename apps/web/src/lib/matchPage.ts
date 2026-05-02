@@ -86,6 +86,10 @@ function renderUnsupportedMatchHtml(message: string): string {
 </html>`;
 }
 
+function cloneSummaryForAnalysis(summary: GameSummary): GameSummary {
+  return structuredClone(summary);
+}
+
 export function parseMatchRouteParams(profileSlugRaw: string, gameIdRaw: string): MatchPageParams {
   const profileSlug = decodeURIComponent(profileSlugRaw || '').trim();
   if (!profileSlug) {
@@ -110,7 +114,7 @@ async function buildMatchContext(params: MatchPageParams) {
   const analysis = await analyzeGame(params.profileSlug, params.gameId, {
     sig: params.sig,
     skipNarrative: true,
-    summary,
+    summary: cloneSummaryForAnalysis(summary),
   });
 
   const model = buildPostMatchViewModel({

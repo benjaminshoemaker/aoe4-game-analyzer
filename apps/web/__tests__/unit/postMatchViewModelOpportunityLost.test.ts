@@ -178,11 +178,7 @@ function makeAnalysis(duration: number): GameAnalysis {
 }
 
 describe('buildPostMatchViewModel opportunity lost breakdown', () => {
-  function entryTotal(entries: Array<{ value: number }>): number {
-    return entries.reduce((sum, entry) => sum + entry.value, 0);
-  }
-
-  it('buckets actual cumulative opportunity loss into 30-second rows at the selected timestamp', () => {
+  it('shows one row per 30-second slot with villager deaths and values their remaining-game resource cost', () => {
     const model = buildPostMatchViewModel({
       summary: makeSummary(120),
       analysis: makeAnalysis(120),
@@ -190,21 +186,37 @@ describe('buildPostMatchViewModel opportunity lost breakdown', () => {
     });
 
     const finalSnapshot = model.trajectory.hoverSnapshots.find(snapshot => snapshot.timestamp === 120);
-    const yourEntries = finalSnapshot?.bandBreakdown.opportunityLost?.you ?? [];
-    const opponentEntries = finalSnapshot?.bandBreakdown.opportunityLost?.opponent ?? [];
+    const yourEntries = (finalSnapshot?.bandBreakdown.opportunityLost?.you ?? [])
+      .filter(entry => entry.category === 'villagers-lost');
+    const opponentEntries = (finalSnapshot?.bandBreakdown.opportunityLost?.opponent ?? [])
+      .filter(entry => entry.category === 'villagers-lost');
 
-    expect(entryTotal(yourEntries)).toBe(Math.round(finalSnapshot?.villagerOpportunity.you.cumulativeLoss ?? 0));
-    expect(entryTotal(opponentEntries)).toBe(Math.round(finalSnapshot?.villagerOpportunity.opponent.cumulativeLoss ?? 0));
-    expect(yourEntries).toEqual(expect.arrayContaining([
-      expect.objectContaining({ label: '1:00-1:30', category: 'villager-opportunity' }),
-      expect.objectContaining({ label: '1:30-2:00', category: 'villager-opportunity' }),
-    ]));
-    expect(opponentEntries).toEqual(expect.arrayContaining([
-      expect.objectContaining({ label: '0:30-1:00', category: 'villager-opportunity' }),
-    ]));
+    expect(yourEntries).toEqual([
+      expect.objectContaining({ label: '1:00-1:30', value: 40, count: 1, category: 'villagers-lost' }),
+      expect.objectContaining({ label: '1:30-2:00', value: 20, count: 1, category: 'villagers-lost' }),
+    ]);
+    expect(opponentEntries).toEqual([
+      expect.objectContaining({ label: '0:30-1:00', value: 60, count: 1, category: 'villagers-lost' }),
+    ]);
   });
 
-  it('explains underproduction-only opportunity loss instead of returning an empty breakdown', () => {
+  it('aggregates multiple villager deaths in the same 30-second slot', () => {
+    const model = buildPostMatchViewModel({
+      summary: makeSummary(120, [0, 20, 40, 60], [60, 80], [0], []),
+      analysis: makeAnalysis(120),
+      perspectiveProfileId: 1,
+    });
+
+    const finalSnapshot = model.trajectory.hoverSnapshots.find(snapshot => snapshot.timestamp === 120);
+    const yourEntries = (finalSnapshot?.bandBreakdown.opportunityLost?.you ?? [])
+      .filter(entry => entry.category === 'villagers-lost');
+
+    expect(yourEntries).toEqual([
+      expect.objectContaining({ label: '1:00-1:30', value: 67, count: 2 }),
+    ]);
+  });
+
+  it('keeps underproduction out of opportunity-lost bucket rows', () => {
     const model = buildPostMatchViewModel({
       summary: makeSummary(120, [0], [], [0], []),
       analysis: makeAnalysis(120),
@@ -214,13 +226,44 @@ describe('buildPostMatchViewModel opportunity lost breakdown', () => {
     const finalSnapshot = model.trajectory.hoverSnapshots.find(snapshot => snapshot.timestamp === 120);
     const yourEntries = finalSnapshot?.bandBreakdown.opportunityLost?.you ?? [];
     const finalLoss = Math.round(finalSnapshot?.villagerOpportunity.you.cumulativeLoss ?? 0);
+    const underproductionLoss = Math.round(finalSnapshot?.villagerOpportunity.you.cumulativeUnderproductionLoss ?? 0);
 
     expect(finalLoss).toBeGreaterThan(0);
-    expect(yourEntries.length).toBeGreaterThan(0);
-    expect(entryTotal(yourEntries)).toBe(finalLoss);
-    expect(yourEntries[0]).toEqual(expect.objectContaining({
-      category: 'villager-opportunity',
-      count: expect.any(Number),
-    }));
+    expect(underproductionLoss).toBe(finalLoss);
+    expect(yourEntries).toEqual([]);
+  });
+
+  it('orders death-slot rows by time rather than by resource value', () => {
+    const model = buildPostMatchViewModel({
+      summary: makeSummary(180, [0, 20, 40, 60], [60, 95, 100], [0], []),
+      analysis: makeAnalysis(180),
+      perspectiveProfileId: 1,
+    });
+
+    const finalSnapshot = model.trajectory.hoverSnapshots.find(snapshot => snapshot.timestamp === 180);
+    const yourEntries = (finalSnapshot?.bandBreakdown.opportunityLost?.you ?? [])
+      .filter(entry => entry.category === 'villagers-lost');
+
+    expect(yourEntries.map(entry => entry.label)).toEqual(['1:00-1:30', '1:30-2:00']);
+    expect(yourEntries[0].value).toBeLessThan(yourEntries[1].value);
+  });
+
+  it('does not mix underproduction into villager-loss time buckets', () => {
+    const model = buildPostMatchViewModel({
+      summary: makeSummary(150, [0], [60], [0], []),
+      analysis: makeAnalysis(150),
+      perspectiveProfileId: 1,
+    });
+
+    const finalSnapshot = model.trajectory.hoverSnapshots.find(snapshot => snapshot.timestamp === 150);
+    const yourEntries = finalSnapshot?.bandBreakdown.opportunityLost?.you ?? [];
+
+    expect(yourEntries.map(entry => entry.category)).toEqual([
+      'villagers-lost',
+    ]);
+    expect(yourEntries.map(entry => entry.label)).toEqual([
+      '1:00-1:30',
+    ]);
+    expect(Math.round(finalSnapshot?.villagerOpportunity.you.cumulativeUnderproductionLoss ?? 0)).toBeGreaterThan(0);
   });
 });

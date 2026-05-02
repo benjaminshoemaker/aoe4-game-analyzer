@@ -3,13 +3,14 @@ import postMatchStoryConfigJson from '../data/postMatchStoryConfig.json';
 import { GameAnalysis } from './types';
 import { getAgeUpTime } from './phaseIdentification';
 import { GameSummary } from '../parser/gameSummaryParser';
-import { BandItemDeltaEvent, BandItemSnapshotPoint, GatherRatePoint, PoolBand, PoolSeriesPoint } from './resourcePool';
+import { BandItemDeltaEvent, BandItemSnapshotPoint, EconomicRole, GatherRatePoint, PoolBand, PoolSeriesPoint } from './resourcePool';
 import {
   buildVillagerOpportunityForPlayer,
   VillagerOpportunityForPlayer,
   VillagerOpportunityPoint
 } from './villagerOpportunity';
 import { SignificantResourceLossEvent, SignificantResourceLossItem, SignificantResourceLossKind } from './significantResourceLossEvents';
+import { isVillagerBuildOrderEntry } from './villagerClassifier';
 
 export type BetShapeLabel =
   | 'economic-heavy'
@@ -158,6 +159,8 @@ export interface VillagerOpportunityContext {
 export interface VillagerOpportunityResourcePoint {
   timestamp: number;
   cumulativeLoss: number;
+  cumulativeUnderproductionLoss?: number;
+  cumulativeDeathLoss?: number;
   cumulativeResourcesGained: number;
   cumulativeResourcesPossible: number;
 }
@@ -168,6 +171,7 @@ export interface HoverBandBreakdownEntry {
   percent: number;
   count?: number;
   category?: string;
+  economicRole?: EconomicRole;
 }
 
 export interface ResourceAccountingValues {
@@ -281,6 +285,22 @@ export interface PostMatchHoverSnapshot {
       opponent: HoverBandBreakdownEntry[];
     };
     destroyed?: {
+      you: HoverBandBreakdownEntry[];
+      opponent: HoverBandBreakdownEntry[];
+    };
+    economicDestroyed?: {
+      you: HoverBandBreakdownEntry[];
+      opponent: HoverBandBreakdownEntry[];
+    };
+    technologyDestroyed?: {
+      you: HoverBandBreakdownEntry[];
+      opponent: HoverBandBreakdownEntry[];
+    };
+    militaryDestroyed?: {
+      you: HoverBandBreakdownEntry[];
+      opponent: HoverBandBreakdownEntry[];
+    };
+    otherDestroyed?: {
       you: HoverBandBreakdownEntry[];
       opponent: HoverBandBreakdownEntry[];
     };
@@ -679,6 +699,8 @@ function buildVillagerOpportunityResourceSeries(
     return {
       timestamp: point.timestamp,
       cumulativeLoss,
+      cumulativeUnderproductionLoss: Math.max(0, point.cumulativeUnderproductionLoss),
+      cumulativeDeathLoss: Math.max(0, point.cumulativeDeathLoss),
       cumulativeResourcesGained,
       cumulativeResourcesPossible: cumulativeResourcesGained + cumulativeLoss,
     };
@@ -1203,6 +1225,42 @@ function uniqueSortedTimestamps(values: number[]): number[] {
     .sort((a, b) => a - b);
 }
 
+const hoverInteractionIntervalSeconds = 30;
+
+function intervalTimestamps(durationSeconds: number): number[] {
+  const duration = Math.max(0, Math.round(durationSeconds));
+  const timestamps: number[] = [];
+
+  for (let timestamp = 0; timestamp <= duration; timestamp += hoverInteractionIntervalSeconds) {
+    timestamps.push(timestamp);
+  }
+
+  if (timestamps[timestamps.length - 1] !== duration) {
+    timestamps.push(duration);
+  }
+
+  return timestamps;
+}
+
+function hoverInteractionTimestamps(params: {
+  durationSeconds: number;
+  ageMarkerTimestamps: number[];
+  significantEventTimestamps: number[];
+  stateChangeTimestamps: number[];
+}): number[] {
+  return uniqueSortedTimestamps([
+    ...intervalTimestamps(params.durationSeconds),
+    ...params.ageMarkerTimestamps,
+    ...params.significantEventTimestamps,
+    ...params.stateChangeTimestamps,
+  ]);
+}
+
+function sparseResourceTimestamps(player: GameSummary['players'][number]): number[] {
+  const timestamps = player.resources.timestamps ?? [];
+  return timestamps.length <= 120 ? timestamps : [];
+}
+
 function toHoverBandValues(point: PoolSeriesPoint): PostMatchHoverSnapshot['you'] {
   return {
     economic: Math.round(point.economic),
@@ -1331,17 +1389,21 @@ function toHoverBreakdownEntries(
     percent: entry.percent,
     count: entry.count,
     category: entry.itemCategory,
+    economicRole: entry.itemEconomicRole,
   }));
 }
 
 function toDestroyedBreakdownEntries(
   events: BandItemDeltaEvent[] | undefined,
-  timestamp: number
+  timestamp: number,
+  bands?: PoolBand[]
 ): HoverBandBreakdownEntry[] {
-  const byOccurrence = new Map<string, { itemKey: string; label: string; value: number; count: number; category?: string }>();
+  const bandFilter = bands ? new Set<PoolBand>(bands) : null;
+  const byOccurrence = new Map<string, { itemKey: string; label: string; value: number; count: number; category?: string; economicRole?: EconomicRole }>();
   for (const event of events ?? []) {
     if (event.timestamp > timestamp) break;
     if (event.deltaValue >= 0) continue;
+    if (bandFilter && !bandFilter.has(event.band)) continue;
 
     const key = `${event.timestamp}:${event.itemKey}`;
     const existing = byOccurrence.get(key) ?? {
@@ -1350,19 +1412,21 @@ function toDestroyedBreakdownEntries(
       value: 0,
       count: 0,
       category: event.itemCategory,
+      economicRole: event.itemEconomicRole,
     };
     existing.value += Math.abs(event.deltaValue);
     existing.count = Math.max(existing.count, Math.abs(event.deltaCount));
     byOccurrence.set(key, existing);
   }
 
-  const byItem = new Map<string, { label: string; value: number; count: number; category?: string }>();
+  const byItem = new Map<string, { label: string; value: number; count: number; category?: string; economicRole?: EconomicRole }>();
   for (const occurrence of byOccurrence.values()) {
     const existing = byItem.get(occurrence.itemKey) ?? {
       label: occurrence.label,
       value: 0,
       count: 0,
       category: occurrence.category,
+      economicRole: occurrence.economicRole,
     };
     existing.value += occurrence.value;
     existing.count += occurrence.count;
@@ -1378,61 +1442,127 @@ function toDestroyedBreakdownEntries(
       percent: total > 0 ? (entry.value / total) * 100 : 0,
       count: Math.round(entry.count),
       category: entry.category,
+      economicRole: entry.economicRole,
     }))
     .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
 }
 
-function toOpportunityLostBreakdownEntries(
-  series: VillagerOpportunityResourcePoint[],
-  timestamp: number
-): HoverBandBreakdownEntry[] {
-  const safeTimestamp = Math.max(0, timestamp);
-  const targetLoss = Math.round(villagerResourceAtOrBefore(series, safeTimestamp).cumulativeLoss);
-  if (targetLoss <= 0) return [];
+function collectVillagerDeathTimes(player: GameSummary['players'][number]): number[] {
+  return player.buildOrder
+    .filter(isVillagerBuildOrderEntry)
+    .flatMap(entry => entry.destroyed)
+    .filter(timestamp => Number.isFinite(timestamp) && timestamp >= 0)
+    .sort((a, b) => a - b);
+}
 
-  const bucketSeconds = 30;
-  const buckets: Array<{ start: number; end: number; rawValue: number }> = [];
-  for (let start = 0; start < safeTimestamp; start += bucketSeconds) {
-    const end = Math.min(safeTimestamp, start + bucketSeconds);
-    const startLoss = villagerResourceAtOrBefore(series, start).cumulativeLoss;
-    const endLoss = villagerResourceAtOrBefore(series, end).cumulativeLoss;
-    const rawValue = Math.max(0, endLoss - startLoss);
-    if (rawValue > 0) {
-      buckets.push({ start, end, rawValue });
-    }
+function finalDeathOpportunityLoss(opportunity: VillagerOpportunityForPlayer): number {
+  return Math.max(0, finalVillagerOpportunityPoint(opportunity).cumulativeDeathLoss);
+}
+
+const OPPORTUNITY_LOST_VILLAGERS_LOST_CATEGORY = 'villagers-lost';
+const OPPORTUNITY_LOST_UNDERPRODUCTION_CATEGORY = 'villager-underproduction';
+
+function removeVillagerDeathsByTimestamp(
+  player: GameSummary['players'][number],
+  deathTimes: number[]
+): GameSummary['players'][number] {
+  const removals = new Map<number, number>();
+  for (const timestamp of deathTimes) {
+    removals.set(timestamp, (removals.get(timestamp) ?? 0) + 1);
   }
 
-  if (buckets.length === 0) {
-    buckets.push({ start: 0, end: safeTimestamp, rawValue: targetLoss });
-  }
+  return {
+    ...player,
+    buildOrder: player.buildOrder.map(entry => {
+      if (!isVillagerBuildOrderEntry(entry)) return entry;
+      return {
+        ...entry,
+        destroyed: entry.destroyed.filter(timestamp => {
+          const remaining = removals.get(timestamp) ?? 0;
+          if (remaining <= 0) return true;
+          removals.set(timestamp, remaining - 1);
+          return false;
+        }),
+      };
+    }),
+  };
+}
 
-  const entries = buckets.map(bucket => ({
-    label: `${formatTime(bucket.start)}-${formatTime(bucket.end)}`,
-    value: Math.max(0, Math.round(bucket.rawValue)),
-    percent: 0,
-    count: Math.max(1, Math.round(bucket.rawValue / 50)),
-    category: 'villager-opportunity',
+function opportunityLostCategoryRank(entry: HoverBandBreakdownEntry): number {
+  if (entry.category === OPPORTUNITY_LOST_UNDERPRODUCTION_CATEGORY) return 1;
+  return 0;
+}
+
+function opportunityLostBucketStart(entry: HoverBandBreakdownEntry): number {
+  const match = entry.label.match(/^(\d+):(\d{2})(?=-)/);
+  if (!match) return Number.POSITIVE_INFINITY;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function withOpportunityLostPercents(entries: HoverBandBreakdownEntry[]): HoverBandBreakdownEntry[] {
+  const ordered = [...entries].sort((a, b) =>
+    opportunityLostCategoryRank(a) - opportunityLostCategoryRank(b) ||
+    opportunityLostBucketStart(a) - opportunityLostBucketStart(b) ||
+    a.label.localeCompare(b.label)
+  );
+  const totalValue = ordered.reduce((sum, entry) => sum + entry.value, 0);
+  return ordered.map(entry => ({
+    ...entry,
+    percent: totalValue > 0 ? (entry.value / totalValue) * 100 : 0,
   }));
+}
 
-  const roundedTotal = entries.reduce((sum, entry) => sum + entry.value, 0);
-  const roundingDrift = targetLoss - roundedTotal;
-  if (roundingDrift !== 0) {
-    let adjustmentTarget = entries[entries.length - 1];
-    for (let i = entries.length - 1; i >= 0; i -= 1) {
-      if (entries[i].value + roundingDrift > 0) {
-        adjustmentTarget = entries[i];
-        break;
-      }
+function createOpportunityLostBreakdownBuilder(
+  opportunity: VillagerOpportunityForPlayer,
+  player: GameSummary['players'][number],
+  duration: number
+): (timestamp: number) => HoverBandBreakdownEntry[] {
+  const bucketSeconds = 30;
+  const originalFinalDeathLoss = finalDeathOpportunityLoss(opportunity);
+  const allDeathTimes = collectVillagerDeathTimes(player);
+  const valueCache = new Map<string, number>();
+
+  return (timestamp: number): HoverBandBreakdownEntry[] => {
+    const safeTimestamp = Math.max(0, timestamp);
+
+    const deathTimesByBucket = new Map<number, number[]>();
+    for (const deathTime of allDeathTimes) {
+      if (deathTime > safeTimestamp) continue;
+      const start = Math.floor(deathTime / bucketSeconds) * bucketSeconds;
+      const bucket = deathTimesByBucket.get(start) ?? [];
+      bucket.push(deathTime);
+      deathTimesByBucket.set(start, bucket);
     }
-    adjustmentTarget.value = Math.max(0, adjustmentTarget.value + roundingDrift);
-  }
 
-  return entries
-    .filter(entry => entry.value > 0)
-    .map(entry => ({
-      ...entry,
-      percent: targetLoss > 0 ? (entry.value / targetLoss) * 100 : 0,
-    }));
+    const entries = [...deathTimesByBucket.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([start, deathTimes]) => {
+        const cacheKey = deathTimes.join(',');
+        let value = valueCache.get(cacheKey);
+        if (value === undefined) {
+          const counterfactual = buildVillagerOpportunityForPlayer({
+            player: removeVillagerDeathsByTimestamp(player, deathTimes),
+            duration,
+          });
+          value = Math.max(
+            0,
+            Math.round(originalFinalDeathLoss - finalDeathOpportunityLoss(counterfactual))
+          );
+          valueCache.set(cacheKey, value);
+        }
+
+        return {
+          label: `${formatTime(start)}-${formatTime(start + bucketSeconds)}`,
+          value,
+          percent: 0,
+          count: deathTimes.length,
+          category: OPPORTUNITY_LOST_VILLAGERS_LOST_CATEGORY,
+        };
+      })
+      .filter(entry => entry.value > 0);
+
+    return withOpportunityLostPercents(entries);
+  };
 }
 
 type AgeAllocationCategory = 'economy' | 'technology' | 'military';
@@ -2282,25 +2412,27 @@ export function buildPostMatchViewModel(params: {
     summary
   );
   const significantEvents = selectSignificantTimelineEvents(allSignificantEvents, summary.duration);
-  const hoverTimestamps = uniqueSortedTimestamps([
-    0,
-    summary.duration,
-    ...yourPool.series.map(point => point.timestamp),
-    ...opponentPool.series.map(point => point.timestamp),
-    ...yourPool.gatherRateSeries.map(point => point.timestamp),
-    ...opponentPool.gatherRateSeries.map(point => point.timestamp),
-    ...yourCumulativeGatheredSeries.map(point => point.timestamp),
-    ...opponentCumulativeGatheredSeries.map(point => point.timestamp),
-    ...yourPlayer.resources.timestamps,
-    ...opponentPlayer.resources.timestamps,
-    ...yourVillagerOpportunityResourceSeries.map(point => point.timestamp),
-    ...opponentVillagerOpportunityResourceSeries.map(point => point.timestamp),
-    ...adjustedMilitarySeries.map(point => point.timestamp),
-    ...ageMarkers.map(marker => marker.timestamp),
-    ...significantEvents.map(event => event.timestamp),
-    ...(yourPool.bandItemSnapshots ?? []).map(point => point.timestamp),
-    ...(opponentPool.bandItemSnapshots ?? []).map(point => point.timestamp),
-  ]);
+  const hoverTimestamps = hoverInteractionTimestamps({
+    durationSeconds: summary.duration,
+    ageMarkerTimestamps: ageMarkers.map(marker => marker.timestamp),
+    significantEventTimestamps: significantEvents.map(event => event.timestamp),
+    stateChangeTimestamps: [
+      ...(yourPool.freeProductionSeries ?? []).map(point => point.timestamp),
+      ...(opponentPool.freeProductionSeries ?? []).map(point => point.timestamp),
+      ...sparseResourceTimestamps(yourPlayer),
+      ...sparseResourceTimestamps(opponentPlayer),
+    ],
+  });
+  const yourOpportunityLostBreakdownAt = createOpportunityLostBreakdownBuilder(
+    yourVillagerOpportunity,
+    yourPlayer,
+    summary.duration
+  );
+  const opponentOpportunityLostBreakdownAt = createOpportunityLostBreakdownBuilder(
+    opponentVillagerOpportunity,
+    opponentPlayer,
+    summary.duration
+  );
   const hoverSnapshots: PostMatchHoverSnapshot[] = hoverTimestamps.map((timestamp) => {
     const youPoint = pointAtOrBefore(yourPool.series, timestamp);
     const opponentPoint = pointAtOrBefore(opponentPool.series, timestamp);
@@ -2417,13 +2549,29 @@ export function buildPostMatchViewModel(params: {
           you: toDestroyedBreakdownEntries(yourPool.bandItemDeltas, timestamp),
           opponent: toDestroyedBreakdownEntries(opponentPool.bandItemDeltas, timestamp),
         },
+        economicDestroyed: {
+          you: toDestroyedBreakdownEntries(yourPool.bandItemDeltas, timestamp, ['economic']),
+          opponent: toDestroyedBreakdownEntries(opponentPool.bandItemDeltas, timestamp, ['economic']),
+        },
+        technologyDestroyed: {
+          you: toDestroyedBreakdownEntries(yourPool.bandItemDeltas, timestamp, ['research', 'advancement']),
+          opponent: toDestroyedBreakdownEntries(opponentPool.bandItemDeltas, timestamp, ['research', 'advancement']),
+        },
+        militaryDestroyed: {
+          you: toDestroyedBreakdownEntries(yourPool.bandItemDeltas, timestamp, ['militaryCapacity', 'militaryActive', 'defensive']),
+          opponent: toDestroyedBreakdownEntries(opponentPool.bandItemDeltas, timestamp, ['militaryCapacity', 'militaryActive', 'defensive']),
+        },
+        otherDestroyed: {
+          you: toDestroyedBreakdownEntries(yourPool.bandItemDeltas, timestamp, ['populationCap']),
+          opponent: toDestroyedBreakdownEntries(opponentPool.bandItemDeltas, timestamp, ['populationCap']),
+        },
         float: {
           you: youFloatBreakdown,
           opponent: opponentFloatBreakdown,
         },
         opportunityLost: {
-          you: toOpportunityLostBreakdownEntries(yourVillagerOpportunityResourceSeries, timestamp),
-          opponent: toOpportunityLostBreakdownEntries(opponentVillagerOpportunityResourceSeries, timestamp),
+          you: yourOpportunityLostBreakdownAt(timestamp),
+          opponent: opponentOpportunityLostBreakdownAt(timestamp),
         },
       },
       significantEvent,

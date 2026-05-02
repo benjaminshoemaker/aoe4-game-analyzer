@@ -1,10 +1,34 @@
 import { renderPostMatchHtml } from '../../src/lib/aoe4/formatters/postMatchHtml';
-import { makeMvpModelFixture } from '../helpers/mvpModelFixture';
+import {
+  addVerboseOpportunityLostBuckets,
+  makeMvpModelFixture,
+  makeUnderproductionOnlyOpportunityLostModel,
+} from '../helpers/mvpModelFixture';
 
 function extractSvg(html: string, id: string): string {
   const match = html.match(new RegExp(`<svg id="${id}"[\\s\\S]*?</svg>`));
   if (!match) throw new Error(`Expected SVG ${id}`);
   return match[0];
+}
+
+function extractHoverPayload(html: string): any[] {
+  const payloadMatch = html.match(/<script id="post-match-hover-data" type="application\/json">([\s\S]*?)<\/script>/);
+  if (!payloadMatch) throw new Error('Expected post-match hover data payload');
+  return JSON.parse(payloadMatch[1]);
+}
+
+function makeDenseInteractionModel() {
+  const model = structuredClone(makeMvpModelFixture());
+  const baseSnapshot = model.trajectory.hoverSnapshots[0];
+  model.trajectory.durationSeconds = 120;
+  model.gatherRate.durationSeconds = 120;
+  model.trajectory.hoverSnapshots = Array.from({ length: 121 }, (_, timestamp) => ({
+    ...baseSnapshot,
+    timestamp,
+    timeLabel: `${Math.floor(timestamp / 60)}:${String(timestamp % 60).padStart(2, '0')}`,
+    markers: timestamp === 47 ? ['English reached Feudal'] : [],
+  }));
+  return model;
 }
 
 describe('post-match allocation widget integration', () => {
@@ -103,12 +127,12 @@ describe('post-match allocation widget integration', () => {
     expect(html).toContain('data-mobile-current-time');
     expect(html).not.toContain('Click to pin');
     expect(html).not.toContain('Esc to clear');
-    expect(html).toContain('Leader strip: absolute deployed-value leader by 30-second block');
-    expect(html).toContain('Economic, Technology, and Military: percentage share of strategic allocation');
-    expect(html).toContain('Overall: absolute deployed resource value after subtracting Destroyed');
+    expect(html).toContain('Leader strip: current tracked-value leader by 30-second block');
+    expect(html).toContain('Economic, Technology, and Military: percentage share of current tracked pool');
+    expect(html).toContain('Overall: absolute current tracked pool value');
     expect(html).toContain('Destroyed: cumulative value removed from the tracked deployed pool');
     expect(html).toContain('Float (not deployed): live stockpile resources not currently committed');
-    expect(html).toContain('Opportunity lost: total villager opportunity cost');
+    expect(html).toContain('Opportunity lost: villagers lost plus villager underproduction');
     const leaderStrip = extractSvg(html, 'allocation-leader-strip');
     expect(leaderStrip).toContain('data-category-key="economic"');
     expect(leaderStrip).toContain('data-category-key="technology"');
@@ -123,6 +147,9 @@ describe('post-match allocation widget integration', () => {
     expect(html).toContain('.chart-stack { overflow-x: hidden; }');
     expect(html).toContain('.mobile-timeline-button');
     expect(html).toContain('data-band-breakdown-summary');
+    expect(html).toContain('grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));');
+    expect(html).toContain('.band-summary-label {\n      grid-column: 1 / -1;');
+    expect(html).toContain('.band-breakdown-summary > span:not(.band-summary-label) {\n      min-width: 0;');
     expect(html).toContain('data-significant-event-armies');
     expect(html).not.toContain('data-significant-event-underdog-note');
     expect(html).toContain('data-significant-event-underdog-toggle');
@@ -144,30 +171,55 @@ describe('post-match allocation widget integration', () => {
     expect(html).not.toContain('data-hover-field="significantEvent.grossLoss"');
     expect(html).not.toContain('data-hover-field="significantEvent.topLosses"');
     expect(html).toContain('data-band-summary-delta');
-    expect(html).toContain('data-hover-field="allocation.economic.you"');
-    expect(html).toContain('data-hover-field="allocation.other.delta"');
-    expect(html).toContain('data-hover-field="allocation.destroyed.delta"');
+    expect(html).toContain('data-hover-field="allocationCategory.economic.net.you"');
+    expect(html).toContain('data-hover-field="allocationCategory.economic.resourceGeneration.you"');
+    expect(html).toContain('data-hover-field="allocationCategory.economic.resourceInfrastructure.delta"');
+    expect(html).toContain('data-economic-role-filter="resourceGenerator"');
+    expect(html).toContain('data-economic-role-filter="resourceInfrastructure"');
+    expect(html).toContain('data-allocation-investment-category="economic"');
+    expect(html).toContain('data-band-key="militaryInvestment"');
+    expect(html).toContain('Total Economic Investment');
+    expect(html).toContain('Total Military Investment');
+    expect(html).toContain("selectedEconomicRoleFilter = key === 'economic'");
+    expect(html).toContain('function combinedInvestmentBreakdown(point, category)');
+    expect(html).toContain('function syncDestroyedRowVisibility(point)');
+    expect(html).toContain('data-destroyed-row-category="economic" data-destroyed-row-empty="true" hidden');
+    expect(html).toContain('Advancement destroyed');
+    expect(html).not.toContain('Technology destroyed');
+    expect(html).toContain("(entry.economicRole || 'resourceInfrastructure') === selectedEconomicRoleFilter");
+    expect(html).toContain('data-hover-field="allocationCategory.other.net.delta"');
+    expect(html).toContain('data-hover-field="allocationCategory.military.net.delta"');
+    expect(html).toContain('data-hover-field="allocationCategory.military.destroyed.delta"');
+    expect(html).toContain('data-hover-field="allocationCategory.military.investment.delta"');
     expect(html).toContain('data-hover-field="allocation.float.delta"');
     expect(html).toContain('data-hover-field="allocation.opportunityLost.delta"');
-    expect(html).toContain('data-inspector-row="destroyed"');
-    expect(html).toContain('data-band-key="destroyed"');
+    expect(html).not.toContain('data-inspector-row="destroyed"');
+    expect(html).not.toContain('data-band-key="destroyed"');
+    expect(html).toContain('data-allocation-category-accounting="economic-resource-generation"');
+    expect(html).toContain('data-allocation-category-accounting="economic-resource-infrastructure"');
+    expect(html).toContain('data-allocation-category-accounting="military-destroyed"');
+    expect(html).toContain('data-allocation-category-accounting="military-investment"');
+    expect(html).toContain('data-band-key="militaryDestroyed"');
     expect(html).toContain('data-inspector-row="float"');
     expect(html).toContain('data-band-key="float"');
     expect(html).toContain('data-inspector-row="opportunityLost"');
     expect(html).toContain('data-band-key="opportunityLost"');
     const otherRowIndex = html.indexOf('data-allocation-category-row="other"');
-    const destroyedRowIndex = html.indexOf('data-inspector-row="destroyed"');
+    const otherDestroyedRowIndex = html.indexOf('data-allocation-category-accounting="other-destroyed"');
+    const otherInvestmentRowIndex = html.indexOf('data-allocation-category-accounting="other-investment"');
     const totalPoolIndex = html.indexOf('data-total-pool-tooltip');
     const floatRowIndex = html.indexOf('data-inspector-row="float"');
     const opportunityLostRowIndex = html.indexOf('data-inspector-row="opportunityLost"');
     const gatherRowIndex = html.indexOf('<th>Gather/min</th>');
     expect(otherRowIndex).toBeGreaterThanOrEqual(0);
-    expect(destroyedRowIndex).toBeGreaterThan(otherRowIndex);
-    expect(totalPoolIndex).toBeGreaterThan(destroyedRowIndex);
+    expect(otherDestroyedRowIndex).toBeGreaterThan(otherRowIndex);
+    expect(otherInvestmentRowIndex).toBeGreaterThan(otherDestroyedRowIndex);
+    expect(totalPoolIndex).toBeGreaterThan(otherInvestmentRowIndex);
     expect(floatRowIndex).toBeGreaterThan(totalPoolIndex);
     expect(opportunityLostRowIndex).toBeGreaterThan(floatRowIndex);
     expect(gatherRowIndex).toBeGreaterThan(opportunityLostRowIndex);
     expect(html).toContain('data-allocation-category-toggle="military" aria-expanded="false"');
+    expect(html).toContain('Total net pool');
     expect(html).not.toContain('Overall resources');
     expect(html).not.toContain('Deployed resource pool over time');
     expect(html).not.toContain('Strategic allocation state');
@@ -184,6 +236,17 @@ describe('post-match allocation widget integration', () => {
       overall: expect.objectContaining({ you: 818, opponent: 670, delta: 148 }),
       float: expect.objectContaining({ you: 500, opponent: 1000, delta: -500 }),
       opportunityLost: expect.objectContaining({ you: 90, opponent: 140, delta: -50 }),
+    }));
+    expect(payload[0].allocationCategory).toEqual(expect.objectContaining({
+      military: expect.objectContaining({
+        net: expect.objectContaining({ you: 168, opponent: 120, delta: 48 }),
+        destroyed: expect.objectContaining({ you: 0, opponent: 0, delta: 0 }),
+        investment: expect.objectContaining({ you: 168, opponent: 120, delta: 48 }),
+      }),
+      economic: expect.objectContaining({
+        resourceGeneration: expect.objectContaining({ you: 30, opponent: 35, delta: -5 }),
+        resourceInfrastructure: expect.objectContaining({ you: 20, opponent: 15, delta: 5 }),
+      }),
     }));
     expect(payload[0].bandBreakdown.opportunityLost.opponent).toEqual([
       expect.objectContaining({ label: '0:00-0:30', value: 140, count: 2 }),
@@ -209,5 +272,60 @@ describe('post-match allocation widget integration', () => {
     expect(payload[0].significantEvent.favorableUnderdogFight).toEqual({
       details: 'French won this encounter despite having significantly fewer deployed military resources than English. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where French found an advantage, healing, stronger micro, or a favorable unit matchup.',
     });
+  });
+
+  it('renders dense source data as coarse interaction targets without a blocking hover fetch', () => {
+    const html = renderPostMatchHtml(makeDenseInteractionModel(), {
+      hoverDataUrl: '/matches/my-slug/230143339/hover-data?sig=abc123',
+    });
+    const payload = extractHoverPayload(html);
+
+    expect(payload.map(point => point.timestamp)).toEqual([0, 30, 47, 60, 90, 120]);
+    expect(html).not.toContain('id="post-match-hover-data-url"');
+    expect(html).not.toContain('/matches/my-slug/230143339/hover-data?sig=abc123');
+    expect(html).not.toContain('data-hover-timestamp="1"');
+    expect(html).toContain('data-hover-timestamp="30"');
+    expect(html).toContain('data-hover-timestamp="47"');
+  });
+
+  it('embeds opportunity-lost bucket composition by time within each civilization', () => {
+    const html = renderPostMatchHtml(addVerboseOpportunityLostBuckets(makeMvpModelFixture()));
+    const payload = extractHoverPayload(html);
+    const youLabels = payload[0].bandBreakdown.opportunityLost.you.map((entry: { label: string }) => entry.label);
+    const opponentLabels = payload[0].bandBreakdown.opportunityLost.opponent.map((entry: { label: string }) => entry.label);
+
+    expect(youLabels.slice(0, 4)).toEqual(['0:00-0:30', '0:30-1:00', '1:00-1:30', '1:30-2:00']);
+    expect(opponentLabels.slice(0, 4)).toEqual(['0:00-0:30', '0:30-1:00', '1:00-1:30', '1:30-2:00']);
+    expect(youLabels.at(-1)).toBe('Later opportunity-loss buckets (2)');
+    expect(opponentLabels.at(-1)).toBe('Later opportunity-loss buckets (2)');
+    expect(youLabels).not.toContain('Other active items (2)');
+  });
+
+  it('keeps opportunity-lost underproduction in the summary instead of the bucket list', () => {
+    const html = renderPostMatchHtml(makeUnderproductionOnlyOpportunityLostModel());
+    const payload = extractHoverPayload(html);
+
+    expect(payload[0].bandBreakdown.opportunityLost.you).toEqual([]);
+    expect(payload[0].opportunityLostComponents.underproduction).toEqual(expect.objectContaining({
+      you: 1475,
+      opponent: 0,
+      delta: 1475,
+    }));
+    expect(payload[0].opportunityLostComponents.villagersLost).toEqual(expect.objectContaining({
+      you: 0,
+      opponent: 0,
+      delta: 0,
+    }));
+    expect(payload[0].allocation.opportunityLost).toEqual(expect.objectContaining({
+      you: 1475,
+      opponent: 0,
+      delta: 1475,
+    }));
+    expect(html).toContain('data-opportunity-lost-components');
+    expect(html).toContain('<table class="opportunity-lost-components" data-opportunity-lost-components hidden>');
+    expect(html).toContain('<th scope="col">English</th>');
+    expect(html).toContain('<th scope="col">French</th>');
+    expect(html).toContain('data-opportunity-lost-component="underproduction"');
+    expect(html).toContain('Villager underproduction');
   });
 });

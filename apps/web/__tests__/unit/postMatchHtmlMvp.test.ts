@@ -17,6 +17,12 @@ function extractAllocationLane(html: string, key: string): string {
   return match[0];
 }
 
+function extractHoverData(html: string): any[] {
+  const match = html.match(/<script id="post-match-hover-data" type="application\/json">([\s\S]*?)<\/script>/);
+  if (!match) throw new Error('post-match hover data not found');
+  return JSON.parse(match[1]);
+}
+
 describe('renderPostMatchHtml (web mvp)', () => {
   it('maps deployed pool bands into allocation categories', () => {
     expect(buildAllocationCategories({
@@ -89,7 +95,7 @@ describe('renderPostMatchHtml (web mvp)', () => {
           economic: 120,
           populationCap: 0,
           militaryCapacity: 0,
-          militaryActive: 60,
+          militaryActive: 10,
           defensive: 0,
           research: 0,
           advancement: 0,
@@ -97,13 +103,41 @@ describe('renderPostMatchHtml (web mvp)', () => {
           float: 20,
           total: 130,
         },
+        accounting: {
+          you: {
+            economic: 140,
+            populationCap: 0,
+            militaryCapacity: 0,
+            militaryActive: 20,
+            defensive: 0,
+            research: 0,
+            advancement: 0,
+            destroyed: 0,
+            float: 100,
+            gathered: 260,
+            total: 160,
+          },
+          opponent: {
+            economic: 120,
+            populationCap: 0,
+            militaryCapacity: 0,
+            militaryActive: 60,
+            defensive: 0,
+            research: 0,
+            advancement: 0,
+            destroyed: 50,
+            float: 20,
+            gathered: 250,
+            total: 180,
+          },
+        },
       },
     ] as any, 60);
 
     expect(segments.find(segment => segment.categoryKey === 'technology' && segment.start === 0))
       .toEqual(expect.objectContaining({ leader: 'tie' }));
     expect(segments.find(segment => segment.categoryKey === 'military' && segment.start === 30))
-      .toEqual(expect.objectContaining({ leader: 'opponent' }));
+      .toEqual(expect.objectContaining({ leader: 'you', you: 20, opponent: 10 }));
     expect(new Set(segments.map(segment => segment.categoryKey))).toEqual(new Set([
       'economic',
       'technology',
@@ -113,6 +147,45 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(segments.find(segment => segment.categoryKey === 'overall')).toBeUndefined();
     expect(segments.find(segment => segment.categoryKey === 'float')).toBeUndefined();
     expect(segments.find(segment => segment.categoryKey === 'opportunityLost')).toBeUndefined();
+  });
+
+  it('uses net pool values for chart payloads while preserving investment accounting', () => {
+    const model = makeMvpModelFixture();
+    const snapshot = model.trajectory.hoverSnapshots[0] as any;
+    snapshot.accounting.you.militaryActive = 368;
+    snapshot.accounting.you.destroyed = 200;
+    snapshot.accounting.you.gathered = 1518;
+    snapshot.accounting.you.total = 1018;
+    snapshot.accounting.opponent.militaryActive = 320;
+    snapshot.accounting.opponent.destroyed = 200;
+    snapshot.accounting.opponent.gathered = 1870;
+    snapshot.accounting.opponent.total = 870;
+    snapshot.accounting.delta.militaryActive = 48;
+    snapshot.accounting.delta.destroyed = 0;
+    snapshot.accounting.delta.gathered = -352;
+    snapshot.accounting.delta.total = 148;
+
+    const payload = extractHoverData(renderPostMatchHtml(model));
+
+    expect(payload[0].allocation.military).toEqual(expect.objectContaining({
+      you: 168,
+      opponent: 120,
+      delta: 48,
+    }));
+    expect(payload[0].allocationCategory.military).toEqual(expect.objectContaining({
+      net: expect.objectContaining({ you: 168, opponent: 120, delta: 48 }),
+      destroyed: expect.objectContaining({ you: 200, opponent: 200, delta: 0 }),
+      investment: expect.objectContaining({ you: 368, opponent: 320, delta: 48 }),
+    }));
+    expect(payload[0].allocationCategory.economic).toEqual(expect.objectContaining({
+      resourceGeneration: expect.objectContaining({ you: 30, opponent: 35, delta: -5 }),
+      resourceInfrastructure: expect.objectContaining({ you: 20, opponent: 15, delta: 5 }),
+    }));
+    expect(payload[0].strategy.military).toEqual(expect.objectContaining({
+      you: 20.5,
+      opponent: 17.9,
+      delta: 2.6,
+    }));
   });
 
   it('renders fight army context and encounter losses in the inspector event impact block', () => {
@@ -293,26 +366,63 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).toContain('data-hover-label-strategy-destroyed');
     expect(html).toContain('data-hover-label-strategy-float');
     expect(html).toContain('data-hover-label-strategy-opportunityLost');
-    expect(html).toContain('data-hover-field="allocation.technology.delta"');
-    expect(html).toContain('data-hover-field="allocation.destroyed.delta"');
+    expect(html).toContain('data-hover-field="allocationCategory.economic.resourceGeneration.you"');
+    expect(html).toContain('data-hover-field="allocationCategory.economic.resourceInfrastructure.delta"');
+    expect(html).toContain('data-hover-field="allocationCategory.technology.net.delta"');
+    expect(html).toContain('data-hover-field="allocationCategory.military.net.delta"');
+    expect(html).toContain('data-hover-field="allocationCategory.military.destroyed.delta"');
+    expect(html).toContain('data-hover-field="allocationCategory.military.investment.delta"');
     expect(html).toContain('data-hover-field="allocation.float.delta"');
     expect(html).toContain('data-hover-field="allocation.opportunityLost.delta"');
-    expect(html).toContain('data-inspector-row="destroyed"');
-    expect(html).toContain('data-band-key="destroyed"');
+    expect(html).not.toContain('data-inspector-row="destroyed"');
+    expect(html).not.toContain('data-band-key="destroyed"');
+    expect(html).toContain('data-allocation-category-accounting="economic-resource-generation"');
+    expect(html).toContain('data-allocation-category-accounting="economic-resource-infrastructure"');
+    expect(html).toContain('data-economic-role-filter="resourceGenerator"');
+    expect(html).toContain('data-economic-role-filter="resourceInfrastructure"');
+    expect(html).toContain('data-allocation-investment-category="economic"');
+    expect(html).toContain('data-band-key="militaryInvestment"');
+    expect(html).toContain('Total Economic Investment');
+    expect(html).toContain('Total Military Investment');
+    expect(html).not.toContain('<span class="band-sub-label">Economic investment</span>');
+    expect(html).not.toContain('<span class="band-sub-label">Military investment</span>');
+    expect(html).toContain("var selectedEconomicRoleFilter = '';");
+    expect(html).toContain("var selectedInvestmentCategory = '';");
+    expect(html).toContain("selectedEconomicRoleFilter = key === 'economic'");
+    expect(html).toContain('function combinedInvestmentBreakdown(point, category)');
+    expect(html).toContain('function syncDestroyedRowVisibility(point)');
+    expect(html).toContain("row.hidden = isCategoryCollapsed(category) || isEmpty");
+    expect(html).toContain("(entry.economicRole || 'resourceInfrastructure') === selectedEconomicRoleFilter");
+    expect(html).toContain('data-allocation-category-accounting="military-destroyed"');
+    expect(html).toContain('data-destroyed-row-category="economic" data-destroyed-row-empty="true" hidden');
+    expect(html).toContain('Advancement destroyed');
+    expect(html).not.toContain('Technology destroyed');
+    expect(html).toContain('data-allocation-category-accounting="military-investment"');
+    expect(html).toContain('data-band-key="militaryDestroyed"');
     expect(html).toContain('data-inspector-row="float"');
     expect(html).toContain('data-band-key="float"');
     expect(html).toContain("float: 'Float'");
     expect(html).toContain('data-inspector-row="opportunityLost"');
     expect(html).toContain('data-band-key="opportunityLost"');
     const otherRowIndex = html.indexOf('data-allocation-category-row="other"');
-    const destroyedRowIndex = html.indexOf('data-inspector-row="destroyed"');
+    const otherDestroyedRowIndex = html.indexOf('data-allocation-category-accounting="other-destroyed"');
+    const otherInvestmentRowIndex = html.indexOf('data-allocation-category-accounting="other-investment"');
     const totalPoolIndex = html.indexOf('data-total-pool-tooltip');
     const floatRowIndex = html.indexOf('data-inspector-row="float"');
     const opportunityLostRowIndex = html.indexOf('data-inspector-row="opportunityLost"');
     const gatherRowIndex = html.indexOf('<th>Gather/min</th>');
     expect(otherRowIndex).toBeGreaterThanOrEqual(0);
-    expect(destroyedRowIndex).toBeGreaterThan(otherRowIndex);
-    expect(totalPoolIndex).toBeGreaterThan(destroyedRowIndex);
+    expect(otherDestroyedRowIndex).toBeGreaterThan(otherRowIndex);
+    expect(otherInvestmentRowIndex).toBeGreaterThan(otherDestroyedRowIndex);
+    expect(totalPoolIndex).toBeGreaterThan(otherInvestmentRowIndex);
+    const economicRowIndex = html.indexOf('data-allocation-category-row="economic"');
+    const resourceGenerationRowIndex = html.indexOf('data-allocation-category-accounting="economic-resource-generation"');
+    const resourceInfrastructureRowIndex = html.indexOf('data-allocation-category-accounting="economic-resource-infrastructure"');
+    const economicDestroyedRowIndex = html.indexOf('data-allocation-category-accounting="economic-destroyed"');
+    expect(economicRowIndex).toBeGreaterThanOrEqual(0);
+    expect(resourceGenerationRowIndex).toBeGreaterThan(economicRowIndex);
+    expect(resourceInfrastructureRowIndex).toBeGreaterThan(resourceGenerationRowIndex);
+    expect(economicDestroyedRowIndex).toBeGreaterThan(resourceInfrastructureRowIndex);
     expect(floatRowIndex).toBeGreaterThan(totalPoolIndex);
     expect(opportunityLostRowIndex).toBeGreaterThan(floatRowIndex);
     expect(gatherRowIndex).toBeGreaterThan(opportunityLostRowIndex);
@@ -326,10 +436,11 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(extractAllocationLane(html, 'opportunityLost')).toContain('>140<');
     expect(html).toContain('Float (not deployed)');
     expect(html).toContain('Opportunity lost');
-    expect(html).toContain('Total villager opportunity cost');
+    expect(html).toContain('Villagers lost plus villager underproduction');
     expect(html).toContain('Destroyed');
     expect(html).toContain('data-total-pool-tooltip');
-    expect(html).toContain('Economic + Technology + Military + Other - Destroyed = Total pool');
+    expect(html).toContain('Total net pool');
+    expect(html).toContain('Economic net + Technology net + Military net + Other net = Total pool');
     expect(html).not.toContain('Overall resources');
     expect(html).toContain('.wrap {\n      width: min(100%, var(--report-max-width));');
     expect(html).toContain('.panel {\n      min-width: 0;');
@@ -347,6 +458,8 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).toContain('data-fixed-label="true"');
     expect(html).toContain('data-hover-field="gather.you"');
     expect(html).toContain('data-band-breakdown-title');
+    expect(html).not.toContain('<li class="band-breakdown-group">Resource generators</li>');
+    expect(html).not.toContain('<li class="band-breakdown-group">Resource infrastructure</li>');
     expect(leaderStrip).toContain('viewBox="0 0 980 126"');
     expect(leaderStrip).toContain('data-time-axis="allocation-leader"');
     expect(leaderStrip).toContain('class="leader-strip-axis-bg"');
@@ -358,10 +471,15 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).toContain('@media (max-width: 1160px)');
     expect(html).toContain('data-inspector-section="allocation"');
     expect(html).toContain('data-band-breakdown-summary');
+    expect(html).toContain('<table class="opportunity-lost-components" data-opportunity-lost-components hidden>');
     expect(html).toContain('data-band-summary-label');
     expect(html).toContain('data-band-summary-you');
     expect(html).toContain('data-band-summary-opponent');
     expect(html).toContain('data-band-summary-delta');
+    expect(html).toContain('grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));');
+    expect(html).toContain('.band-summary-label {\n      grid-column: 1 / -1;');
+    expect(html).toContain('.band-breakdown-summary > span:not(.band-summary-label) {\n      min-width: 0;');
+    expect(html).toContain('overflow-wrap: break-word;');
     const payloadMatch = html.match(/<script id="post-match-hover-data" type="application\/json">([\s\S]*?)<\/script>/);
     expect(payloadMatch).not.toBeNull();
     const payload = JSON.parse(payloadMatch?.[1] ?? '[]');

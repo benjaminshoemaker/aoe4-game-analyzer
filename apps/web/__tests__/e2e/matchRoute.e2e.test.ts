@@ -1,6 +1,10 @@
 import { GET } from '../../src/app/matches/[profileSlug]/[gameId]/route';
 import { renderPostMatchHtml } from '../../src/lib/aoe4/formatters/postMatchHtml';
-import { makeMvpModelFixture } from '../helpers/mvpModelFixture';
+import {
+  addVerboseOpportunityLostBuckets,
+  makeMvpModelFixture,
+  makeUnderproductionOnlyOpportunityLostModel,
+} from '../helpers/mvpModelFixture';
 
 const buildMatchHtml = jest.fn();
 const parseMatchRouteParams = jest.fn();
@@ -9,6 +13,12 @@ function extractSvg(html: string, id: string): string {
   const match = html.match(new RegExp(`<svg id="${id}"[\\s\\S]*?</svg>`));
   if (!match) throw new Error(`Expected SVG ${id}`);
   return match[0];
+}
+
+function extractHoverPayload(html: string): any[] {
+  const payloadMatch = html.match(/<script id="post-match-hover-data" type="application\/json">([\s\S]*?)<\/script>/);
+  if (!payloadMatch) throw new Error('Expected post-match hover data payload');
+  return JSON.parse(payloadMatch[1]);
 }
 
 jest.mock('../../src/lib/matchPage', () => ({
@@ -129,6 +139,9 @@ describe('matches route e2e', () => {
     expect(body).toContain('data-mobile-timeline-step="1"');
     expect(body).toContain('data-mobile-summary="overall"');
     expect(body).toContain('data-mobile-current-time');
+    expect(body).toContain('grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));');
+    expect(body).toContain('.band-summary-label {\n      grid-column: 1 / -1;');
+    expect(body).toContain('.band-breakdown-summary > span:not(.band-summary-label) {\n      min-width: 0;');
     const leaderStrip = extractSvg(body, 'allocation-leader-strip');
     expect(leaderStrip).toContain('data-category-key="economic"');
     expect(leaderStrip).toContain('data-category-key="technology"');
@@ -139,30 +152,36 @@ describe('matches route e2e', () => {
     expect(leaderStrip).not.toContain('data-category-key="opportunityLost"');
     expect(body).toContain('Float (not deployed)');
     expect(body).toContain('Opportunity lost');
-    expect(body).toContain('Total villager opportunity cost');
+    expect(body).toContain('Villagers lost plus villager underproduction');
     expect(body).toContain('Destroyed');
     expect(body).toContain('class="allocation-lane allocation-lane-destroyed"');
     expect(body).toContain('class="allocation-lane allocation-lane-float"');
     expect(body).toContain('class="allocation-lane allocation-lane-opportunityLost"');
-    expect(body).toContain('data-inspector-row="destroyed"');
-    expect(body).toContain('data-band-key="destroyed"');
+    expect(body).not.toContain('data-inspector-row="destroyed"');
+    expect(body).not.toContain('data-band-key="destroyed"');
+    expect(body).toContain('data-allocation-category-accounting="military-destroyed"');
+    expect(body).toContain('data-allocation-category-accounting="military-investment"');
+    expect(body).toContain('data-band-key="militaryDestroyed"');
     expect(body).toContain('data-inspector-row="float"');
     expect(body).toContain('data-band-key="float"');
     expect(body).toContain('data-inspector-row="opportunityLost"');
     expect(body).toContain('data-band-key="opportunityLost"');
     const otherRowIndex = body.indexOf('data-allocation-category-row="other"');
-    const destroyedRowIndex = body.indexOf('data-inspector-row="destroyed"');
+    const otherDestroyedRowIndex = body.indexOf('data-allocation-category-accounting="other-destroyed"');
+    const otherInvestmentRowIndex = body.indexOf('data-allocation-category-accounting="other-investment"');
     const totalPoolIndex = body.indexOf('data-total-pool-tooltip');
     const floatRowIndex = body.indexOf('data-inspector-row="float"');
     const opportunityLostRowIndex = body.indexOf('data-inspector-row="opportunityLost"');
     const gatherRowIndex = body.indexOf('<th>Gather/min</th>');
     expect(otherRowIndex).toBeGreaterThanOrEqual(0);
-    expect(destroyedRowIndex).toBeGreaterThan(otherRowIndex);
-    expect(totalPoolIndex).toBeGreaterThan(destroyedRowIndex);
+    expect(otherDestroyedRowIndex).toBeGreaterThan(otherRowIndex);
+    expect(otherInvestmentRowIndex).toBeGreaterThan(otherDestroyedRowIndex);
+    expect(totalPoolIndex).toBeGreaterThan(otherInvestmentRowIndex);
     expect(floatRowIndex).toBeGreaterThan(totalPoolIndex);
     expect(opportunityLostRowIndex).toBeGreaterThan(floatRowIndex);
     expect(gatherRowIndex).toBeGreaterThan(opportunityLostRowIndex);
     expect(body).toContain('data-total-pool-tooltip');
+    expect(body).toContain('Total net pool');
     expect(body).toContain('data-hover-field="allocation.opportunityLost.delta"');
     expect(body).toContain('data-significant-event-marker');
     expect(body).toContain('Event impact');
@@ -203,5 +222,68 @@ describe('matches route e2e', () => {
     expect(response.status).toBe(200);
     expect(body).toContain('Delhi support unavailable');
     expect(body).toContain("This app doesn&#39;t work for Delhi yet.");
+  });
+
+  it('returns opportunity-lost buckets in chronological order through the match route', async () => {
+    parseMatchRouteParams.mockReturnValue({ profileSlug: 'my-slug', gameId: 230143339 });
+    buildMatchHtml.mockResolvedValue(renderPostMatchHtml(addVerboseOpportunityLostBuckets(makeMvpModelFixture())));
+
+    const request = new Request('http://localhost/matches/my-slug/230143339?sig=abc123');
+    const response = await GET(request, {
+      params: Promise.resolve({
+        profileSlug: 'my-slug',
+        gameId: '230143339',
+      }),
+    });
+    const body = await response.text();
+    const payload = extractHoverPayload(body);
+    const youLabels = payload[0].bandBreakdown.opportunityLost.you.map((entry: { label: string }) => entry.label);
+    const opponentLabels = payload[0].bandBreakdown.opportunityLost.opponent.map((entry: { label: string }) => entry.label);
+
+    expect(response.status).toBe(200);
+    expect(youLabels.slice(0, 4)).toEqual(['0:00-0:30', '0:30-1:00', '1:00-1:30', '1:30-2:00']);
+    expect(opponentLabels.slice(0, 4)).toEqual(['0:00-0:30', '0:30-1:00', '1:00-1:30', '1:30-2:00']);
+    expect(youLabels.at(-1)).toBe('Later opportunity-loss buckets (2)');
+    expect(opponentLabels.at(-1)).toBe('Later opportunity-loss buckets (2)');
+    expect(youLabels).not.toContain('Other active items (2)');
+  });
+
+  it('returns opportunity-lost underproduction in the summary instead of bucket rows through the match route', async () => {
+    parseMatchRouteParams.mockReturnValue({ profileSlug: 'my-slug', gameId: 230143339 });
+    buildMatchHtml.mockResolvedValue(renderPostMatchHtml(makeUnderproductionOnlyOpportunityLostModel()));
+
+    const request = new Request('http://localhost/matches/my-slug/230143339?sig=abc123');
+    const response = await GET(request, {
+      params: Promise.resolve({
+        profileSlug: 'my-slug',
+        gameId: '230143339',
+      }),
+    });
+    const body = await response.text();
+    const payload = extractHoverPayload(body);
+
+    expect(response.status).toBe(200);
+    expect(payload[0].bandBreakdown.opportunityLost.you).toEqual([]);
+    expect(payload[0].opportunityLostComponents.underproduction).toEqual(expect.objectContaining({
+      you: 1475,
+      opponent: 0,
+      delta: 1475,
+    }));
+    expect(payload[0].opportunityLostComponents.villagersLost).toEqual(expect.objectContaining({
+      you: 0,
+      opponent: 0,
+      delta: 0,
+    }));
+    expect(payload[0].allocation.opportunityLost).toEqual(expect.objectContaining({
+      you: 1475,
+      opponent: 0,
+      delta: 1475,
+    }));
+    expect(body).toContain('data-opportunity-lost-components');
+    expect(body).toContain('<table class="opportunity-lost-components" data-opportunity-lost-components hidden>');
+    expect(body).toContain('<th scope="col">English</th>');
+    expect(body).toContain('<th scope="col">French</th>');
+    expect(body).toContain('data-opportunity-lost-component="underproduction"');
+    expect(body).toContain('Villager underproduction');
   });
 });

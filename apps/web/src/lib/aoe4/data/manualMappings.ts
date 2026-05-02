@@ -71,12 +71,77 @@ export const manualMappings: ManualMapping[] = [
     civs: ['sen', 'sengoku_daimyo']
   },
   {
+    pbgid: 9003449,
+    name: 'Trade Cart',
+    id: 'yatai-trade-cart',
+    cost: { food: 0, wood: 0, gold: 0, stone: 0, total: 0 },
+    classes: ['ignored', 'yatai_delivery'],
+    civs: ['sen', 'sengoku_daimyo']
+  },
+  {
     pbgid: 5174026,
     name: 'Shinobi',
     id: 'shinobi',
     cost: { food: 80, wood: 0, gold: 60, stone: 0, total: 140 },
     classes: ['infantry', 'light', 'melee'],
     civs: ['ja', 'sengoku_daimyo']
+  },
+  // Nonstandard AoE4World summary entries observed in unknown timestamp buckets.
+  {
+    pbgid: 2762454,
+    name: 'Trade Caravan',
+    id: 'trade-caravan-2',
+    cost: { food: 0, wood: 40, gold: 40, stone: 0, total: 80 },
+    classes: ['human', 'trade_camel', 'trade_cart', 'worker'],
+    civs: ['ay']
+  },
+  {
+    pbgid: 2631059,
+    name: 'Imperial Official',
+    id: 'imperial-official-1',
+    cost: { food: 100, wood: 0, gold: 50, stone: 0, total: 150 },
+    classes: ['human', 'official', 'worker'],
+    civs: ['ch', 'zx']
+  },
+  {
+    pbgid: 5000301,
+    name: 'Pilgrim',
+    id: 'pilgrim-1',
+    cost: { food: 0, wood: 0, gold: 120, stone: 0, total: 120 },
+    classes: ['human', 'pilgrim', 'worker'],
+    civs: ['kt']
+  },
+  {
+    pbgid: 2141356,
+    name: 'Tower of the Sultan',
+    id: 'tower-of-the-sultan-3',
+    cost: { food: 0, wood: 650, gold: 350, stone: 0, total: 1000 },
+    classes: ['military', 'ram', 'ram_tower', 'siege'],
+    civs: ['ay']
+  },
+  {
+    pbgid: 8635755,
+    name: 'Battering Ram',
+    id: 'battering-ram-2',
+    cost: { food: 0, wood: 200, gold: 0, stone: 0, total: 200 },
+    classes: ['military', 'ram', 'siege'],
+    civs: []
+  },
+  {
+    pbgid: 7804932,
+    name: 'Mangonel',
+    id: 'mangonel-3',
+    cost: { food: 0, wood: 400, gold: 200, stone: 0, total: 600 },
+    classes: ['military', 'mangonel', 'siege'],
+    civs: []
+  },
+  {
+    pbgid: 2140765,
+    name: 'Cheirosiphon',
+    id: 'cheirosiphon-3',
+    cost: { food: 0, wood: 200, gold: 60, stone: 0, total: 260 },
+    classes: ['military', 'ram', 'ram_greek_fire', 'siege'],
+    civs: ['by']
   },
   {
     pbgid: 9001370,

@@ -119,6 +119,76 @@ describe('resource pool band classifier', () => {
     expect(classifyResolvedItemBand(official, { hasNavalMilitaryProduction: false })).toBe('economic');
   });
 
+  it('marks economic entries as resource generators or infrastructure', () => {
+    const result = buildPlayerDeployedPoolSeries(
+      makePlayer('Chinese'),
+      makeBuildOrder([
+        makeItem({
+          type: 'unit',
+          id: 'villager-1',
+          name: 'Villager',
+          classes: ['worker', 'villager'],
+          cost: { food: 50, wood: 0, gold: 0, stone: 0, total: 50 },
+          produced: [0],
+        }),
+        makeItem({
+          type: 'building',
+          id: 'farm-1',
+          name: 'Farm',
+          classes: ['building', 'farm', 'economy_building'],
+          cost: { food: 0, wood: 75, gold: 0, stone: 0, total: 75 },
+          produced: [30],
+        }),
+        makeItem({
+          type: 'unit',
+          id: 'imperial-official-1',
+          name: 'Imperial Official',
+          classes: ['official', 'worker'],
+          cost: { food: 0, wood: 0, gold: 150, stone: 0, total: 150 },
+          produced: [60],
+        }),
+      ]),
+      120
+    );
+
+    expect(result.bandItemDeltas).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        band: 'economic',
+        itemLabel: 'Villager',
+        itemEconomicRole: 'resourceGenerator',
+      }),
+      expect.objectContaining({
+        band: 'economic',
+        itemLabel: 'Farm',
+        itemEconomicRole: 'resourceInfrastructure',
+      }),
+      expect.objectContaining({
+        band: 'economic',
+        itemLabel: 'Imperial Official',
+        itemEconomicRole: 'resourceInfrastructure',
+      }),
+    ]));
+
+    const economicSnapshot = result.bandItemSnapshots
+      ?.find(point => point.timestamp === 120)
+      ?.bands.economic;
+
+    expect(economicSnapshot).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        itemLabel: 'Villager',
+        itemEconomicRole: 'resourceGenerator',
+      }),
+      expect.objectContaining({
+        itemLabel: 'Farm',
+        itemEconomicRole: 'resourceInfrastructure',
+      }),
+      expect.objectContaining({
+        itemLabel: 'Imperial Official',
+        itemEconomicRole: 'resourceInfrastructure',
+      }),
+    ]));
+  });
+
   it('classifies Sengoku Yatai as deployed economic value', () => {
     const yatai = makeItem({
       originalEntry: {

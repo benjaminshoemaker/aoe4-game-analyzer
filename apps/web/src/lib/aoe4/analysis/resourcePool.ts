@@ -12,6 +12,8 @@ export type PoolBand =
   | 'research'
   | 'advancement';
 
+export type EconomicRole = 'resourceGenerator' | 'resourceInfrastructure';
+
 export interface PoolSeriesPoint {
   timestamp: number;
   economic: number;
@@ -40,6 +42,7 @@ export interface BandItemDeltaEvent {
   itemKey: string;
   itemLabel: string;
   itemCategory?: string;
+  itemEconomicRole?: EconomicRole;
   deltaValue: number;
   deltaCount: number;
 }
@@ -48,6 +51,7 @@ export interface BandItemSnapshotEntry {
   itemKey: string;
   itemLabel: string;
   itemCategory?: string;
+  itemEconomicRole?: EconomicRole;
   value: number;
   count: number;
   percent: number;
@@ -153,6 +157,56 @@ const economicResearchTokens = [
   'lumber',
   'mining',
   'trade',
+];
+
+const economicGeneratorIdTokens = [
+  'villager',
+  'trader',
+  'trade-caravan',
+  'trade-cart',
+  'trade-ship',
+  'fishing-boat',
+  'fishing-ship',
+  'worker-elephant',
+  'cattle',
+  'yatai',
+  'pilgrim',
+];
+
+const economicGeneratorNameTokens = [
+  'villager',
+  'trader',
+  'trade caravan',
+  'trade cart',
+  'trade ship',
+  'fishing boat',
+  'fishing ship',
+  'worker elephant',
+  'cattle',
+  'yatai',
+  'pilgrim',
+];
+
+const economicGeneratorClassTokens = [
+  'villager',
+  'trade_cart',
+  'trade_camel',
+  'naval_trade_ship',
+  'naval_fishing_ship',
+  'cattle',
+  'yatai',
+  'pilgrim',
+];
+
+const economicInfrastructureUnitTokens = [
+  'imperial-official',
+  'official',
+  'atabeg',
+  'monk',
+  'imam',
+  'scholar',
+  'prelate',
+  'priest',
 ];
 
 const poolBands: PoolBand[] = [
@@ -439,6 +493,33 @@ function classifyResearchCategory(item: ResolvedBuildItem): string {
   return 'other';
 }
 
+function classifyEconomicRole(item: ResolvedBuildItem): EconomicRole {
+  if (item.type !== 'unit') {
+    return 'resourceInfrastructure';
+  }
+
+  const id = normalizeText(item.id);
+  const name = normalizeText(item.name);
+
+  if (
+    matchesTokens(id, economicInfrastructureUnitTokens) ||
+    matchesTokens(name, economicInfrastructureUnitTokens)
+  ) {
+    return 'resourceInfrastructure';
+  }
+
+  if (isVillagerResolvedItem(item)) return 'resourceGenerator';
+  if (matchesTokens(id, economicGeneratorIdTokens)) return 'resourceGenerator';
+  if (matchesTokens(name, economicGeneratorNameTokens)) return 'resourceGenerator';
+  if (hasExactClassToken(item.classes, economicGeneratorClassTokens)) return 'resourceGenerator';
+
+  return 'resourceInfrastructure';
+}
+
+function economicRoleForBand(item: ResolvedBuildItem, band: PoolBand): EconomicRole | undefined {
+  return band === 'economic' ? classifyEconomicRole(item) : undefined;
+}
+
 function includesAnyToken(value: string, tokens: string[]): boolean {
   const lower = normalizeText(value);
   return tokens.some(token => lower.includes(token));
@@ -531,6 +612,7 @@ interface BandItemAccumulatorEntry {
   itemKey: string;
   itemLabel: string;
   itemCategory?: string;
+  itemEconomicRole?: EconomicRole;
   value: number;
   count: number;
 }
@@ -556,6 +638,7 @@ function applyBandItemAccumulatorDelta(
     itemKey: event.itemKey,
     itemLabel: event.itemLabel,
     itemCategory: event.itemCategory,
+    itemEconomicRole: event.itemEconomicRole,
     value: 0,
     count: 0,
   };
@@ -564,6 +647,7 @@ function applyBandItemAccumulatorDelta(
   existing.count += event.deltaCount;
   existing.itemLabel = event.itemLabel;
   if (event.itemCategory) existing.itemCategory = event.itemCategory;
+  if (event.itemEconomicRole) existing.itemEconomicRole = event.itemEconomicRole;
 
   const shouldRemove = existing.count <= 0 || Math.abs(existing.value) < 1e-9;
   if (shouldRemove) {
@@ -598,6 +682,7 @@ function buildBandItemSnapshotBands(
       itemKey: entry.itemKey,
       itemLabel: entry.itemLabel,
       itemCategory: entry.itemCategory,
+      itemEconomicRole: entry.itemEconomicRole,
       value: Number(entry.value.toFixed(2)),
       count: entry.count,
       percent: Number(((entry.value / denominator) * 100).toFixed(1)),
@@ -727,6 +812,7 @@ export function buildPlayerDeployedPoolSeries(
             itemKey,
             itemLabel,
             itemCategory: allocation.band === 'research' ? classifyResearchCategory(item) : undefined,
+            itemEconomicRole: economicRoleForBand(item, allocation.band),
             deltaValue: value,
             deltaCount: 1,
           });
@@ -755,6 +841,7 @@ export function buildPlayerDeployedPoolSeries(
           band: allocation.band,
           itemKey,
           itemLabel,
+          itemEconomicRole: economicRoleForBand(item, allocation.band),
           deltaValue: -value,
           deltaCount: -1,
         });

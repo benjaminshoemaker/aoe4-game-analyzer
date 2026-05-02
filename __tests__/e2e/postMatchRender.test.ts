@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { spawnSync, SpawnSyncReturns } from 'child_process';
 import { makeSplitVillagerStaticDataCache } from '../helpers/splitVillagerDeathsFixture';
+import { makeUnknownBucketStaticDataCache } from '../helpers/unknownBucketMechanicsFixture';
 
 const projectRoot = path.resolve(__dirname, '..', '..');
 const cliEntry = path.resolve(projectRoot, 'src/index.ts');
@@ -69,10 +70,10 @@ describe('post-match render CLI end-to-end', () => {
     expect(leaderStrip).not.toContain('data-category-key="float"');
     expect(html).toContain('<details class="allocation-read-guide" aria-label="Allocation chart legend">');
     expect(html).toContain('<summary class="allocation-read-guide-summary">How to read this chart</summary>');
-    expect(html).toContain('Leader strip: absolute deployed-value leader by 30-second block');
-    expect(html).toContain('Economic, Technology, and Military: percentage share of strategic allocation');
+    expect(html).toContain('Leader strip: current tracked-value leader by 30-second block');
+    expect(html).toContain('Economic, Technology, and Military: percentage share of current tracked pool');
     expect(html).toContain('Destroyed: cumulative value assumed destroyed by opponent');
-    expect(html).toContain('Overall: absolute deployed resource value after subtracting Destroyed');
+    expect(html).toContain('Overall: absolute current tracked pool value');
     expect(html).toContain('Float (not deployed): live stockpile resources not currently committed');
     expect(html).toContain('class="allocation-lane allocation-lane-overall"');
     expect(html).toContain('class="allocation-lane allocation-lane-destroyed"');
@@ -89,22 +90,30 @@ describe('post-match render CLI end-to-end', () => {
     expect(html).toContain('data-hover-label-strategy-destroyed');
     expect(html).toContain('data-hover-label-strategy-overall');
     expect(html).toContain('data-hover-label-strategy-float');
-    expect(html).toContain('data-hover-field="allocation.economic.you"');
-    expect(html).toContain('data-hover-field="allocation.technology.delta"');
-    expect(html).toContain('data-hover-field="allocation.military.delta"');
-    expect(html).toContain('data-hover-field="allocation.other.delta"');
-    expect(html).toContain('data-hover-field="allocation.destroyed.delta"');
+    expect(html).toContain('data-hover-field="allocationCategory.economic.net.you"');
+    expect(html).toContain('data-hover-field="allocationCategory.technology.net.delta"');
+    expect(html).toContain('data-hover-field="allocationCategory.military.net.delta"');
+    expect(html).toContain('data-hover-field="allocationCategory.other.net.delta"');
+    expect(html).toContain('data-hover-field="allocationCategory.military.net.delta"');
+    expect(html).toContain('data-hover-field="allocationCategory.military.destroyed.delta"');
+    expect(html).toContain('data-hover-field="allocationCategory.military.investment.delta"');
     expect(html).toContain('data-hover-field="allocation.float.delta"');
-    expect(html).toContain('data-inspector-row="destroyed"');
-    expect(html).toContain('data-band-key="destroyed"');
+    expect(html).not.toContain('data-inspector-row="destroyed"');
+    expect(html).not.toContain('data-band-key="destroyed"');
+    expect(html).toContain('data-allocation-category-accounting="military-destroyed"');
+    expect(html).toContain('data-allocation-category-accounting="military-investment"');
+    expect(html).toContain('data-band-key="militaryDestroyed"');
     const otherRowIndex = html.indexOf('data-allocation-category-row="other"');
-    const destroyedRowIndex = html.indexOf('data-inspector-row="destroyed"');
+    const otherDestroyedRowIndex = html.indexOf('data-allocation-category-accounting="other-destroyed"');
+    const otherInvestmentRowIndex = html.indexOf('data-allocation-category-accounting="other-investment"');
     const totalPoolIndex = html.indexOf('data-total-pool-tooltip');
     expect(otherRowIndex).toBeGreaterThanOrEqual(0);
-    expect(destroyedRowIndex).toBeGreaterThan(otherRowIndex);
-    expect(totalPoolIndex).toBeGreaterThan(destroyedRowIndex);
+    expect(otherDestroyedRowIndex).toBeGreaterThan(otherRowIndex);
+    expect(otherInvestmentRowIndex).toBeGreaterThan(otherDestroyedRowIndex);
+    expect(totalPoolIndex).toBeGreaterThan(otherInvestmentRowIndex);
     expect(html).toContain('data-total-pool-tooltip');
-    expect(html).toContain('Economic + Technology + Military + Other - Destroyed = Total pool');
+    expect(html).toContain('Total net pool');
+    expect(html).toContain('Economic net + Technology net + Military net + Other net = Total pool');
     expect(html).toContain('Age timings');
     expect(html).toContain('You Feudal 3:20');
     expect(html).toContain('Opponent Castle 10:00');
@@ -198,7 +207,48 @@ describe('post-match render CLI end-to-end', () => {
     const html = fs.readFileSync(outputPath, 'utf-8');
     expect(html).toContain('Allocation lead and mix over time');
     expect(html).toContain('"label":"Yatai"');
-    expect(html).toContain('"value":375');
+    expect(html).toContain('"value":250');
+  });
+
+  it('renders confirmed unknown-bucket mechanics in deployed pool breakdowns', () => {
+    fs.writeFileSync(cachePath, JSON.stringify(makeUnknownBucketStaticDataCache()), 'utf-8');
+
+    const result = runCli(['render-post-match', '111', '876543', '--out', outputPath]);
+
+    expect(result.status).toBe(0);
+    expect(fs.existsSync(outputPath)).toBe(true);
+
+    const html = fs.readFileSync(outputPath, 'utf-8');
+    const hoverData = extractHoverData(html);
+    const economicSnapshot = hoverData.find(point => point.timestamp === 415);
+    expect(html).toContain('"label":"Trade Caravan"');
+    expect(html).toContain('"label":"Imperial Official"');
+    expect(html).toContain('"label":"Pilgrim"');
+    expect(html).toContain('"economicRole":"resourceGenerator"');
+    expect(html).toContain('"economicRole":"resourceInfrastructure"');
+    expect(html).toContain('data-hover-field="allocationCategory.economic.resourceGeneration.you"');
+    expect(html).toContain('data-hover-field="allocationCategory.economic.resourceInfrastructure.you"');
+    expect(html).toContain('data-economic-role-filter="resourceGenerator"');
+    expect(html).toContain('data-economic-role-filter="resourceInfrastructure"');
+    expect(html).toContain('data-allocation-investment-category="economic"');
+    expect(html).toContain('data-band-key="militaryInvestment"');
+    expect(html).toContain('Total Economic Investment');
+    expect(html).toContain('Total Military Investment');
+    expect(html).toContain("selectedEconomicRoleFilter = key === 'economic'");
+    expect(html).toContain('data-destroyed-row-category="economic" data-destroyed-row-empty="true" hidden');
+    expect(html).toContain('Advancement destroyed');
+    expect(html).not.toContain('Technology destroyed');
+    expect(html).not.toContain('<li class="band-breakdown-group">Resource generators</li>');
+    expect(html).not.toContain('<li class="band-breakdown-group">Resource infrastructure</li>');
+    expect(economicSnapshot?.allocationCategory.economic).toEqual(expect.objectContaining({
+      resourceGeneration: expect.objectContaining({ you: 525 }),
+      resourceInfrastructure: expect.objectContaining({ you: 450 }),
+    }));
+    expect(html).toContain('"label":"Tower of the Sultan"');
+    expect(html).toContain('"label":"Battering Ram"');
+    expect(html).toContain('"label":"Mangonel"');
+    expect(html).toContain('"label":"Cheirosiphon"');
+    expect(html).not.toContain('"label":"Trade Cart"');
   });
 
   it('renders worker deaths once when starting and trained workers share one build-order entry', () => {

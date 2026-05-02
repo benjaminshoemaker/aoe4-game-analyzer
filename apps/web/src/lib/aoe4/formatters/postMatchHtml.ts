@@ -15,7 +15,12 @@ interface BandDef {
 }
 
 type HoverBandKey = BandDef['key'];
-type BreakdownKey = HoverBandKey | 'destroyed' | 'float' | 'opportunityLost';
+type CategoryDestroyedBreakdownKey =
+  | 'economicDestroyed'
+  | 'technologyDestroyed'
+  | 'militaryDestroyed'
+  | 'otherDestroyed';
+type BreakdownKey = HoverBandKey | CategoryDestroyedBreakdownKey | 'destroyed' | 'float' | 'opportunityLost';
 
 const bandDefs: BandDef[] = [
   { key: 'economic', label: 'Economic', color: '#5DCAA5' },
@@ -30,6 +35,7 @@ const bandDefs: BandDef[] = [
 type AllocationCategoryKey = 'economic' | 'technology' | 'military' | 'other';
 type AllocationGraphKey = 'economic' | 'technology' | 'military' | 'destroyed' | 'overall' | 'float' | 'opportunityLost';
 type AllocationLeader = 'you' | 'opponent' | 'tie';
+type EconomicRole = 'resourceGenerator' | 'resourceInfrastructure';
 
 interface AllocationCategoryDef {
   key: AllocationCategoryKey;
@@ -64,6 +70,15 @@ interface AllocationComparisonRow {
 }
 
 type AllocationComparison = Record<AllocationGraphKey | AllocationCategoryKey, AllocationComparisonRow>;
+type OpportunityLostComponents = Record<'villagersLost' | 'underproduction', AllocationComparisonRow>;
+type AllocationCategoryBasis = 'net' | 'destroyed' | 'investment';
+type EconomicAllocationBasis = 'resourceGeneration' | 'resourceInfrastructure';
+type AllocationCategoryRows = Record<AllocationCategoryBasis, AllocationComparisonRow> &
+  Partial<Record<EconomicAllocationBasis, AllocationComparisonRow>>;
+type AllocationCategoryAccounting = Record<
+  AllocationCategoryKey,
+  AllocationCategoryRows
+>;
 
 export interface AllocationLeaderSegment {
   categoryKey: AllocationGraphKey;
@@ -141,6 +156,8 @@ const MATRIX_WEAK_THRESHOLD = 0.85;
 const significantVillagerOpportunityTooltip =
   'Scale-adjusted future missed gathering from killed villagers in this event window. The model removes those deaths, measures the future villager death-loss avoided, then discounts each future increment by event-time deployed resources divided by deployed resources at that later time.';
 const MAX_CLIENT_BAND_BREAKDOWN_ENTRIES = 12;
+const OPPORTUNITY_LOST_VILLAGERS_LOST_CATEGORY = 'villagers-lost';
+const OPPORTUNITY_LOST_UNDERPRODUCTION_CATEGORY = 'villager-underproduction';
 
 type RenderPlayerLabels = Record<'you' | 'opponent', PostMatchPlayerDisplay>;
 
@@ -175,6 +192,8 @@ interface HoverSnapshot {
   delta: HoverBandValues;
   accounting: AccountingSnapshot;
   allocation: AllocationComparison;
+  allocationCategory: AllocationCategoryAccounting;
+  opportunityLostComponents: OpportunityLostComponents;
   totalPoolTooltip: string;
   strategy: Record<StrategyBucketKey, {
     you: number;
@@ -226,7 +245,7 @@ interface HoverSnapshot {
     }>;
     matrix: AdjustedMatrixPayload;
   };
-  bandBreakdown: Record<HoverBandKey, BandBreakdownPayload> & Partial<Record<'destroyed' | 'float' | 'opportunityLost', BandBreakdownPayload>>;
+  bandBreakdown: Record<HoverBandKey, BandBreakdownPayload> & Partial<Record<CategoryDestroyedBreakdownKey | 'destroyed' | 'float' | 'opportunityLost', BandBreakdownPayload>>;
 }
 
 type ClientHoverSnapshot = Pick<
@@ -239,6 +258,8 @@ type ClientHoverSnapshot = Pick<
   | 'opponent'
   | 'delta'
   | 'allocation'
+  | 'allocationCategory'
+  | 'opportunityLostComponents'
   | 'totalPoolTooltip'
   | 'strategy'
   | 'gather'
@@ -261,6 +282,7 @@ interface BandBreakdownEntry {
   percent: number;
   count?: number;
   category?: string;
+  economicRole?: EconomicRole;
 }
 
 interface AdjustedMatrixCellPayload {
@@ -465,6 +487,26 @@ export function buildAllocationCategories(values: HoverBandValues): AllocationVa
   };
 }
 
+function buildAllocationComparisonRow(
+  key: AllocationGraphKey | AllocationCategoryKey,
+  youValue: number,
+  opponentValue: number,
+  youShareTotal: number,
+  opponentShareTotal: number
+): AllocationComparisonRow {
+  const youShare = allocationShareFor(key, youValue, youShareTotal);
+  const opponentShare = allocationShareFor(key, opponentValue, opponentShareTotal);
+
+  return {
+    you: youValue,
+    opponent: opponentValue,
+    delta: youValue - opponentValue,
+    youShare,
+    opponentShare,
+    shareDelta: roundToTenth(youShare - opponentShare),
+  };
+}
+
 function buildAllocationComparison(
   you: HoverBandValues,
   opponent: HoverBandValues
@@ -477,17 +519,7 @@ function buildAllocationComparison(
   const rowFor = (key: AllocationGraphKey | AllocationCategoryKey): AllocationComparisonRow => {
     const youValue = youCategories[key];
     const opponentValue = opponentCategories[key];
-    const youShare = allocationShareFor(key, youValue, youShareTotal);
-    const opponentShare = allocationShareFor(key, opponentValue, opponentShareTotal);
-
-    return {
-      you: youValue,
-      opponent: opponentValue,
-      delta: youValue - opponentValue,
-      youShare,
-      opponentShare,
-      shareDelta: roundToTenth(youShare - opponentShare),
-    };
+    return buildAllocationComparisonRow(key, youValue, opponentValue, youShareTotal, opponentShareTotal);
   };
 
   return {
@@ -500,6 +532,71 @@ function buildAllocationComparison(
     float: rowFor('float'),
     opportunityLost: rowFor('opportunityLost'),
   };
+}
+
+function buildAllocationCategoryAccounting(
+  net: AllocationComparison,
+  investment: AllocationComparison,
+  economicRoles?: Record<EconomicAllocationBasis, { you: number; opponent: number }>
+): AllocationCategoryAccounting {
+  const destroyedValues = allocationCategoryDefs.map(category => ({
+    key: category.key,
+    you: Math.max(0, investment[category.key].you - net[category.key].you),
+    opponent: Math.max(0, investment[category.key].opponent - net[category.key].opponent),
+  }));
+  const youDestroyedTotal = destroyedValues.reduce((sum, row) => sum + row.you, 0);
+  const opponentDestroyedTotal = destroyedValues.reduce((sum, row) => sum + row.opponent, 0);
+  const rows = {} as AllocationCategoryAccounting;
+
+  for (const category of allocationCategoryDefs) {
+    const destroyed = destroyedValues.find(row => row.key === category.key) ?? {
+      key: category.key,
+      you: 0,
+      opponent: 0,
+    };
+
+    rows[category.key] = {
+      net: net[category.key],
+      resourceGeneration: buildAllocationComparisonRow(category.key, 0, 0, 0, 0),
+      resourceInfrastructure: buildAllocationComparisonRow(category.key, 0, 0, 0, 0),
+      destroyed: buildAllocationComparisonRow(
+        category.key,
+        destroyed.you,
+        destroyed.opponent,
+        youDestroyedTotal,
+        opponentDestroyedTotal
+      ),
+      investment: investment[category.key],
+    };
+  }
+
+  if (economicRoles) {
+    const youEconomicRoleTotal = Math.max(
+      0,
+      economicRoles.resourceGeneration.you + economicRoles.resourceInfrastructure.you
+    );
+    const opponentEconomicRoleTotal = Math.max(
+      0,
+      economicRoles.resourceGeneration.opponent + economicRoles.resourceInfrastructure.opponent
+    );
+
+    rows.economic.resourceGeneration = buildAllocationComparisonRow(
+      'economic',
+      economicRoles.resourceGeneration.you,
+      economicRoles.resourceGeneration.opponent,
+      youEconomicRoleTotal,
+      opponentEconomicRoleTotal
+    );
+    rows.economic.resourceInfrastructure = buildAllocationComparisonRow(
+      'economic',
+      economicRoles.resourceInfrastructure.you,
+      economicRoles.resourceInfrastructure.opponent,
+      youEconomicRoleTotal,
+      opponentEconomicRoleTotal
+    );
+  }
+
+  return rows;
 }
 
 function allocationShareFor(
@@ -543,10 +640,7 @@ export function buildAllocationLeaderSegments(
       const start = index * 30;
       const end = Math.min(Math.max(1, duration), (index + 1) * 30);
       const point = hoverSnapshotAtOrBefore(points, end);
-      const allocation = buildAllocationComparison(
-        point.accounting?.you ?? point.you,
-        point.accounting?.opponent ?? point.opponent
-      );
+      const allocation = buildAllocationComparison(point.you, point.opponent);
       const row = allocation[graph.key];
       const diff = row.you - row.opponent;
       const leader: AllocationLeader =
@@ -665,11 +759,26 @@ function fallbackAccountingSnapshot(
   };
 }
 
-function totalPoolTooltipText(allocation: AllocationComparison, labels: RenderPlayerLabels): string {
+function totalPoolTooltipText(
+  allocationCategory: AllocationCategoryAccounting,
+  labels: RenderPlayerLabels
+): string {
+  const youTotal =
+    allocationCategory.economic.net.you +
+    allocationCategory.technology.net.you +
+    allocationCategory.military.net.you +
+    allocationCategory.other.net.you;
+  const opponentTotal =
+    allocationCategory.economic.net.opponent +
+    allocationCategory.technology.net.opponent +
+    allocationCategory.military.net.opponent +
+    allocationCategory.other.net.opponent;
+
   return [
-    'Economic + Technology + Military + Other - Destroyed = Total pool',
-    `${labels.you.compactLabel}: ${formatNumber(allocation.economic.you)} + ${formatNumber(allocation.technology.you)} + ${formatNumber(allocation.military.you)} + ${formatNumber(allocation.other.you)} - ${formatNumber(allocation.destroyed.you)} = ${formatNumber(allocation.overall.you)}`,
-    `${labels.opponent.compactLabel}: ${formatNumber(allocation.economic.opponent)} + ${formatNumber(allocation.technology.opponent)} + ${formatNumber(allocation.military.opponent)} + ${formatNumber(allocation.other.opponent)} - ${formatNumber(allocation.destroyed.opponent)} = ${formatNumber(allocation.overall.opponent)}`,
+    'Economic net + Technology net + Military net + Other net = Total pool',
+    'Investment rows reconcile net + destroyed inside each category.',
+    `${labels.you.compactLabel}: ${formatNumber(allocationCategory.economic.net.you)} + ${formatNumber(allocationCategory.technology.net.you)} + ${formatNumber(allocationCategory.military.net.you)} + ${formatNumber(allocationCategory.other.net.you)} = ${formatNumber(youTotal)}`,
+    `${labels.opponent.compactLabel}: ${formatNumber(allocationCategory.economic.net.opponent)} + ${formatNumber(allocationCategory.technology.net.opponent)} + ${formatNumber(allocationCategory.military.net.opponent)} + ${formatNumber(allocationCategory.other.net.opponent)} = ${formatNumber(opponentTotal)}`,
   ].join(' | ');
 }
 
@@ -878,6 +987,46 @@ function adjustedMilitaryAtOrBefore(
   return candidate;
 }
 
+function sumEconomicRole(entries: BandBreakdownEntry[], role: EconomicRole): number {
+  return entries.reduce((sum, entry) => {
+    const entryRole = entry.economicRole ?? 'resourceInfrastructure';
+    return entryRole === role ? sum + Math.max(0, entry.value) : sum;
+  }, 0);
+}
+
+function sumBreakdownValues(entries: BandBreakdownEntry[] | undefined): number {
+  return (entries ?? []).reduce((sum, entry) => sum + Math.max(0, entry.value), 0);
+}
+
+function cumulativeUnderproductionOpportunityLoss(
+  point: HoverSnapshot['villagerOpportunity']['you']
+): number {
+  if (typeof point.cumulativeUnderproductionLoss === 'number') {
+    return Math.max(0, Math.round(point.cumulativeUnderproductionLoss));
+  }
+  if (typeof point.cumulativeDeathLoss === 'number') {
+    return Math.max(0, Math.round(point.cumulativeLoss - point.cumulativeDeathLoss));
+  }
+  return 0;
+}
+
+function economicRoleTotalsFromBreakdown(
+  breakdown?: BandBreakdownPayload
+): Record<EconomicAllocationBasis, { you: number; opponent: number }> {
+  const youEntries = breakdown?.you ?? [];
+  const opponentEntries = breakdown?.opponent ?? [];
+  return {
+    resourceGeneration: {
+      you: sumEconomicRole(youEntries, 'resourceGenerator'),
+      opponent: sumEconomicRole(opponentEntries, 'resourceGenerator'),
+    },
+    resourceInfrastructure: {
+      you: sumEconomicRole(youEntries, 'resourceInfrastructure'),
+      opponent: sumEconomicRole(opponentEntries, 'resourceInfrastructure'),
+    },
+  };
+}
+
 function buildHoverSnapshots(model: PostMatchViewModel, labels: RenderPlayerLabels): HoverSnapshot[] {
   const duration = model.trajectory.durationSeconds;
   const villagerDuration = Math.max(
@@ -894,15 +1043,48 @@ function buildHoverSnapshots(model: PostMatchViewModel, labels: RenderPlayerLabe
       model.header.opponentCivilization
     );
     const accounting = snapshot.accounting ?? fallbackAccountingSnapshot(snapshot.you, snapshot.opponent);
-    const allocation = buildAllocationComparison(
+    const netAllocation = buildAllocationComparison(snapshot.you, snapshot.opponent);
+    const opportunityLostBreakdown = snapshot.bandBreakdown.opportunityLost;
+    const youVillagersLost = sumBreakdownValues(opportunityLostBreakdown?.you);
+    const opponentVillagersLost = sumBreakdownValues(opportunityLostBreakdown?.opponent);
+    const youUnderproduction = cumulativeUnderproductionOpportunityLoss(snapshot.villagerOpportunity.you);
+    const opponentUnderproduction = cumulativeUnderproductionOpportunityLoss(snapshot.villagerOpportunity.opponent);
+    const opportunityLostComponents: OpportunityLostComponents = {
+      villagersLost: buildAllocationComparisonRow(
+        'opportunityLost',
+        youVillagersLost,
+        opponentVillagersLost,
+        0,
+        0
+      ),
+      underproduction: buildAllocationComparisonRow(
+        'opportunityLost',
+        youUnderproduction,
+        opponentUnderproduction,
+        0,
+        0
+      ),
+    };
+    const investmentAllocation = buildAllocationComparison(
       {
         ...accounting.you,
-        opportunityLost: Math.max(0, snapshot.villagerOpportunity.you.cumulativeLoss),
+        opportunityLost: youVillagersLost + youUnderproduction,
       },
       {
         ...accounting.opponent,
-        opportunityLost: Math.max(0, snapshot.villagerOpportunity.opponent.cumulativeLoss),
+        opportunityLost: opponentVillagersLost + opponentUnderproduction,
       }
+    );
+    const allocation: AllocationComparison = {
+      ...netAllocation,
+      destroyed: investmentAllocation.destroyed,
+      float: investmentAllocation.float,
+      opportunityLost: investmentAllocation.opportunityLost,
+    };
+    const allocationCategory = buildAllocationCategoryAccounting(
+      netAllocation,
+      investmentAllocation,
+      economicRoleTotalsFromBreakdown(snapshot.bandBreakdown.economic)
     );
 
     return {
@@ -918,8 +1100,10 @@ function buildHoverSnapshots(model: PostMatchViewModel, labels: RenderPlayerLabe
       delta: snapshot.delta,
       accounting,
       allocation,
-      totalPoolTooltip: totalPoolTooltipText(allocation, labels),
-      strategy: buildStrategySnapshot(accounting.you, accounting.opponent),
+      allocationCategory,
+      opportunityLostComponents,
+      totalPoolTooltip: totalPoolTooltipText(allocationCategory, labels),
+      strategy: buildStrategySnapshot(snapshot.you, snapshot.opponent),
       gather: snapshot.gather,
       villagerOpportunity: snapshot.villagerOpportunity,
       significantEvent: snapshot.significantEvent ?? null,
@@ -934,42 +1118,166 @@ function buildHoverSnapshots(model: PostMatchViewModel, labels: RenderPlayerLabe
   });
 }
 
-function compactBandBreakdownEntries(entries: BandBreakdownEntry[]): BandBreakdownEntry[] {
-  if (entries.length <= MAX_CLIENT_BAND_BREAKDOWN_ENTRIES) {
-    return entries;
+function opportunityLostBucketStartSeconds(entry: BandBreakdownEntry): number | null {
+  const match = entry.label.match(/^(\d+):(\d{2})(?=-)/);
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function normalizeOpportunityLostCategory(entry: BandBreakdownEntry): string {
+  if (entry.category === OPPORTUNITY_LOST_UNDERPRODUCTION_CATEGORY) {
+    return OPPORTUNITY_LOST_UNDERPRODUCTION_CATEGORY;
+  }
+  return OPPORTUNITY_LOST_VILLAGERS_LOST_CATEGORY;
+}
+
+function opportunityLostCategoryRank(entry: BandBreakdownEntry): number {
+  return normalizeOpportunityLostCategory(entry) === OPPORTUNITY_LOST_UNDERPRODUCTION_CATEGORY ? 1 : 0;
+}
+
+function orderOpportunityLostBreakdownEntries(entries: BandBreakdownEntry[]): BandBreakdownEntry[] {
+  return entries
+    .map((entry, index) => ({
+      entry,
+      index,
+      startSeconds: opportunityLostBucketStartSeconds(entry),
+    }))
+    .sort((a, b) => {
+      const aStart = a.startSeconds ?? Number.POSITIVE_INFINITY;
+      const bStart = b.startSeconds ?? Number.POSITIVE_INFINITY;
+      return opportunityLostCategoryRank(a.entry) - opportunityLostCategoryRank(b.entry) ||
+        aStart - bStart ||
+        a.index - b.index;
+    })
+    .map(({ entry }) => entry);
+}
+
+function compactBandBreakdownEntries(entries: BandBreakdownEntry[], bandKey: BreakdownKey): BandBreakdownEntry[] {
+  const orderedEntries = bandKey === 'opportunityLost'
+    ? orderOpportunityLostBreakdownEntries(entries)
+    : entries;
+
+  if (orderedEntries.length <= MAX_CLIENT_BAND_BREAKDOWN_ENTRIES) {
+    return orderedEntries;
   }
 
-  const sortedEntries = [...entries].sort((a, b) => b.value - a.value);
+  const sortedEntries = bandKey === 'opportunityLost'
+    ? orderedEntries
+    : [...orderedEntries].sort((a, b) => b.value - a.value);
   const visibleEntries = sortedEntries.slice(0, MAX_CLIENT_BAND_BREAKDOWN_ENTRIES);
   const hiddenEntries = sortedEntries.slice(MAX_CLIENT_BAND_BREAKDOWN_ENTRIES);
+  if (bandKey === 'economic') {
+    return [
+      ...visibleEntries,
+      ...compactHiddenEconomicEntries(hiddenEntries),
+    ];
+  }
+
   const hiddenValue = hiddenEntries.reduce((sum, entry) => sum + entry.value, 0);
   const hiddenPercent = hiddenEntries.reduce((sum, entry) => sum + entry.percent, 0);
   const hiddenCount = hiddenEntries.reduce((sum, entry) => sum + (entry.count ?? 0), 0);
+  const hiddenLabel = bandKey === 'opportunityLost'
+    ? `Later opportunity-loss buckets (${hiddenEntries.length})`
+    : `Other active items (${hiddenEntries.length})`;
+  const hiddenCategory = bandKey === 'opportunityLost' &&
+    hiddenEntries.length > 0 &&
+    hiddenEntries.every(entry => normalizeOpportunityLostCategory(entry) === normalizeOpportunityLostCategory(hiddenEntries[0]))
+    ? normalizeOpportunityLostCategory(hiddenEntries[0])
+    : undefined;
 
   return [
     ...visibleEntries,
     {
-      label: `Other active items (${hiddenEntries.length})`,
+      label: hiddenLabel,
       value: Math.round(hiddenValue),
       percent: Math.round(hiddenPercent * 10) / 10,
       count: hiddenCount > 0 ? hiddenCount : undefined,
+      category: hiddenCategory,
     },
   ];
+}
+
+function compactHiddenEconomicEntries(hiddenEntries: BandBreakdownEntry[]): BandBreakdownEntry[] {
+  const roleDefs: Array<{ role: EconomicRole; label: string }> = [
+    { role: 'resourceGenerator', label: 'Other resource generation items' },
+    { role: 'resourceInfrastructure', label: 'Other resource infrastructure items' },
+  ];
+
+  return roleDefs
+    .flatMap(def => {
+      const entries = hiddenEntries.filter(entry =>
+        (entry.economicRole ?? 'resourceInfrastructure') === def.role
+      );
+      if (entries.length === 0) return [];
+
+      const hiddenValue = entries.reduce((sum, entry) => sum + entry.value, 0);
+      const hiddenPercent = entries.reduce((sum, entry) => sum + entry.percent, 0);
+      const hiddenCount = entries.reduce((sum, entry) => sum + (entry.count ?? 0), 0);
+
+      const aggregate: BandBreakdownEntry = {
+        label: `${def.label} (${entries.length})`,
+        value: Math.round(hiddenValue),
+        percent: Math.round(hiddenPercent * 10) / 10,
+        count: hiddenCount > 0 ? hiddenCount : undefined,
+        economicRole: def.role,
+      };
+
+      return [aggregate];
+    });
 }
 
 function compactBandBreakdownPayload(snapshot: HoverSnapshot): ClientHoverSnapshot['bandBreakdown'] {
   const compacted: Partial<Record<BreakdownKey, BandBreakdownPayload>> = {};
   Object.entries(snapshot.bandBreakdown).forEach(([key, breakdown]) => {
+    if (key === 'destroyed') return;
     compacted[key as BreakdownKey] = {
-      you: compactBandBreakdownEntries(breakdown.you),
-      opponent: compactBandBreakdownEntries(breakdown.opponent),
+      you: compactBandBreakdownEntries(breakdown.you, key as BreakdownKey),
+      opponent: compactBandBreakdownEntries(breakdown.opponent, key as BreakdownKey),
     };
   });
   return compacted as ClientHoverSnapshot['bandBreakdown'];
 }
 
+const hoverInteractionIntervalSeconds = 30;
+
+function selectInteractionHoverSnapshots(hoverSnapshots: HoverSnapshot[]): HoverSnapshot[] {
+  if (hoverSnapshots.length <= 1) return hoverSnapshots;
+
+  const selected = new Map<number, HoverSnapshot>();
+  const addSnapshot = (snapshot: HoverSnapshot | undefined) => {
+    if (!snapshot) return;
+    selected.set(snapshot.timestamp, snapshot);
+  };
+  const finalTimestamp = Math.max(0, hoverSnapshots[hoverSnapshots.length - 1].timestamp);
+
+  addSnapshot(hoverSnapshots[0]);
+  addSnapshot(hoverSnapshots[hoverSnapshots.length - 1]);
+
+  for (let timestamp = 0; timestamp <= finalTimestamp; timestamp += hoverInteractionIntervalSeconds) {
+    addSnapshot(hoverSnapshotAtOrBefore(hoverSnapshots, timestamp));
+  }
+
+  for (const snapshot of hoverSnapshots) {
+    if (snapshot.significantEvent || snapshot.markers.length > 0) {
+      addSnapshot(snapshot);
+    }
+  }
+
+  hoverSnapshots.forEach((snapshot, index) => {
+    const previous = index > 0 ? hoverSnapshots[index - 1] : null;
+    const next = index < hoverSnapshots.length - 1 ? hoverSnapshots[index + 1] : null;
+    const previousGap = previous ? snapshot.timestamp - previous.timestamp : 0;
+    const nextGap = next ? next.timestamp - snapshot.timestamp : 0;
+    if (previousGap > 1 || nextGap > 1) {
+      addSnapshot(snapshot);
+    }
+  });
+
+  return [...selected.values()].sort((a, b) => a.timestamp - b.timestamp);
+}
+
 function buildClientHoverSnapshots(hoverSnapshots: HoverSnapshot[]): ClientHoverSnapshot[] {
-  return hoverSnapshots.map(snapshot => ({
+  return selectInteractionHoverSnapshots(hoverSnapshots).map(snapshot => ({
     timestamp: snapshot.timestamp,
     timeLabel: snapshot.timeLabel,
     strategyX: snapshot.strategyX,
@@ -978,6 +1286,8 @@ function buildClientHoverSnapshots(hoverSnapshots: HoverSnapshot[]): ClientHover
     opponent: snapshot.opponent,
     delta: snapshot.delta,
     allocation: snapshot.allocation,
+    allocationCategory: snapshot.allocationCategory,
+    opportunityLostComponents: snapshot.opportunityLostComponents,
     totalPoolTooltip: snapshot.totalPoolTooltip,
     strategy: snapshot.strategy,
     gather: snapshot.gather,
@@ -1232,9 +1542,32 @@ function buildMobileTimelineControlHtml(hoverSnapshots: HoverSnapshot[], default
 }
 
 function buildHoverInspectorHtml(snapshot: HoverSnapshot, labels: RenderPlayerLabels): string {
+  function displayBreakdownLabel(entry: BandBreakdownEntry, bandKey: BreakdownKey): string {
+    if (bandKey === 'research' || bandKey === 'advancement') {
+      return entry.label;
+    }
+    const count = Number(entry.count ?? 0);
+    if (!Number.isFinite(count) || count <= 0) {
+      return entry.label;
+    }
+    return `${entry.label} (${formatNumber(count)})`;
+  }
+
+  function breakdownRowHtml(entry: BandBreakdownEntry, bandKey: BreakdownKey): string {
+    const label = displayBreakdownLabel(entry, bandKey);
+    return `
+        <li>
+          <span class="band-item-label band-item-label-truncated" title="${escapeHtml(label)}" tabindex="0">${escapeHtml(label)}</span>
+          <span class="band-item-metric">${formatNumber(entry.value)} <small>(${entry.percent.toFixed(1)}%)</small></span>
+        </li>
+      `;
+  }
+
   function renderBreakdownList(entries: BandBreakdownEntry[], bandKey: BreakdownKey): string {
     if (entries.length === 0) {
-      return '<li class="band-breakdown-empty">No active items</li>';
+      return bandKey === 'opportunityLost'
+        ? '<li class="band-breakdown-empty">No villager deaths</li>'
+        : '<li class="band-breakdown-empty">No active items</li>';
     }
 
     if (bandKey === 'research') {
@@ -1247,14 +1580,7 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot, labels: RenderPlayerLa
         .map(def => {
           const groupEntries = entries.filter(entry => (entry.category ?? 'other') === def.key);
           if (groupEntries.length === 0) return '';
-          const rows = groupEntries
-            .map(entry => `
-              <li>
-                <span class="band-item-label band-item-label-truncated" title="${escapeHtml(entry.label)}" tabindex="0">${escapeHtml(entry.label)}</span>
-                <span class="band-item-metric">${formatNumber(entry.value)} <small>(${entry.percent.toFixed(1)}%)</small></span>
-              </li>
-            `)
-            .join('');
+          const rows = groupEntries.map(entry => breakdownRowHtml(entry, bandKey)).join('');
 
           return `
             <li class="band-breakdown-group">${escapeHtml(def.label)}</li>
@@ -1266,18 +1592,38 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot, labels: RenderPlayerLa
       if (groupedHtml.length > 0) return groupedHtml;
     }
 
-    return entries
-      .map(entry => `
-        <li>
-          <span class="band-item-label band-item-label-truncated" title="${escapeHtml(entry.label)}" tabindex="0">${escapeHtml(entry.label)}</span>
-          <span class="band-item-metric">${formatNumber(entry.value)} <small>(${entry.percent.toFixed(1)}%)</small></span>
-        </li>
-      `)
-      .join('');
+    if (bandKey === 'opportunityLost') {
+      const categoryDefs: Array<{ key: string; label: string }> = [
+        { key: OPPORTUNITY_LOST_VILLAGERS_LOST_CATEGORY, label: 'Villagers lost' },
+        { key: OPPORTUNITY_LOST_UNDERPRODUCTION_CATEGORY, label: 'Villager underproduction' },
+      ];
+      const groupedHtml = categoryDefs
+        .map(def => {
+          const groupEntries = entries.filter(entry => normalizeOpportunityLostCategory(entry) === def.key);
+          if (groupEntries.length === 0) return '';
+          const rows = groupEntries.map(entry => breakdownRowHtml(entry, bandKey)).join('');
+
+          return `
+            <li class="band-breakdown-group">${escapeHtml(def.label)}</li>
+            ${rows}
+          `;
+        })
+        .join('');
+
+      if (groupedHtml.length > 0) return groupedHtml;
+    }
+
+    return entries.map(entry => breakdownRowHtml(entry, bandKey)).join('');
   }
 
   const bandByKey = new Map(bandDefs.map(band => [band.key, band]));
   const allocation = snapshot.allocation ?? buildAllocationComparison(snapshot.you, snapshot.opponent);
+  const allocationCategory = snapshot.allocationCategory
+    ?? buildAllocationCategoryAccounting(
+      buildAllocationComparison(snapshot.you, snapshot.opponent),
+      allocation
+    );
+  const opportunityLostComponents = snapshot.opportunityLostComponents;
   const selectedBandSummary = {
     label: 'Economic',
     you: snapshot.you.economic,
@@ -1288,6 +1634,12 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot, labels: RenderPlayerLa
   const opponentLabel = labels.opponent.compactLabel;
   const youShortLabel = labels.you.compactShortLabel;
   const opponentShortLabel = labels.opponent.compactShortLabel;
+  const destroyedBandKeyByCategory: Record<AllocationCategoryKey, CategoryDestroyedBreakdownKey> = {
+    economic: 'economicDestroyed',
+    technology: 'technologyDestroyed',
+    military: 'militaryDestroyed',
+    other: 'otherDestroyed',
+  };
 
   const renderBandRow = (band: BandDef, categoryKey: AllocationCategoryKey, collapsed: boolean): string => {
       const isSelected = band.key === 'economic';
@@ -1308,24 +1660,71 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot, labels: RenderPlayerLa
         ${subRow}
       `;
   };
-  const renderDestroyedRow = (): string => {
-    const row = allocation.destroyed;
+
+  const renderCategoryDestroyedRow = (category: AllocationCategoryDef, collapsed: boolean): string => {
+    const row = allocationCategory[category.key].destroyed;
+    const destroyedBandKey = destroyedBandKeyByCategory[category.key];
+    const rowEmpty = row.you <= 0 && row.opponent <= 0;
+    const rowHidden = collapsed || rowEmpty;
+    const label = category.key === 'technology'
+      ? 'Advancement destroyed'
+      : `${category.label} destroyed`;
     return `
-        <tr class="band-row inspector-destroyed-row" data-inspector-row="destroyed">
+        <tr class="band-row allocation-category-accounting-row allocation-category-destroyed-row" data-allocation-category-child="${category.key}" data-allocation-category-accounting="${category.key}-destroyed" data-destroyed-row-category="${category.key}" data-destroyed-row-empty="${rowEmpty ? 'true' : 'false'}"${rowHidden ? ' hidden' : ''}>
           <th>
-            <button type="button" class="band-toggle" data-band-key="destroyed" aria-pressed="false">
-              <span class="legend-dot destroyed-dot"></span>Destroyed
+            <button type="button" class="band-toggle" data-band-key="${destroyedBandKey}" aria-pressed="false">
+              <span class="legend-dot destroyed-dot"></span>${escapeHtml(label)}
             </button>
           </th>
-          <td data-cell-label="${escapeHtml(youLabel)}" data-hover-field="allocation.destroyed.you">${formatNumber(row.you)}</td>
-          <td data-cell-label="${escapeHtml(opponentLabel)}" data-hover-field="allocation.destroyed.opponent">${formatNumber(row.opponent)}</td>
-          <td data-cell-label="Delta" data-hover-field="allocation.destroyed.delta">${formatSigned(row.delta)}</td>
+          <td data-cell-label="${escapeHtml(youLabel)}" data-hover-field="allocationCategory.${category.key}.destroyed.you">${formatNumber(row.you)}</td>
+          <td data-cell-label="${escapeHtml(opponentLabel)}" data-hover-field="allocationCategory.${category.key}.destroyed.opponent">${formatNumber(row.opponent)}</td>
+          <td data-cell-label="Delta" data-hover-field="allocationCategory.${category.key}.destroyed.delta">${formatSigned(row.delta)}</td>
         </tr>
       `;
   };
+
+  const renderCategoryInvestmentRow = (category: AllocationCategoryDef, collapsed: boolean): string => {
+    const row = allocationCategory[category.key].investment;
+    const investmentBandKey = `${category.key}Investment`;
+    return `
+        <tr class="band-row allocation-category-accounting-row allocation-category-investment-row" data-allocation-category-child="${category.key}" data-allocation-category-accounting="${category.key}-investment"${collapsed ? ' hidden' : ''}>
+          <th>
+            <button type="button" class="band-toggle" data-band-key="${investmentBandKey}" data-allocation-investment-category="${category.key}" aria-pressed="false">
+              <span class="legend-dot" style="background:${bandByKey.get(category.bandKeys[0])?.color ?? '#9AA3B2'}"></span>Total ${escapeHtml(category.label)} Investment
+            </button>
+          </th>
+          <td data-cell-label="${escapeHtml(youLabel)}" data-hover-field="allocationCategory.${category.key}.investment.you">${formatNumber(row.you)}</td>
+          <td data-cell-label="${escapeHtml(opponentLabel)}" data-hover-field="allocationCategory.${category.key}.investment.opponent">${formatNumber(row.opponent)}</td>
+          <td data-cell-label="Delta" data-hover-field="allocationCategory.${category.key}.investment.delta">${formatSigned(row.delta)}</td>
+        </tr>
+      `;
+  };
+
+  const renderEconomicRoleRow = (
+    basis: EconomicAllocationBasis,
+    label: string,
+    accountingKey: string,
+    roleFilter: EconomicRole,
+    collapsed: boolean
+  ): string => {
+    const row = allocationCategory.economic[basis] ?? buildAllocationComparisonRow('economic', 0, 0, 0, 0);
+    return `
+        <tr class="band-row allocation-category-accounting-row allocation-category-investment-row" data-allocation-category-child="economic" data-allocation-category-accounting="${accountingKey}"${collapsed ? ' hidden' : ''}>
+          <th>
+            <button type="button" class="band-toggle" data-band-key="economic" data-economic-role-filter="${roleFilter}" aria-pressed="false">
+              <span class="legend-dot" style="background:${bandByKey.get('economic')?.color ?? '#5DCAA5'}"></span>${escapeHtml(label)}
+            </button>
+          </th>
+          <td data-cell-label="${escapeHtml(youLabel)}" data-hover-field="allocationCategory.economic.${basis}.you">${formatNumber(row.you)}</td>
+          <td data-cell-label="${escapeHtml(opponentLabel)}" data-hover-field="allocationCategory.economic.${basis}.opponent">${formatNumber(row.opponent)}</td>
+          <td data-cell-label="Delta" data-hover-field="allocationCategory.economic.${basis}.delta">${formatSigned(row.delta)}</td>
+        </tr>
+      `;
+  };
+
   const renderOpportunityLostRow = (): string => {
     const row = allocation.opportunityLost;
-    const tooltip = 'Total villager opportunity cost: resources missing villagers would have gathered by this timestamp. Event scores scale-adjust future gathering lost from killed villagers by the deployed-resource size at the event time; direct villager death value is shown in Destroyed.';
+    const tooltip = 'Opportunity lost is split into Villagers lost and Villager underproduction. The bucket list shows actual villager-death windows; underproduction is shown in the summary.';
     return `
         <tr class="band-row inspector-opportunity-lost-row" data-inspector-row="opportunityLost">
           <th>
@@ -1342,25 +1741,31 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot, labels: RenderPlayerLa
 
   const bandRows = allocationCategoryDefs
     .map(category => {
-      const row = allocation[category.key];
+      const row = allocationCategory[category.key].net;
       const expanded = category.key === 'economic';
-      const children = category.bandKeys
-        .map(key => {
-          const band = bandByKey.get(key);
-          return band ? renderBandRow(band, category.key, !expanded) : '';
-        })
-        .join('');
+      const allocationChildren = category.key === 'economic'
+        ? renderEconomicRoleRow('resourceGeneration', 'Resource generation', 'economic-resource-generation', 'resourceGenerator', !expanded) +
+          renderEconomicRoleRow('resourceInfrastructure', 'Resource infrastructure', 'economic-resource-infrastructure', 'resourceInfrastructure', !expanded)
+        : category.bandKeys
+          .map(key => {
+            const band = bandByKey.get(key);
+            return band ? renderBandRow(band, category.key, !expanded) : '';
+          })
+          .join('');
+      const children = allocationChildren +
+        renderCategoryDestroyedRow(category, !expanded) +
+        renderCategoryInvestmentRow(category, !expanded);
 
       return `
         <tr class="allocation-category-row" data-allocation-category-row="${category.key}">
           <th>
             <button type="button" class="allocation-category-toggle" data-allocation-category-toggle="${category.key}" aria-expanded="${expanded ? 'true' : 'false'}">
-              <span class="category-caret" aria-hidden="true"></span>${escapeHtml(category.label)}
+              <span class="category-caret" aria-hidden="true"></span>${escapeHtml(category.label)} net
             </button>
           </th>
-          <td data-cell-label="${escapeHtml(youLabel)}" data-hover-field="allocation.${category.key}.you">${formatNumber(row.you)}</td>
-          <td data-cell-label="${escapeHtml(opponentLabel)}" data-hover-field="allocation.${category.key}.opponent">${formatNumber(row.opponent)}</td>
-          <td data-cell-label="Delta" data-hover-field="allocation.${category.key}.delta">${formatSigned(row.delta)}</td>
+          <td data-cell-label="${escapeHtml(youLabel)}" data-hover-field="allocationCategory.${category.key}.net.you">${formatNumber(row.you)}</td>
+          <td data-cell-label="${escapeHtml(opponentLabel)}" data-hover-field="allocationCategory.${category.key}.net.opponent">${formatNumber(row.opponent)}</td>
+          <td data-cell-label="Delta" data-hover-field="allocationCategory.${category.key}.net.delta">${formatSigned(row.delta)}</td>
         </tr>
         ${children}
       `;
@@ -1395,9 +1800,8 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot, labels: RenderPlayerLa
               </thead>
               <tbody>
                 ${bandRows}
-                ${renderDestroyedRow()}
                 <tr class="inspector-total-row">
-                  <th><span data-total-pool-tooltip title="${escapeHtml(snapshot.totalPoolTooltip)}">Total Pool</span></th>
+                  <th><span data-total-pool-tooltip title="${escapeHtml(snapshot.totalPoolTooltip)}">Total net pool</span></th>
                   <td data-cell-label="${escapeHtml(youLabel)}" data-hover-field="allocation.overall.you">${formatNumber(allocation.overall.you)}</td>
                   <td data-cell-label="${escapeHtml(opponentLabel)}" data-hover-field="allocation.overall.opponent">${formatNumber(allocation.overall.opponent)}</td>
                   <td data-cell-label="Delta" data-hover-field="allocation.overall.delta">${formatSigned(allocation.overall.delta)}</td>
@@ -1429,6 +1833,30 @@ function buildHoverInspectorHtml(snapshot: HoverSnapshot, labels: RenderPlayerLa
               <span>${escapeHtml(youShortLabel)} <strong data-band-summary-you>${formatNumber(selectedBandSummary.you)}</strong></span>
               <span>${escapeHtml(opponentShortLabel)} <strong data-band-summary-opponent>${formatNumber(selectedBandSummary.opponent)}</strong></span>
               <span>Delta <strong data-band-summary-delta>${formatSigned(selectedBandSummary.delta)}</strong></span>
+              <table class="opportunity-lost-components" data-opportunity-lost-components hidden>
+                <thead>
+                  <tr>
+                    <th scope="col">Component</th>
+                    <th scope="col">${escapeHtml(youShortLabel)}</th>
+                    <th scope="col">${escapeHtml(opponentShortLabel)}</th>
+                    <th scope="col">Delta</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr data-opportunity-lost-component="villagersLost">
+                    <th scope="row">Villagers lost</th>
+                    <td><strong data-opportunity-lost-component-villagers-lost-you>${formatNumber(opportunityLostComponents.villagersLost.you)}</strong></td>
+                    <td><strong data-opportunity-lost-component-villagers-lost-opponent>${formatNumber(opportunityLostComponents.villagersLost.opponent)}</strong></td>
+                    <td><strong data-opportunity-lost-component-villagers-lost-delta>${formatSigned(opportunityLostComponents.villagersLost.delta)}</strong></td>
+                  </tr>
+                  <tr data-opportunity-lost-component="underproduction">
+                    <th scope="row">Villager underproduction</th>
+                    <td><strong data-opportunity-lost-component-underproduction-you>${formatNumber(opportunityLostComponents.underproduction.you)}</strong></td>
+                    <td><strong data-opportunity-lost-component-underproduction-opponent>${formatNumber(opportunityLostComponents.underproduction.opponent)}</strong></td>
+                    <td><strong data-opportunity-lost-component-underproduction-delta>${formatSigned(opportunityLostComponents.underproduction.delta)}</strong></td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
             <div class="band-breakdown-cols">
               <section>
@@ -2670,6 +3098,8 @@ function buildHoverInteractionScript(
       var byTimestamp = new Map();
       var pinned = false;
       var selectedBand = 'economic';
+      var selectedEconomicRoleFilter = '';
+      var selectedInvestmentCategory = '';
       var currentTimestamp = null;
       var scheduledTimestamp = null;
       var framePending = false;
@@ -2686,8 +3116,48 @@ function buildHoverInteractionScript(
         research: 'Research',
         advancement: 'Advancement',
         destroyed: 'Destroyed',
+        economicDestroyed: 'Economic destroyed',
+        technologyDestroyed: 'Advancement destroyed',
+        militaryDestroyed: 'Military destroyed',
+        otherDestroyed: 'Other destroyed',
         float: 'Float',
         opportunityLost: 'Opportunity lost'
+      };
+      var economicRoleFilterLabels = {
+        resourceGenerator: 'Resource generation',
+        resourceInfrastructure: 'Resource infrastructure'
+      };
+      var economicRoleBasisMap = {
+        resourceGenerator: 'resourceGeneration',
+        resourceInfrastructure: 'resourceInfrastructure'
+      };
+      var opportunityLostCategoryDefs = [
+        { key: 'villagers-lost', label: 'Villagers lost' },
+        { key: 'villager-underproduction', label: 'Villager underproduction' }
+      ];
+      var investmentCategoryLabels = {
+        economic: 'Total Economic Investment',
+        technology: 'Total Technology Investment',
+        military: 'Total Military Investment',
+        other: 'Total Other Investment'
+      };
+      var investmentCategoryBandKeys = {
+        economic: ['economic'],
+        technology: ['research', 'advancement'],
+        military: ['militaryCapacity', 'militaryActive', 'defensive'],
+        other: ['populationCap']
+      };
+      var investmentCategoryDestroyedKeys = {
+        economic: 'economicDestroyed',
+        technology: 'technologyDestroyed',
+        military: 'militaryDestroyed',
+        other: 'otherDestroyed'
+      };
+      var categoryDestroyedBandMap = {
+        economicDestroyed: 'economic',
+        technologyDestroyed: 'technology',
+        militaryDestroyed: 'military',
+        otherDestroyed: 'other'
       };
       var allocationGraphDefs = {
         economic: { label: 'Economic', mode: 'share' },
@@ -2866,14 +3336,44 @@ function buildHoverInteractionScript(
         var bandData = point.bandBreakdown && point.bandBreakdown[selectedBand]
           ? point.bandBreakdown[selectedBand]
           : { you: [], opponent: [] };
-        var bandLabel = bandLabels[selectedBand] || selectedBand;
-        var selectedValues = selectedBand === 'destroyed' || selectedBand === 'float' || selectedBand === 'opportunityLost'
-          ? ((point.allocation && point.allocation[selectedBand]) || { you: 0, opponent: 0, delta: 0 })
-          : {
-              you: point.you && Number.isFinite(Number(point.you[selectedBand])) ? Number(point.you[selectedBand]) : 0,
-              opponent: point.opponent && Number.isFinite(Number(point.opponent[selectedBand])) ? Number(point.opponent[selectedBand]) : 0,
-              delta: point.delta && Number.isFinite(Number(point.delta[selectedBand])) ? Number(point.delta[selectedBand]) : 0
-            };
+        var filteredBandData = bandData;
+        if (selectedInvestmentCategory) {
+          filteredBandData = combinedInvestmentBreakdown(point, selectedInvestmentCategory);
+        } else if (selectedBand === 'economic' && selectedEconomicRoleFilter) {
+          filteredBandData = {
+            you: bandData.you.filter(function (entry) {
+              return (entry.economicRole || 'resourceInfrastructure') === selectedEconomicRoleFilter;
+            }),
+            opponent: bandData.opponent.filter(function (entry) {
+              return (entry.economicRole || 'resourceInfrastructure') === selectedEconomicRoleFilter;
+            })
+          };
+        }
+        var bandLabel = selectedInvestmentCategory
+          ? investmentCategoryLabels[selectedInvestmentCategory] || selectedInvestmentCategory
+          : selectedBand === 'economic' && selectedEconomicRoleFilter
+          ? economicRoleFilterLabels[selectedEconomicRoleFilter] || bandLabels[selectedBand] || selectedBand
+          : bandLabels[selectedBand] || selectedBand;
+        var destroyedCategory = categoryDestroyedBandMap[selectedBand];
+        var economicRoleBasis = selectedBand === 'economic' && selectedEconomicRoleFilter
+          ? economicRoleBasisMap[selectedEconomicRoleFilter]
+          : '';
+        var selectedValues = selectedInvestmentCategory && point.allocationCategory && point.allocationCategory[selectedInvestmentCategory]
+          ? point.allocationCategory[selectedInvestmentCategory].investment
+          : economicRoleBasis && point.allocationCategory && point.allocationCategory.economic && point.allocationCategory.economic[economicRoleBasis]
+          ? point.allocationCategory.economic[economicRoleBasis]
+          : destroyedCategory
+          ? ((point.allocationCategory &&
+              point.allocationCategory[destroyedCategory] &&
+              point.allocationCategory[destroyedCategory].destroyed) ||
+              { you: 0, opponent: 0, delta: 0 })
+          : selectedBand === 'destroyed' || selectedBand === 'float' || selectedBand === 'opportunityLost'
+            ? ((point.allocation && point.allocation[selectedBand]) || { you: 0, opponent: 0, delta: 0 })
+            : {
+                you: point.you && Number.isFinite(Number(point.you[selectedBand])) ? Number(point.you[selectedBand]) : 0,
+                opponent: point.opponent && Number.isFinite(Number(point.opponent[selectedBand])) ? Number(point.opponent[selectedBand]) : 0,
+                delta: point.delta && Number.isFinite(Number(point.delta[selectedBand])) ? Number(point.delta[selectedBand]) : 0
+              };
 
         var titleEl = document.querySelector('[data-band-breakdown-title]');
         if (titleEl) {
@@ -2885,10 +3385,29 @@ function buildHoverInteractionScript(
         setText('[data-band-summary-you]', formatNumber(selectedValues.you));
         setText('[data-band-summary-opponent]', formatNumber(selectedValues.opponent));
         setText('[data-band-summary-delta]', formatSigned(selectedValues.delta));
+        document.querySelectorAll('[data-opportunity-lost-components]').forEach(function (el) {
+          el.hidden = selectedBand !== 'opportunityLost';
+        });
+        var opportunityComponents = point.opportunityLostComponents || {};
+        var villagersLost = opportunityComponents.villagersLost || { you: 0, opponent: 0, delta: 0 };
+        var underproduction = opportunityComponents.underproduction || { you: 0, opponent: 0, delta: 0 };
+        setText('[data-opportunity-lost-component-villagers-lost-you]', formatNumber(villagersLost.you));
+        setText('[data-opportunity-lost-component-villagers-lost-opponent]', formatNumber(villagersLost.opponent));
+        setText('[data-opportunity-lost-component-villagers-lost-delta]', formatSigned(villagersLost.delta));
+        setText('[data-opportunity-lost-component-underproduction-you]', formatNumber(underproduction.you));
+        setText('[data-opportunity-lost-component-underproduction-opponent]', formatNumber(underproduction.opponent));
+        setText('[data-opportunity-lost-component-underproduction-delta]', formatSigned(underproduction.delta));
 
         function listHtml(entries, bandKey) {
           if (!entries || entries.length === 0) {
-            return '<li class="band-breakdown-empty">No active items</li>';
+            return bandKey === 'opportunityLost'
+              ? '<li class="band-breakdown-empty">No villager deaths</li>'
+              : '<li class="band-breakdown-empty">No active items</li>';
+          }
+
+          function opportunityLostCategoryKey(entry) {
+            if (entry.category === 'villager-underproduction') return 'villager-underproduction';
+            return 'villagers-lost';
           }
 
           function displayLabel(entry) {
@@ -2925,6 +3444,23 @@ function buildHoverInteractionScript(
             if (grouped.length > 0) return grouped;
           }
 
+          if (bandKey === 'opportunityLost') {
+            var opportunityGroups = opportunityLostCategoryDefs.map(function (def) {
+              var groupEntries = entries.filter(function (entry) {
+                return opportunityLostCategoryKey(entry) === def.key;
+              });
+              if (groupEntries.length === 0) return '';
+              var rows = groupEntries.map(function (entry) {
+                var label = displayLabel(entry);
+                var percent = Number(entry.percent || 0).toFixed(1);
+                return '<li><span class="band-item-label band-item-label-truncated" title="' + escapeHtml(label) + '" tabindex="0">' + escapeHtml(label) + '</span><span class="band-item-metric">' + formatNumber(entry.value) + ' <small>(' + percent + '%)</small></span></li>';
+              }).join('');
+              return '<li class="band-breakdown-group">' + escapeHtml(def.label) + '</li>' + rows;
+            }).join('');
+
+            if (opportunityGroups.length > 0) return opportunityGroups;
+          }
+
           return entries.map(function (entry) {
             var label = displayLabel(entry);
             var percent = Number(entry.percent || 0).toFixed(1);
@@ -2934,14 +3470,58 @@ function buildHoverInteractionScript(
 
         var youList = document.querySelector('[data-band-breakdown-list="you"]');
         var oppList = document.querySelector('[data-band-breakdown-list="opponent"]');
-        if (youList) youList.innerHTML = listHtml(bandData.you, selectedBand);
-        if (oppList) oppList.innerHTML = listHtml(bandData.opponent, selectedBand);
+        if (youList) youList.innerHTML = listHtml(filteredBandData.you, selectedBand);
+        if (oppList) oppList.innerHTML = listHtml(filteredBandData.opponent, selectedBand);
+      }
+
+      function combinedInvestmentBreakdown(point, category) {
+        function entriesFor(side) {
+          var entries = [];
+          var bandKeys = investmentCategoryBandKeys[category] || [];
+          bandKeys.forEach(function (bandKey) {
+            var data = point.bandBreakdown && point.bandBreakdown[bandKey];
+            if (data && Array.isArray(data[side])) {
+              entries = entries.concat(data[side]);
+            }
+          });
+
+          var destroyedKey = investmentCategoryDestroyedKeys[category];
+          var destroyedData = destroyedKey && point.bandBreakdown && point.bandBreakdown[destroyedKey];
+          if (destroyedData && Array.isArray(destroyedData[side])) {
+            entries = entries.concat(destroyedData[side].map(function (entry) {
+              return Object.assign({}, entry, {
+                label: 'Destroyed ' + entry.label
+              });
+            }));
+          }
+
+          var total = entries.reduce(function (sum, entry) {
+            return sum + Math.max(0, Number(entry.value) || 0);
+          }, 0);
+
+          return entries.map(function (entry) {
+            var value = Math.max(0, Number(entry.value) || 0);
+            return Object.assign({}, entry, {
+              value: value,
+              percent: total > 0 ? value / total * 100 : 0
+            });
+          });
+        }
+
+        return {
+          you: entriesFor('you'),
+          opponent: entriesFor('opponent')
+        };
       }
 
       function syncBandSelection() {
         document.querySelectorAll('.band-toggle[data-band-key]').forEach(function (button) {
           var key = button.getAttribute('data-band-key');
-          var isSelected = key === selectedBand;
+          var roleFilter = button.getAttribute('data-economic-role-filter') || '';
+          var investmentCategory = button.getAttribute('data-allocation-investment-category') || '';
+          var isSelected = key === selectedBand &&
+            roleFilter === selectedEconomicRoleFilter &&
+            investmentCategory === selectedInvestmentCategory;
           button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
           var row = button.closest('tr.band-row');
           if (row) {
@@ -2951,9 +3531,31 @@ function buildHoverInteractionScript(
         });
       }
 
+      function isCategoryCollapsed(category) {
+        var button = document.querySelector('[data-allocation-category-toggle="' + category + '"]');
+        return !!button && button.getAttribute('aria-expanded') === 'false';
+      }
+
+      function syncDestroyedRowVisibility(point) {
+        ['economic', 'technology', 'military', 'other'].forEach(function (category) {
+          var destroyedRow = point.allocationCategory &&
+            point.allocationCategory[category] &&
+            point.allocationCategory[category].destroyed
+            ? point.allocationCategory[category].destroyed
+            : { you: 0, opponent: 0 };
+          var isEmpty = Math.max(0, Number(destroyedRow.you) || 0) <= 0 &&
+            Math.max(0, Number(destroyedRow.opponent) || 0) <= 0;
+          document.querySelectorAll('[data-destroyed-row-category="' + category + '"]').forEach(function (row) {
+            row.setAttribute('data-destroyed-row-empty', isEmpty ? 'true' : 'false');
+            row.hidden = isCategoryCollapsed(category) || isEmpty;
+          });
+        });
+      }
+
       function setCategoryCollapsed(key, collapsed) {
         document.querySelectorAll('[data-allocation-category-child="' + key + '"]').forEach(function (row) {
-          row.hidden = collapsed;
+          var isEmptyDestroyed = row.getAttribute('data-destroyed-row-empty') === 'true';
+          row.hidden = collapsed || isEmptyDestroyed;
         });
         document.querySelectorAll('[data-allocation-category-toggle="' + key + '"]').forEach(function (button) {
           button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
@@ -3144,9 +3746,25 @@ function buildHoverInteractionScript(
           setField('allocation.' + key + '.opponent', formatNumber(allocationRow.opponent));
           setField('allocation.' + key + '.delta', formatSigned(allocationRow.delta));
         });
+        ['economic', 'technology', 'military', 'other'].forEach(function (categoryKey) {
+          var basisKeys = categoryKey === 'economic'
+            ? ['net', 'resourceGeneration', 'resourceInfrastructure', 'destroyed', 'investment']
+            : ['net', 'destroyed', 'investment'];
+          basisKeys.forEach(function (basisKey) {
+            var categoryRow = point.allocationCategory &&
+              point.allocationCategory[categoryKey] &&
+              point.allocationCategory[categoryKey][basisKey]
+              ? point.allocationCategory[categoryKey][basisKey]
+              : { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 };
+            setField('allocationCategory.' + categoryKey + '.' + basisKey + '.you', formatNumber(categoryRow.you));
+            setField('allocationCategory.' + categoryKey + '.' + basisKey + '.opponent', formatNumber(categoryRow.opponent));
+            setField('allocationCategory.' + categoryKey + '.' + basisKey + '.delta', formatSigned(categoryRow.delta));
+          });
+        });
+        syncDestroyedRowVisibility(point);
         setTitle(
           '[data-total-pool-tooltip]',
-          point.totalPoolTooltip || 'Economic + Technology + Military + Other - Destroyed = Total pool'
+          point.totalPoolTooltip || 'Economic net + Technology net + Military net + Other net = Total pool'
         );
         setField('gather.you', formatNumber(point.gather.you));
         setField('gather.opponent', formatNumber(point.gather.opponent));
@@ -3213,6 +3831,11 @@ function buildHoverInteractionScript(
           var key = button.getAttribute('data-band-key');
           if (!key) return;
           selectedBand = key;
+          selectedInvestmentCategory = button.getAttribute('data-allocation-investment-category') || '';
+          selectedEconomicRoleFilter = key === 'economic'
+            ? button.getAttribute('data-economic-role-filter') || ''
+            : '';
+          if (selectedInvestmentCategory) selectedEconomicRoleFilter = '';
           syncBandSelection();
           if (currentTimestamp !== null) {
             updateInspector(currentTimestamp);
@@ -3372,12 +3995,10 @@ export function renderPostMatchHtml(
   options: RenderPostMatchHtmlOptions = {}
 ): string {
   const playerLabels = renderPlayerLabels(model.header);
-  const hoverSnapshots = buildHoverSnapshots(model, playerLabels);
+  const hoverSnapshots = selectInteractionHoverSnapshots(buildHoverSnapshots(model, playerLabels));
   const defaultHoverSnapshot = hoverSnapshots[0];
   const clientHoverSnapshots = buildClientHoverSnapshots(hoverSnapshots);
-  const inlineHoverSnapshots = options.hoverDataUrl
-    ? clientHoverSnapshots.slice(0, 1)
-    : clientHoverSnapshots;
+  const inlineHoverSnapshots = clientHoverSnapshots;
 
   return `<!doctype html>
 <html lang="en">
@@ -4305,11 +4926,18 @@ export function renderPostMatchHtml(
       border-top-color: #d6ddd1;
     }
 
-    .inspector-destroyed-row th,
-    .inspector-destroyed-row td {
+    .allocation-category-destroyed-row th,
+    .allocation-category-destroyed-row td {
       color: #5e2f22;
       font-weight: 800;
       border-top-color: #d6ddd1;
+    }
+
+    .allocation-category-investment-row th,
+    .allocation-category-investment-row td {
+      color: #253226;
+      font-weight: 800;
+      background: #fafbf8;
     }
 
     .inspector-float-row th,
@@ -4341,7 +4969,7 @@ export function renderPostMatchHtml(
 
     .band-breakdown-summary {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) repeat(3, auto);
+      grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
       gap: 6px 10px;
       align-items: baseline;
       margin-bottom: 10px;
@@ -4353,16 +4981,61 @@ export function renderPostMatchHtml(
       font-size: 12px;
     }
 
+    .band-breakdown-summary > span:not(.band-summary-label) {
+      min-width: 0;
+      overflow-wrap: break-word;
+    }
+
     .band-breakdown-summary strong {
       color: #253226;
       font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
 
     .band-summary-label {
+      grid-column: 1 / -1;
       min-width: 0;
       color: #253226;
       font-weight: 800;
-      overflow-wrap: anywhere;
+      overflow-wrap: normal;
+      word-break: normal;
+    }
+
+    .opportunity-lost-components {
+      grid-column: 1 / -1;
+      width: 100%;
+      margin-top: 2px;
+      border-top: 1px solid #e0e7dc;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 11px;
+    }
+
+    .opportunity-lost-components[hidden] {
+      display: none;
+    }
+
+    .opportunity-lost-components th,
+    .opportunity-lost-components td {
+      min-width: 0;
+      padding: 5px 6px 0 0;
+      text-align: right;
+      vertical-align: baseline;
+      overflow-wrap: break-word;
+    }
+
+    .opportunity-lost-components th:first-child {
+      text-align: left;
+    }
+
+    .opportunity-lost-components thead th {
+      color: #5f6b5b;
+      font-weight: 700;
+    }
+
+    .opportunity-lost-components tbody th {
+      color: #253226;
+      font-weight: 800;
     }
 
     .band-breakdown-cols {
@@ -4799,33 +5472,33 @@ export function renderPostMatchHtml(
 
     <section class="panel">
       <h2 class="section-title">Allocation lead and mix over time</h2>
-      <p class="section-note">Bands are remapped into Economic, Technology, Military, and Other. The first three charts show share of strategic allocation; Overall is absolute deployed resource value after subtracting Destroyed.</p>
+      <p class="section-note">Bands are remapped into Economic, Technology, Military, and Other. The first three charts show share of current tracked pool; Overall is absolute current tracked pool value.</p>
       <details class="allocation-read-guide" aria-label="Allocation chart legend">
         <summary class="allocation-read-guide-summary">How to read this chart</summary>
         <div class="allocation-read-guide-grid">
-          <div class="allocation-read-guide-item" aria-label="Leader strip: absolute deployed-value leader by 30-second block">
+          <div class="allocation-read-guide-item" aria-label="Leader strip: current tracked-value leader by 30-second block">
             <strong>Leader strip</strong>
-            <span>Absolute deployed-value leader by 30-second block.</span>
+            <span>Current tracked-value leader by 30-second block.</span>
           </div>
-          <div class="allocation-read-guide-item" aria-label="Economic, Technology, and Military: percentage share of strategic allocation">
+          <div class="allocation-read-guide-item" aria-label="Economic, Technology, and Military: percentage share of current tracked pool">
             <strong>Category lanes</strong>
-            <span>Economic, Technology, and Military show percentage share.</span>
+            <span>Economic, Technology, and Military show percentage share of current tracked pool.</span>
           </div>
           <div class="allocation-read-guide-item" aria-label="Destroyed: cumulative value removed from the tracked deployed pool">
             <strong>Destroyed lane</strong>
             <span>Destroyed is cumulative value removed from the tracked deployed pool.</span>
           </div>
-          <div class="allocation-read-guide-item" aria-label="Overall: absolute deployed resource value, including Other">
+          <div class="allocation-read-guide-item" aria-label="Overall: absolute current tracked pool value">
             <strong>Overall lane</strong>
-            <span>Overall: absolute deployed resource value after subtracting Destroyed.</span>
+            <span>Overall: absolute current tracked pool value.</span>
           </div>
           <div class="allocation-read-guide-item" aria-label="Float (not deployed): live stockpile resources not currently committed">
             <strong>Float lane</strong>
             <span>Float (not deployed) is live stockpile resources not currently committed.</span>
           </div>
-          <div class="allocation-read-guide-item" aria-label="Opportunity lost: total villager opportunity cost">
+          <div class="allocation-read-guide-item" aria-label="Opportunity lost: villagers lost plus villager underproduction">
             <strong>Opportunity lost lane</strong>
-            <span>Total villager opportunity cost.</span>
+            <span>Villagers lost plus villager underproduction.</span>
           </div>
         </div>
       </details>
@@ -4859,7 +5532,7 @@ export function renderPostMatchHtml(
     </section>
 
   </main>
-  ${buildHoverInteractionScript(inlineHoverSnapshots, playerLabels, options.hoverDataUrl)}
+  ${buildHoverInteractionScript(inlineHoverSnapshots, playerLabels)}
   <script id="web-vitals-monitor">${buildWebVitalsScript('/api/web-vitals')}</script>
 </body>
 </html>`;
