@@ -1,24 +1,30 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import { renderHomeHtml } from '../../src/lib/homePageHtml';
 
 describe('HomePage form', () => {
-  it('uses a server-submitted text input so the landing page does not hydrate form logic', () => {
-    const source = fs.readFileSync(path.join(process.cwd(), 'src/app/page.tsx'), 'utf-8');
+  it('renders a raw server-submitted form without Next hydration markers', () => {
+    const html = renderHomeHtml();
 
-    expect(source).not.toContain("'use client'");
-    expect(source).not.toContain('useState');
-    expect(source).not.toContain('window.location');
-    expect(source).toContain('searchParams?: Promise');
-    expect(source).toContain('method="get"');
-    expect(source).toContain('action="/matches/open"');
-    expect(source).toContain('<label');
-    expect(source).toContain('htmlFor="match-url"');
-    expect(source).toContain('id="match-url"');
-    expect(source).toContain('name="url"');
-    expect(source).toContain('type="text"');
-    expect(source).toContain('inputMode="url"');
-    expect(source).not.toContain('type="url"');
-    expect(source).toContain('minHeight: 44');
-    expect(source).toContain('minWidth: 44');
+    expect(html).toContain('<!doctype html>');
+    expect(html).toContain('rel="icon"');
+    expect(html).toContain('href="data:image/svg+xml');
+    expect(html).toContain('<form method="get" action="/matches/open"');
+    expect(html).toContain('<label for="match-url"');
+    expect(html).toContain('id="match-url"');
+    expect(html).toContain('name="url"');
+    expect(html).toContain('type="text"');
+    expect(html).toContain('inputmode="url"');
+    expect(html).not.toContain('type="url"');
+    expect(html).toContain('min-height: 44px');
+    expect(html).toContain('min-width: 44px');
+    expect(html).not.toContain('self.__next_f');
+    expect(html).not.toContain('/_next/static/chunks/');
+    expect(html).not.toContain('/favicon.ico');
+  });
+
+  it('escapes a submitted error message before rendering it', () => {
+    const html = renderHomeHtml('<script>alert("bad")</script>');
+
+    expect(html).toContain('&lt;script&gt;alert(&quot;bad&quot;)&lt;/script&gt;');
+    expect(html).not.toContain('<script>alert("bad")</script>');
   });
 });

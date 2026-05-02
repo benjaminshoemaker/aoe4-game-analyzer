@@ -36,7 +36,7 @@ for (const filePath of collectFiles(path.join(repoRoot, 'apps/web/src'))) {
 
 const forbiddenEndpointPattern = /https:\/\/(?:data\.)?aoe4world\.com\/(?:players|units|buildings|technologies)/;
 const allowedEndpointExampleFiles = new Set([
-  'apps/web/src/app/page.tsx',
+  'apps/web/src/lib/homePageHtml.ts',
 ]);
 for (const root of ['src', 'apps/web/src']) {
   for (const filePath of collectFiles(path.join(repoRoot, root))) {
