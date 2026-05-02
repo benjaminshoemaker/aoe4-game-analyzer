@@ -1,7 +1,7 @@
 import fs from 'fs';
 import axios from 'axios';
 
-const SUMMARY_USER_AGENT = 'aoe4-game-analyzer/0.1 resource-flow-cli';
+const SUMMARY_USER_AGENT = 'aoe4-game-analyzer-core/0.1 summary-client';
 
 export interface GameSummary {
   gameId: number;

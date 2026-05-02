@@ -31,9 +31,15 @@ describe('fetchAndCacheStaticData', () => {
 
     const result = await fetchAndCacheStaticData();
 
-    expect(mockedAxios.get).toHaveBeenNthCalledWith(1, 'https://data.aoe4world.com/units/all.json');
-    expect(mockedAxios.get).toHaveBeenNthCalledWith(2, 'https://data.aoe4world.com/buildings/all.json');
-    expect(mockedAxios.get).toHaveBeenNthCalledWith(3, 'https://data.aoe4world.com/technologies/all.json');
+    const requestOptions = {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'aoe4-game-analyzer-core/0.1 static-data-loader',
+      },
+    };
+    expect(mockedAxios.get).toHaveBeenNthCalledWith(1, 'https://data.aoe4world.com/units/all.json', requestOptions);
+    expect(mockedAxios.get).toHaveBeenNthCalledWith(2, 'https://data.aoe4world.com/buildings/all.json', requestOptions);
+    expect(mockedAxios.get).toHaveBeenNthCalledWith(3, 'https://data.aoe4world.com/technologies/all.json', requestOptions);
 
     expect(result.units).toEqual(sampleUnits);
     expect(result.buildings).toEqual(sampleBuildings);

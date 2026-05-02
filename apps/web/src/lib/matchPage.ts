@@ -1,12 +1,13 @@
-import { analyzeGame } from './aoe4/analysis/gameAnalysis';
-import { buildPostMatchViewModel } from './aoe4/analysis/postMatchViewModel';
+import { analyzeGame } from '@aoe4/analyzer-core/analysis/gameAnalysis';
+import { buildPostMatchViewModel } from '@aoe4/analyzer-core/analysis/postMatchViewModel';
 import {
   buildWinProbabilityExamples,
   WIN_PROBABILITY_FEATURE_SCHEMA_VERSION,
   WinProbabilityExample,
-} from './aoe4/analysis/winProbability';
-import { buildPostMatchHoverPayload, renderPostMatchHtml } from './aoe4/formatters/postMatchHtml';
-import { fetchGameSummaryFromApi, GameSummary } from './aoe4/parser/gameSummaryParser';
+} from '@aoe4/analyzer-core/analysis/winProbability';
+import { buildPostMatchHoverPayload, renderPostMatchHtml } from '@aoe4/analyzer-core/formatters/postMatchHtml';
+import { fetchGameSummaryFromApi, GameSummary } from '@aoe4/analyzer-core/parser/gameSummaryParser';
+import { buildWebVitalsScript } from './webVitals';
 
 export interface MatchPageParams {
   profileSlug: string;
@@ -137,6 +138,7 @@ export async function buildMatchHtml(params: MatchPageParams): Promise<string> {
     const model = await buildMatchModel(params);
     return renderPostMatchHtml(model, {
       hoverDataUrl: params.hoverDataUrl,
+      webVitalsScript: buildWebVitalsScript('/api/web-vitals'),
     });
   } catch (error) {
     if (error instanceof UnsupportedMatchError) {

@@ -530,9 +530,11 @@ export async function runCli(argv = process.argv): Promise<void> {
     .action(async (profileIdStr: string, gameIdStr: string, opts: { sig?: string; json?: boolean; narrative?: boolean }) => {
       try {
         const gameId = Number(gameIdStr);
+        const staticData = await loadStaticData();
         const analysis = await analyzeGame(profileIdStr, gameId, {
           sig: opts.sig,
           skipNarrative: opts.narrative === false,
+          staticData,
         });
 
         if (opts.json) {
@@ -557,10 +559,12 @@ export async function runCli(argv = process.argv): Promise<void> {
       try {
         const gameId = Number(gameIdStr);
         const summary = await fetchGameSummaryFromApi(profileIdStr, gameId, opts.sig);
+        const staticData = await loadStaticData();
         const analysis = await analyzeGame(profileIdStr, gameId, {
           sig: opts.sig,
           skipNarrative: true,
-          summary
+          summary,
+          staticData,
         });
 
         const model = buildPostMatchViewModel({
@@ -569,7 +573,7 @@ export async function runCli(argv = process.argv): Promise<void> {
           perspectiveProfileId: profileIdStr,
           summarySig: opts.sig,
         });
-        const html = renderPostMatchHtml(model);
+        const html = renderPostMatchHtml(model, { surface: 'full' });
 
         const outputPath = opts.out
           ? path.resolve(opts.out)

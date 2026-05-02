@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { renderPostMatchHtml } from '@aoe4/analyzer-core/formatters/postMatchHtml';
 import { makeMvpModelFixture } from '../__tests__/helpers/mvpModelFixture';
-import { renderPostMatchHtml } from '../src/lib/aoe4/formatters/postMatchHtml';
 
 const html = renderPostMatchHtml(makeMvpModelFixture(), { hoverDataUrl: '/dummy-hover-data' });
 const out = path.resolve(__dirname, '../../../tmp/aoe4-match-fixture.html');

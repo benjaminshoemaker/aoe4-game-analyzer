@@ -1,5 +1,5 @@
 import { GET } from '../../src/app/matches/[profileSlug]/[gameId]/route';
-import { renderPostMatchHtml } from '../../src/lib/aoe4/formatters/postMatchHtml';
+import { renderPostMatchHtml } from '@aoe4/analyzer-core/formatters/postMatchHtml';
 import {
   addVerboseOpportunityLostBuckets,
   makeMvpModelFixture,
@@ -280,10 +280,15 @@ describe('matches route e2e', () => {
       delta: 1475,
     }));
     expect(body).toContain('data-opportunity-lost-components');
-    expect(body).toContain('<table class="opportunity-lost-components" data-opportunity-lost-components hidden>');
+    expect(body).toContain('<table class="opportunity-lost-components" data-opportunity-lost-components aria-label="Opportunity lost components by civilization" style="--opportunity-you-color:#378ADD;--opportunity-opponent-color:#D85A30" hidden>');
+    expect(body).toContain('aria-label="Opportunity lost components by civilization"');
     expect(body).toContain('<th scope="col">English</th>');
     expect(body).toContain('<th scope="col">French</th>');
+    expect(body).toContain('<th scope="col">Gap</th>');
+    expect(body).toContain('data-opportunity-lost-component="total"');
+    expect(body).toContain('<th scope="row">Total</th>');
     expect(body).toContain('data-opportunity-lost-component="underproduction"');
-    expect(body).toContain('Villager underproduction');
+    expect(body).toContain('<span title="Villager underproduction">Under-production</span>');
+    expect(body).not.toContain('<th scope="row">Villager underproduction</th>');
   });
 });

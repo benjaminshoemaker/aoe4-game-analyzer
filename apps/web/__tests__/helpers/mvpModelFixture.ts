@@ -1,4 +1,4 @@
-import { PostMatchViewModel } from '../../src/lib/aoe4/analysis/postMatchViewModel';
+import { PostMatchViewModel } from '@aoe4/analyzer-core/analysis/postMatchViewModel';
 
 function formatBucketTime(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;

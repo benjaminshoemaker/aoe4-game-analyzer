@@ -1,4 +1,1 @@
-{
-  "upgradeImpactScale": 0.5,
-  "upgradeImpactCap": 0.35
-}
+../../packages/aoe4-core/src/data/combatAdjustedConfig.json

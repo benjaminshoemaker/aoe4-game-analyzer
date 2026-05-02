@@ -1,7 +1,7 @@
-import { buildPostMatchViewModel } from '../../src/lib/aoe4/analysis/postMatchViewModel';
-import { GameAnalysis } from '../../src/lib/aoe4/analysis/types';
-import { PoolSeriesPoint } from '../../src/lib/aoe4/analysis/resourcePool';
-import { BuildOrderEntry, GameSummary, PlayerSummary, ResourceTotals, TimeSeriesResources } from '../../src/lib/aoe4/parser/gameSummaryParser';
+import { buildPostMatchViewModel } from '@aoe4/analyzer-core/analysis/postMatchViewModel';
+import { GameAnalysis } from '@aoe4/analyzer-core/analysis/types';
+import { PoolSeriesPoint } from '@aoe4/analyzer-core/analysis/resourcePool';
+import { BuildOrderEntry, GameSummary, PlayerSummary, ResourceTotals, TimeSeriesResources } from '@aoe4/analyzer-core/parser/gameSummaryParser';
 
 const zeroTotals: ResourceTotals = {
   food: 0,

@@ -6,7 +6,7 @@ import { fetchGameSummaryFromApi } from '../../src/parser/gameSummaryParser';
 describe('fetchGameSummaryFromApi', () => {
   const fixturePath = path.resolve(__dirname, '..', 'fixtures', 'sampleGameSummary.json');
   const sampleJson = JSON.parse(fs.readFileSync(fixturePath, 'utf-8'));
-  const expectedUserAgent = 'aoe4-game-analyzer/0.1 resource-flow-cli';
+  const expectedUserAgent = 'aoe4-game-analyzer-core/0.1 summary-client';
 
   afterEach(() => {
     nock.cleanAll();

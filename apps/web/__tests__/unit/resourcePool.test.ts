@@ -1,6 +1,6 @@
-import { buildPlayerDeployedPoolSeries, classifyResolvedItemBand } from '../../src/lib/aoe4/analysis/resourcePool';
-import { ResolvedBuildItem, ResolvedBuildOrder } from '../../src/lib/aoe4/parser/buildOrderResolver';
-import { PlayerSummary } from '../../src/lib/aoe4/parser/gameSummaryParser';
+import { buildPlayerDeployedPoolSeries, classifyResolvedItemBand } from '@aoe4/analyzer-core/analysis/resourcePool';
+import { ResolvedBuildItem, ResolvedBuildOrder } from '@aoe4/analyzer-core/parser/buildOrderResolver';
+import { PlayerSummary } from '@aoe4/analyzer-core/parser/gameSummaryParser';
 
 function makeItem(overrides: Partial<ResolvedBuildItem>): ResolvedBuildItem {
   return {

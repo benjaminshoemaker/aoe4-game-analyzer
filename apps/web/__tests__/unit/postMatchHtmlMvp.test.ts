@@ -2,7 +2,7 @@ import {
   buildAllocationCategories,
   buildAllocationLeaderSegments,
   renderPostMatchHtml,
-} from '../../src/lib/aoe4/formatters/postMatchHtml';
+} from '@aoe4/analyzer-core/formatters/postMatchHtml';
 import { makeMvpModelFixture } from '../helpers/mvpModelFixture';
 
 function extractSvg(html: string, id: string): string {
@@ -471,11 +471,18 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).toContain('@media (max-width: 1160px)');
     expect(html).toContain('data-inspector-section="allocation"');
     expect(html).toContain('data-band-breakdown-summary');
-    expect(html).toContain('<table class="opportunity-lost-components" data-opportunity-lost-components hidden>');
+    expect(html).toContain('<table class="opportunity-lost-components" data-opportunity-lost-components aria-label="Opportunity lost components by civilization" style="--opportunity-you-color:#378ADD;--opportunity-opponent-color:#D85A30" hidden>');
+    expect(html).toContain('aria-label="Opportunity lost components by civilization"');
+    expect(html).toContain('<th scope="col">Gap</th>');
+    expect(html).toContain('data-opportunity-lost-component="total"');
+    expect(html).toContain('data-opportunity-lost-component-total-you');
     expect(html).toContain('data-band-summary-label');
+    expect(html).toContain('data-band-summary-value');
     expect(html).toContain('data-band-summary-you');
     expect(html).toContain('data-band-summary-opponent');
     expect(html).toContain('data-band-summary-delta');
+    expect(html).toContain('Opportunity lost: components and death windows');
+    expect(html).toContain("el.hidden = selectedBand === 'opportunityLost';");
     expect(html).toContain('grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));');
     expect(html).toContain('.band-summary-label {\n      grid-column: 1 / -1;');
     expect(html).toContain('.band-breakdown-summary > span:not(.band-summary-label) {\n      min-width: 0;');
@@ -573,5 +580,21 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).toContain('<h4>Mista</h4>');
     expect(html).toContain('data-cell-label="RepleteCactus"');
     expect(html).toContain('data-cell-label="Mista"');
+  });
+
+  it('colors opportunity-lost civ headers with the actual player colors', () => {
+    const model = makeMvpModelFixture();
+    model.header.youPlayer.color = '#D85A30';
+    model.header.player1.color = '#D85A30';
+    model.header.opponentPlayer.color = '#378ADD';
+    model.header.player2.color = '#378ADD';
+
+    const html = renderPostMatchHtml(model);
+
+    expect(html).toContain('style="--opportunity-you-color:#D85A30;--opportunity-opponent-color:#378ADD"');
+    expect(html).toContain('<th scope="col">English</th>');
+    expect(html).toContain('<th scope="col">French</th>');
+    expect(html).toContain('color: var(--opportunity-you-color, var(--you));');
+    expect(html).toContain('color: var(--opportunity-opponent-color, var(--opponent));');
   });
 });

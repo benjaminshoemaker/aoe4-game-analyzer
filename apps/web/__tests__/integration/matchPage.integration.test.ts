@@ -7,24 +7,24 @@ const buildPostMatchHoverPayload = jest.fn();
 const renderPostMatchHtml = jest.fn();
 const buildWinProbabilityExamples = jest.fn();
 
-jest.mock('../../src/lib/aoe4/parser/gameSummaryParser', () => ({
+jest.mock('@aoe4/analyzer-core/parser/gameSummaryParser', () => ({
   fetchGameSummaryFromApi: (...args: unknown[]) => fetchGameSummaryFromApi(...args),
 }));
 
-jest.mock('../../src/lib/aoe4/analysis/gameAnalysis', () => ({
+jest.mock('@aoe4/analyzer-core/analysis/gameAnalysis', () => ({
   analyzeGame: (...args: unknown[]) => analyzeGame(...args),
 }));
 
-jest.mock('../../src/lib/aoe4/analysis/postMatchViewModel', () => ({
+jest.mock('@aoe4/analyzer-core/analysis/postMatchViewModel', () => ({
   buildPostMatchViewModel: (...args: unknown[]) => buildPostMatchViewModel(...args),
 }));
 
-jest.mock('../../src/lib/aoe4/formatters/postMatchHtml', () => ({
+jest.mock('@aoe4/analyzer-core/formatters/postMatchHtml', () => ({
   buildPostMatchHoverPayload: (...args: unknown[]) => buildPostMatchHoverPayload(...args),
   renderPostMatchHtml: (...args: unknown[]) => renderPostMatchHtml(...args),
 }));
 
-jest.mock('../../src/lib/aoe4/analysis/winProbability', () => ({
+jest.mock('@aoe4/analyzer-core/analysis/winProbability', () => ({
   WIN_PROBABILITY_FEATURE_SCHEMA_VERSION: 'wp-state-v1',
   buildWinProbabilityExamples: (...args: unknown[]) => buildWinProbabilityExamples(...args),
 }));
@@ -88,6 +88,7 @@ describe('buildMatchHtml integration', () => {
     });
     expect(renderPostMatchHtml).toHaveBeenCalledWith(model, {
       hoverDataUrl: '/matches/my-slug/230143339/hover-data?sig=abc123',
+      webVitalsScript: expect.stringContaining('/api/web-vitals'),
     });
     expect(html).toBe('<html>ok</html>');
   });

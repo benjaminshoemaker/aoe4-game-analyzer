@@ -120,7 +120,7 @@ describe('post-match view integration', () => {
     ]));
     expect(model.oneLineStory.length).toBeGreaterThan(0);
 
-    const html = renderPostMatchHtml(model);
+    const html = renderPostMatchHtml(model, { surface: 'full' });
 
     const sections = [
       'Match recap',
@@ -214,8 +214,8 @@ describe('post-match view integration', () => {
     expect(html).toContain('data-total-pool-tooltip');
     expect(html).toContain('Total net pool');
     expect(html).toContain('Age timings');
-    expect(html).toContain('You Feudal 3:20');
-    expect(html).toContain('Opponent Castle 10:00');
+    expect(html).toContain('PlayerOne · English Feudal 3:20');
+    expect(html).toContain('PlayerTwo · French Castle 10:00');
     expect(html).toContain('id="hover-inspector"');
     expect(html).toContain('id="post-match-hover-data"');
     expect(html).toContain('data-hover-timestamp="200"');
@@ -242,6 +242,8 @@ describe('post-match view integration', () => {
 
     const hoverData = extractHoverData(html);
     const finalHover = hoverData[hoverData.length - 1];
+    expect(html).toContain("return entry.label + (Number.isFinite(count) && count > 0 ? ' (' + formatNumber(count) + ')' : '');");
+    expect(html).not.toContain("formatNumber(entry.value) + ' <small>('");
     expect(finalHover.allocation).toEqual(expect.objectContaining({
       destroyed: expect.objectContaining({ you: 0, opponent: 0, delta: 0 }),
       float: expect.objectContaining({
@@ -391,7 +393,11 @@ describe('post-match view integration', () => {
     fs.writeFileSync(cachePath, JSON.stringify(makeUnknownBucketStaticDataCache()), 'utf-8');
 
     const summary = parseGameSummary(makeUnknownBucketMechanicsFixture());
-    const analysis = await analyzeGame('111', 876543, { skipNarrative: true, summary });
+    const analysis = await analyzeGame('111', 876543, {
+      skipNarrative: true,
+      summary,
+      staticData: makeUnknownBucketStaticDataCache(),
+    });
 
     const deltas = analysis.deployedResourcePools.player1.bandItemDeltas ?? [];
     expect(deltas).toEqual(expect.arrayContaining([
@@ -426,7 +432,7 @@ describe('post-match view integration', () => {
       perspectiveProfileId: '111-playerone',
       summarySig: 'abc123sig',
     });
-    const html = renderPostMatchHtml(model);
+    const html = renderPostMatchHtml(model, { surface: 'full' });
     const hoverPoint = model.trajectory.hoverSnapshots.find(point => point.timestamp === 415);
     const hoverPayload = extractHoverData(html);
     const renderedEconomicSnapshot = hoverPayload.find(point => point.timestamp === 415);
@@ -459,7 +465,11 @@ describe('post-match view integration', () => {
     fs.writeFileSync(cachePath, JSON.stringify(makeSplitVillagerStaticDataCache()), 'utf-8');
 
     const summary = parseGameSummary(makeSplitVillagerDeathsFixture());
-    const analysis = await analyzeGame('111', 765432, { skipNarrative: true, summary });
+    const analysis = await analyzeGame('111', 765432, {
+      skipNarrative: true,
+      summary,
+      staticData: makeSplitVillagerStaticDataCache(),
+    });
 
     const model = buildPostMatchViewModel({
       summary,
@@ -467,7 +477,7 @@ describe('post-match view integration', () => {
       perspectiveProfileId: '111-playerone',
       summarySig: 'abc123sig',
     });
-    const html = renderPostMatchHtml(model);
+    const html = renderPostMatchHtml(model, { surface: 'full' });
     const hoverData = extractHoverData(html);
     const point = hoverData.find(snapshot => snapshot.timestamp === 150);
     const opponentVillager = point?.bandBreakdown?.economic?.opponent?.find(
@@ -479,6 +489,8 @@ describe('post-match view integration', () => {
       value: 450,
       count: 9,
     }));
+    expect(html).toContain("return entry.label + (Number.isFinite(count) && count > 0 ? ' (' + formatNumber(count) + ')' : '');");
+    expect(html).not.toContain("formatNumber(entry.value) + ' <small>('");
     expect(point?.accounting?.opponent).toEqual(expect.objectContaining({
       economic: 500,
       destroyed: 50,
@@ -487,7 +499,7 @@ describe('post-match view integration', () => {
     expect(point?.allocation?.destroyed).toEqual(expect.objectContaining({
       opponent: 50,
     }));
-    expect(point?.bandBreakdown?.destroyed?.opponent).toEqual([
+    expect(point?.bandBreakdown?.economicDestroyed?.opponent).toEqual([
       expect.objectContaining({
         label: 'Villager',
         value: 50,

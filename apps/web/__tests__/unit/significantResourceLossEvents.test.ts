@@ -1,7 +1,7 @@
-import { detectSignificantResourceLossEvents } from '../../src/lib/aoe4/analysis/significantResourceLossEvents';
-import { DeployedResourcePools, PoolSeriesPoint } from '../../src/lib/aoe4/analysis/resourcePool';
-import { ResolvedBuildItem, ResolvedBuildOrder } from '../../src/lib/aoe4/parser/buildOrderResolver';
-import { GameSummary, PlayerSummary, TimeSeriesResources } from '../../src/lib/aoe4/parser/gameSummaryParser';
+import { detectSignificantResourceLossEvents } from '@aoe4/analyzer-core/analysis/significantResourceLossEvents';
+import { DeployedResourcePools, PoolSeriesPoint } from '@aoe4/analyzer-core/analysis/resourcePool';
+import { ResolvedBuildItem, ResolvedBuildOrder } from '@aoe4/analyzer-core/parser/buildOrderResolver';
+import { GameSummary, PlayerSummary, TimeSeriesResources } from '@aoe4/analyzer-core/parser/gameSummaryParser';
 
 const zeroTotals = { food: 0, wood: 0, gold: 0, stone: 0, total: 0 };
 const zeroScores = { total: 0, military: 0, economy: 0, technology: 0, society: 0 };

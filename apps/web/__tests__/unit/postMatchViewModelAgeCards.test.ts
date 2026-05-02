@@ -1,8 +1,8 @@
-import { buildPostMatchViewModel } from '../../src/lib/aoe4/analysis/postMatchViewModel';
-import { GameAnalysis } from '../../src/lib/aoe4/analysis/types';
-import { GameSummary, PlayerSummary, ResourceTotals, TimeSeriesResources } from '../../src/lib/aoe4/parser/gameSummaryParser';
-import { BandItemDeltaEvent, PoolSeriesPoint } from '../../src/lib/aoe4/analysis/resourcePool';
-import { SignificantResourceLossEvent } from '../../src/lib/aoe4/analysis/significantResourceLossEvents';
+import { buildPostMatchViewModel } from '@aoe4/analyzer-core/analysis/postMatchViewModel';
+import { GameAnalysis } from '@aoe4/analyzer-core/analysis/types';
+import { GameSummary, PlayerSummary, ResourceTotals, TimeSeriesResources } from '@aoe4/analyzer-core/parser/gameSummaryParser';
+import { BandItemDeltaEvent, PoolSeriesPoint } from '@aoe4/analyzer-core/analysis/resourcePool';
+import { SignificantResourceLossEvent } from '@aoe4/analyzer-core/analysis/significantResourceLossEvents';
 
 const zeroTotals: ResourceTotals = {
   food: 0,

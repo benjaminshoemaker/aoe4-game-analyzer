@@ -23,6 +23,41 @@ function extractHoverData(html: string): any[] {
   return JSON.parse(match[1]);
 }
 
+function expectCompositionRow(
+  html: string,
+  entry: { label: string; value: number; count?: number }
+): void {
+  const labelWithCount = typeof entry.count === 'number'
+    ? `${entry.label} (${Math.round(entry.count).toLocaleString('en-US')})`
+    : entry.label;
+  const escapedLabel = labelWithCount.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const total = Math.round(entry.value).toLocaleString('en-US');
+
+  expect(html).toMatch(new RegExp(
+    `<span class="band-item-label band-item-label-truncated" title="${escapedLabel}" tabindex="0">${escapedLabel}</span>\\s*` +
+    `<span class="band-item-metric">${total}</span>`
+  ));
+  expect(html).not.toContain(`<span class="band-item-metric">${total} <small>`);
+}
+
+function testPlayerDisplay(
+  name: string,
+  civilization: string,
+  color: string
+): PostMatchViewModel['header']['youPlayer'] {
+  return {
+    name,
+    civilization,
+    label: `${name} · ${civilization}`,
+    shortLabel: name,
+    compactLabel: civilization,
+    compactShortLabel: civilization,
+    ageLabel: `${name} · ${civilization}`,
+    ageShortLabel: name,
+    color,
+  };
+}
+
 describe('renderPostMatchHtml', () => {
   it('maps deployed pool bands into allocation categories', () => {
     expect(buildAllocationCategories({
@@ -44,6 +79,7 @@ describe('renderPostMatchHtml', () => {
       destroyed: 40,
       overall: 435,
       float: 125,
+      opportunityLost: 0,
     });
   });
 
@@ -160,6 +196,10 @@ describe('renderPostMatchHtml', () => {
         summaryUrl: 'https://aoe4world.com/players/111/games/123456',
         youCivilization: 'English',
         opponentCivilization: 'French',
+        youPlayer: testPlayerDisplay('You', 'English', '#378ADD'),
+        opponentPlayer: testPlayerDisplay('Opponent', 'French', '#D85A30'),
+        player1: testPlayerDisplay('You', 'English', '#378ADD'),
+        player2: testPlayerDisplay('Opponent', 'French', '#D85A30'),
         outcome: 'Defeated 10:00',
       },
       deferredBanner: null,
@@ -178,6 +218,7 @@ describe('renderPostMatchHtml', () => {
           economicPercent: 30,
           militaryPercent: 35,
         },
+        ageAnalyses: [],
       },
       trajectory: {
         durationSeconds: 600,
@@ -610,7 +651,7 @@ describe('renderPostMatchHtml', () => {
     (model.trajectory as any).significantEvents = [significantEvent];
     (model.trajectory.hoverSnapshots[0] as any).significantEvent = significantEvent;
 
-    const html = renderPostMatchHtml(model);
+    const html = renderPostMatchHtml(model, { surface: 'full' });
 
     expect(html).toContain('Allocation lead and mix over time');
     expect(html.indexOf('Allocation lead and mix over time')).toBeLessThan(html.indexOf('Gather rate'));
@@ -638,8 +679,8 @@ describe('renderPostMatchHtml', () => {
     expect(html).toContain('class="allocation-lane allocation-lane-float"');
     expect(html).not.toContain('Overall resources');
     expect(html).not.toContain('Economic share');
-    expect(html).toContain('grid-template-columns: minmax(0, 1fr) clamp(300px, 30vw, 340px);');
-    expect(html).toContain('.wrap {\n      width: min(100%, 1240px);');
+    expect(html).toContain('grid-template-columns: minmax(0, 1fr) clamp(var(--inspector-min-width), 32vw, var(--inspector-max-width));');
+    expect(html).toContain('.wrap {\n      width: min(100%, var(--report-max-width));');
     expect(html).toContain('.panel {\n      min-width: 0;');
     expect(html).toContain('.civ-chip {\n      display: inline-flex;');
     expect(html).toContain('max-width: 100%;\n      overflow-wrap: anywhere;');
@@ -649,7 +690,7 @@ describe('renderPostMatchHtml', () => {
     expect(html).toContain('.chips { flex-direction: column; align-items: stretch; }');
     expect(html).toContain('.civ-chip { width: 100%; }');
     expect(html).toContain('.metrics { grid-template-columns: 1fr; }');
-    expect(html).toContain('.chart-stack .leader-strip,\n      .chart-stack .strategy-chart { min-width: 680px; }');
+    expect(html).toContain('.chart-stack .leader-strip,\n      .chart-stack .strategy-chart { min-width: 0; }');
     expect(html).toContain('font-size: 13px;');
     expect(html).toContain('font-size: 14px;');
     expect(html).toContain('class="panel secondary-panel" data-secondary-section="gather-rate"');
@@ -787,7 +828,8 @@ describe('renderPostMatchHtml', () => {
     expect(html).toContain('@media (max-width: 760px)');
     expect(html).toContain('content: attr(data-cell-label);');
     expect(html).toContain('class="band-item-label band-item-label-truncated"');
-    expect(html).toContain('title="Villager" tabindex="0"');
+    expectCompositionRow(html, { label: 'Villager', value: 30, count: 1 });
+    expectCompositionRow(html, { label: 'Farm', value: 20, count: 1 });
     expect(html).not.toContain('<li class="band-breakdown-group">Resource generators</li>');
     expect(html).not.toContain('<li class="band-breakdown-group">Resource infrastructure</li>');
     expect(html).toContain('.inspector-table-wrap:focus-visible');
@@ -882,6 +924,10 @@ describe('renderPostMatchHtml', () => {
         summaryUrl: 'https://aoe4world.com/players/111/games/123456',
         youCivilization: 'Abbasid Dynasty',
         opponentCivilization: 'Abbasid Dynasty',
+        youPlayer: testPlayerDisplay('You', 'Abbasid Dynasty', '#378ADD'),
+        opponentPlayer: testPlayerDisplay('Opponent', 'Abbasid Dynasty', '#D85A30'),
+        player1: testPlayerDisplay('You', 'Abbasid Dynasty', '#378ADD'),
+        player2: testPlayerDisplay('Opponent', 'Abbasid Dynasty', '#D85A30'),
         outcome: 'Defeated 2:00',
       },
       deferredBanner: null,
@@ -890,6 +936,7 @@ describe('renderPostMatchHtml', () => {
         castleAgeDeltaSeconds: null,
         yourBet: null,
         opponentBet: null,
+        ageAnalyses: [],
       },
       trajectory: {
         durationSeconds: 120,

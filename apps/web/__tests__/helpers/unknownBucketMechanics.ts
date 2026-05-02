@@ -1,4 +1,4 @@
-import { StaticDataCache } from '../../src/lib/aoe4/types';
+import { StaticDataCache } from '@aoe4/analyzer-core/types';
 
 const zeroStats = {
   ekills: 0,

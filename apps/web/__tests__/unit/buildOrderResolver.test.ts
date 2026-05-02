@@ -1,7 +1,7 @@
-import { buildPlayerDeployedPoolSeries } from '../../src/lib/aoe4/analysis/resourcePool';
-import { resolveAllBuildOrders } from '../../src/lib/aoe4/parser/buildOrderResolver';
-import { BuildOrderEntry, PlayerSummary, TimeSeriesResources } from '../../src/lib/aoe4/parser/gameSummaryParser';
-import { StaticDataCache } from '../../src/lib/aoe4/types';
+import { buildPlayerDeployedPoolSeries } from '@aoe4/analyzer-core/analysis/resourcePool';
+import { resolveAllBuildOrders } from '@aoe4/analyzer-core/parser/buildOrderResolver';
+import { BuildOrderEntry, PlayerSummary, TimeSeriesResources } from '@aoe4/analyzer-core/parser/gameSummaryParser';
+import { StaticDataCache } from '@aoe4/analyzer-core/types';
 
 function makeResources(): TimeSeriesResources {
   return {

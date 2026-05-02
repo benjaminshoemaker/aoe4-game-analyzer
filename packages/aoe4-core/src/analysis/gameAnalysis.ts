@@ -11,11 +11,13 @@ import { buildDeployedResourcePools } from './resourcePool';
 import { buildCombatAdjustedSeries } from './combatAdjustedMilitary';
 import { detectSignificantResourceLossEvents } from './significantResourceLossEvents';
 import { GameAnalysis, PlayerAnalysisSummary } from './types';
+import { StaticDataCache } from '../types';
 
 export interface AnalyzeOptions {
   sig?: string;
   skipNarrative?: boolean;
   summary?: GameSummary;
+  staticData?: StaticDataCache;
 }
 
 function buildPlayerSummary(
@@ -46,7 +48,7 @@ export async function analyzeGame(
     throw new Error(`Analysis requires at least 2 players, but this game has ${summary.players.length}`);
   }
 
-  const staticData = await loadStaticData();
+  const staticData = options.staticData ?? await loadStaticData();
 
   const player1 = summary.players[0];
   const player2 = summary.players[1];

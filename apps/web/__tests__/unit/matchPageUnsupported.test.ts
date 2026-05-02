@@ -1,5 +1,5 @@
 import { getUnsupportedMatchMessage } from '../../src/lib/matchPage';
-import { GameSummary } from '../../src/lib/aoe4/parser/gameSummaryParser';
+import { GameSummary } from '@aoe4/analyzer-core/parser/gameSummaryParser';
 
 function summaryWithCivilizations(civilizations: string[]): GameSummary {
   return {

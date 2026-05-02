@@ -1,18 +1,18 @@
 const mockFetchGameSummaryFromApi = jest.fn();
 const mockLoadStaticData = jest.fn();
 
-jest.mock('../../src/lib/aoe4/parser/gameSummaryParser', () => ({
-  ...jest.requireActual('../../src/lib/aoe4/parser/gameSummaryParser'),
+jest.mock('@aoe4/analyzer-core/parser/gameSummaryParser', () => ({
+  ...jest.requireActual('@aoe4/analyzer-core/parser/gameSummaryParser'),
   fetchGameSummaryFromApi: (...args: unknown[]) => mockFetchGameSummaryFromApi(...args),
 }));
 
-jest.mock('../../src/lib/aoe4/data/fetchStaticData', () => ({
+jest.mock('@aoe4/analyzer-core/data/fetchStaticData', () => ({
   loadStaticData: (...args: unknown[]) => mockLoadStaticData(...args),
 }));
 
 import { GET } from '../../src/app/matches/[profileSlug]/[gameId]/route';
 import { GET as GET_HOVER_DATA } from '../../src/app/matches/[profileSlug]/[gameId]/hover-data/route';
-import { parseGameSummary } from '../../src/lib/aoe4/parser/gameSummaryParser';
+import { parseGameSummary } from '@aoe4/analyzer-core/parser/gameSummaryParser';
 import {
   makeUnknownBucketStaticData,
   makeUnknownBucketSummary,

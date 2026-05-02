@@ -115,8 +115,8 @@ describe('post-match render CLI end-to-end', () => {
     expect(html).toContain('Total net pool');
     expect(html).toContain('Economic net + Technology net + Military net + Other net = Total pool');
     expect(html).toContain('Age timings');
-    expect(html).toContain('You Feudal 3:20');
-    expect(html).toContain('Opponent Castle 10:00');
+    expect(html).toContain('PlayerOne · English Feudal 3:20');
+    expect(html).toContain('PlayerTwo · French Castle 10:00');
     expect(html).toContain('id="hover-inspector"');
     expect(html).toContain('id="post-match-hover-data"');
     expect(html).toContain('data-hover-timestamp="200"');
@@ -181,6 +181,8 @@ describe('post-match render CLI end-to-end', () => {
     expect(html).not.toContain('"label":"Wheelbarrow (1)"');
     expect(html).toContain('function updateInspector');
     expect(html).toContain('Click to pin');
+    expect(html).toContain("return entry.label + (Number.isFinite(count) && count > 0 ? ' (' + formatNumber(count) + ')' : '');");
+    expect(html).not.toContain("formatNumber(entry.value) + ' <small>('");
     expect(html).not.toContain('Deployed resource pool over time');
     expect(html).not.toContain('Strategic allocation state');
     expect(html).not.toContain('id="pool-comparison"');
@@ -270,7 +272,9 @@ describe('post-match render CLI end-to-end', () => {
       value: 450,
       count: 9,
     }));
-    expect(point?.bandBreakdown?.destroyed?.opponent).toEqual([
+    expect(html).toContain("return entry.label + (Number.isFinite(count) && count > 0 ? ' (' + formatNumber(count) + ')' : '');");
+    expect(html).not.toContain("formatNumber(entry.value) + ' <small>('");
+    expect(point?.bandBreakdown?.economicDestroyed?.opponent).toEqual([
       expect.objectContaining({
         label: 'Villager',
         value: 50,

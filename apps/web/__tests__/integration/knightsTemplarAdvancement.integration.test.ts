@@ -1,7 +1,7 @@
-import { buildDeployedResourcePools } from '../../src/lib/aoe4/analysis/resourcePool';
-import { resolveAllBuildOrders } from '../../src/lib/aoe4/parser/buildOrderResolver';
-import { parseGameSummary } from '../../src/lib/aoe4/parser/gameSummaryParser';
-import { StaticDataCache } from '../../src/lib/aoe4/types';
+import { buildDeployedResourcePools } from '@aoe4/analyzer-core/analysis/resourcePool';
+import { resolveAllBuildOrders } from '@aoe4/analyzer-core/parser/buildOrderResolver';
+import { parseGameSummary } from '@aoe4/analyzer-core/parser/gameSummaryParser';
+import { StaticDataCache } from '@aoe4/analyzer-core/types';
 
 const zeroStats = {
   ekills: 0,

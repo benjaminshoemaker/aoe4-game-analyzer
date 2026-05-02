@@ -1,7 +1,7 @@
 import {
   buildPostMatchHoverPayload,
   renderPostMatchHtml,
-} from '../../src/lib/aoe4/formatters/postMatchHtml';
+} from '@aoe4/analyzer-core/formatters/postMatchHtml';
 import {
   addVerboseOpportunityLostBuckets,
   makeMvpModelFixture,

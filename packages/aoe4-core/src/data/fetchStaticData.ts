@@ -2,7 +2,7 @@ import axios from 'axios';
 import { StaticDataCache, Unit, Building, Technology } from '../types';
 
 const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
-const STATIC_DATA_USER_AGENT = 'aoe4-game-analyzer-web/0.1 static-data-loader';
+const STATIC_DATA_USER_AGENT = 'aoe4-game-analyzer-core/0.1 static-data-loader';
 let inMemoryCache: StaticDataCache | null = null;
 
 function normalizeList<T>(value: unknown): T[] {

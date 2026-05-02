@@ -273,11 +273,46 @@ describe('buildAgeMarkers', () => {
     const markers = buildAgeMarkers(summary, 0);
 
     expect(markers).toEqual([
-      expect.objectContaining({ player: 'you', age: 'Feudal', timestamp: 210, label: 'You Feudal 3:30' }),
-      expect.objectContaining({ player: 'opponent', age: 'Feudal', timestamp: 240, label: 'Opponent Feudal 4:00' }),
-      expect.objectContaining({ player: 'you', age: 'Castle', timestamp: 520, label: 'You Castle 8:40' }),
-      expect.objectContaining({ player: 'opponent', age: 'Castle', timestamp: 610, label: 'Opponent Castle 10:10' }),
-      expect.objectContaining({ player: 'you', age: 'Imperial', timestamp: 900, label: 'You Imperial 15:00' }),
+      expect.objectContaining({
+        player: 'you',
+        age: 'Feudal',
+        timestamp: 210,
+        label: 'Player 1 · Player 1 Feudal 3:30',
+        shortLabel: 'Player 1 Feudal',
+        timeLabel: '3:30',
+      }),
+      expect.objectContaining({
+        player: 'opponent',
+        age: 'Feudal',
+        timestamp: 240,
+        label: 'Player 2 · Player 2 Feudal 4:00',
+        shortLabel: 'Player 2 Feudal',
+        timeLabel: '4:00',
+      }),
+      expect.objectContaining({
+        player: 'you',
+        age: 'Castle',
+        timestamp: 520,
+        label: 'Player 1 · Player 1 Castle 8:40',
+        shortLabel: 'Player 1 Castle',
+        timeLabel: '8:40',
+      }),
+      expect.objectContaining({
+        player: 'opponent',
+        age: 'Castle',
+        timestamp: 610,
+        label: 'Player 2 · Player 2 Castle 10:10',
+        shortLabel: 'Player 2 Castle',
+        timeLabel: '10:10',
+      }),
+      expect.objectContaining({
+        player: 'you',
+        age: 'Imperial',
+        timestamp: 900,
+        label: 'Player 1 · Player 1 Imperial 15:00',
+        shortLabel: 'Player 1 Imperial',
+        timeLabel: '15:00',
+      }),
     ]);
   });
 });

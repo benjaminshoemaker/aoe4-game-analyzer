@@ -1,9 +1,9 @@
-import { GameSummary } from '../../src/lib/aoe4/parser/gameSummaryParser';
+import { GameSummary } from '@aoe4/analyzer-core/parser/gameSummaryParser';
 import { makeMvpModelFixture } from '../helpers/mvpModelFixture';
 import {
   buildMatchSkillBracket,
   buildWinProbabilityExamples,
-} from '../../src/lib/aoe4/analysis/winProbability';
+} from '@aoe4/analyzer-core/analysis/winProbability';
 
 function makeSummary(): GameSummary {
   const emptyResources = {

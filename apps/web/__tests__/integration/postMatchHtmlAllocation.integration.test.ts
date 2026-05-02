@@ -1,4 +1,4 @@
-import { renderPostMatchHtml } from '../../src/lib/aoe4/formatters/postMatchHtml';
+import { renderPostMatchHtml } from '@aoe4/analyzer-core/formatters/postMatchHtml';
 import {
   addVerboseOpportunityLostBuckets,
   makeMvpModelFixture,
@@ -322,10 +322,15 @@ describe('post-match allocation widget integration', () => {
       delta: 1475,
     }));
     expect(html).toContain('data-opportunity-lost-components');
-    expect(html).toContain('<table class="opportunity-lost-components" data-opportunity-lost-components hidden>');
+    expect(html).toContain('<table class="opportunity-lost-components" data-opportunity-lost-components aria-label="Opportunity lost components by civilization" style="--opportunity-you-color:#378ADD;--opportunity-opponent-color:#D85A30" hidden>');
+    expect(html).toContain('aria-label="Opportunity lost components by civilization"');
     expect(html).toContain('<th scope="col">English</th>');
     expect(html).toContain('<th scope="col">French</th>');
+    expect(html).toContain('<th scope="col">Gap</th>');
+    expect(html).toContain('data-opportunity-lost-component="total"');
+    expect(html).toContain('<th scope="row">Total</th>');
     expect(html).toContain('data-opportunity-lost-component="underproduction"');
-    expect(html).toContain('Villager underproduction');
+    expect(html).toContain('<span title="Villager underproduction">Under-production</span>');
+    expect(html).not.toContain('<th scope="row">Villager underproduction</th>');
   });
 });

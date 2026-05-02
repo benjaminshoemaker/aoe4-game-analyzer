@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "next dev",
+    "prebuild": "npm --prefix ../.. --workspace @aoe4/analyzer-core run build",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
@@ -16,10 +17,12 @@
     "test:unit": "jest --runInBand __tests__/unit",
     "test:integration": "jest --runInBand __tests__/integration",
     "test:e2e": "jest --runInBand __tests__/e2e",
-    "verify": "npm run check:no-root-imports && npm run typecheck && npm run test"
+    "check:core-boundary": "npm --prefix ../.. run check:core-boundary",
+    "verify": "npm run check:no-root-imports && npm run check:core-boundary && npm run typecheck && npm run test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",
+    "@aoe4/analyzer-core": "0.1.0",
     "axios": "^1.6.8",
     "next": "^16.2.4",
     "react": "^18.2.0",
@@ -54,6 +57,10 @@
     "testMatch": [
       "**/__tests__/**/*.(test|spec).ts"
     ],
+    "moduleNameMapper": {
+      "^@aoe4/analyzer-core$": "<rootDir>/../../packages/aoe4-core/src",
+      "^@aoe4/analyzer-core/(.*)$": "<rootDir>/../../packages/aoe4-core/src/$1"
+    },
     "coveragePathIgnorePatterns": [
       "/node_modules/",
       "/.next/"

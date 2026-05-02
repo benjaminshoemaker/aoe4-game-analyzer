@@ -1,15 +1,24 @@
 {
   "name": "aoe4-game-analyzer",
   "version": "0.1.0",
+  "private": true,
   "description": "CLI tool for fetching and inspecting static Age of Empires IV data",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "bin": {
     "aoe4-analyze": "dist/index.js"
   },
   "scripts": {
     "cli": "ts-node src/index.ts",
+    "check:core-boundary": "node scripts/check-aoe4-core-boundary.mjs",
+    "prebuild": "npm --workspace @aoe4/analyzer-core run build",
     "build": "tsc -p tsconfig.json",
+    "pretest": "npm --workspace @aoe4/analyzer-core run build",
     "test": "jest --runInBand",
-    "test:watch": "jest --watch --runInBand"
+    "test:watch": "jest --watch --runInBand",
+    "verify": "npm run check:core-boundary && npm run build && npm test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",

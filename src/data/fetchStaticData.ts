@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import axios from 'axios';
 import { StaticDataCache, Unit, Building, Technology } from '../types';
 
 const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -56,19 +55,10 @@ async function writeCache(cache: StaticDataCache): Promise<void> {
 }
 
 export async function fetchAndCacheStaticData(): Promise<StaticDataCache> {
-  const [unitsResponse, buildingsResponse, technologiesResponse] = await Promise.all([
-    axios.get<Unit[]>('https://data.aoe4world.com/units/all.json'),
-    axios.get<Building[]>('https://data.aoe4world.com/buildings/all.json'),
-    axios.get<Technology[]>('https://data.aoe4world.com/technologies/all.json')
-  ]);
-
-  const cache: StaticDataCache = normalizeStaticDataCache({
-    units: unitsResponse.data ?? [],
-    buildings: buildingsResponse.data ?? [],
-    technologies: technologiesResponse.data ?? [],
-    fetchedAt: new Date().toISOString()
-  });
-
+  const { fetchAndCacheStaticData: fetchStaticDataFromAoe4World } = require('@aoe4/analyzer-core/data/fetchStaticData') as {
+    fetchAndCacheStaticData: () => Promise<StaticDataCache>;
+  };
+  const cache = await fetchStaticDataFromAoe4World();
   await writeCache(cache);
   return cache;
 }
