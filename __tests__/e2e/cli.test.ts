@@ -10,6 +10,7 @@ import {
 const projectRoot = path.resolve(__dirname, '..', '..');
 const cliEntry = path.resolve(projectRoot, 'src/index.ts');
 const cachePath = path.resolve(projectRoot, 'src/data/staticData.json');
+const coreDistPath = path.resolve(projectRoot, 'packages/aoe4-core/dist');
 const tsNodeRegister = require.resolve('ts-node/register');
 const setupNock = path.resolve(projectRoot, '__tests__/helpers/setupNock.ts');
 const tmpDir = path.resolve(projectRoot, 'tmp');
@@ -42,6 +43,8 @@ describe('CLI end-to-end', () => {
   });
 
   it('fetch-data downloads and caches data', () => {
+    fs.rmSync(coreDistPath, { recursive: true, force: true });
+
     const result = runCli(['fetch-data']);
 
     expect(result.status).toBe(0);
@@ -171,8 +174,10 @@ describe('CLI end-to-end', () => {
     ]);
 
     expect(result.status).toBe(0);
-    expect(result.stdout).toContain('Unknown build-order bucket audit: 13 handled, 1 ignored, 0 need review');
+    expect(result.stdout).toContain('Unknown build-order bucket audit: 23 handled, 1 ignored, 0 need review');
     expect(result.stdout).toContain('Trade Caravan');
+    expect(result.stdout).toContain('Fishing Boat');
+    expect(result.stdout).toContain('Trader');
     expect(result.stdout).toContain('Pilgrim');
     expect(result.stdout).toContain('Yatai bucket 15 handled');
     expect(result.stdout).toContain('Trade Cart bucket 15 ignored');

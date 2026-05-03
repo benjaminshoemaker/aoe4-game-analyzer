@@ -315,6 +315,93 @@ describe('detectSignificantResourceLossEvents', () => {
     }));
   });
 
+  it('counts upgraded-row deaths against the active unit line at base value', () => {
+    const hardenedSpearman = {
+      originalEntry: {
+        id: 'hardened-spearman',
+        icon: 'icons/races/common/units/spearman_2',
+        pbgid: 7,
+        type: 'Unit' as const,
+        finished: [10, 20, 30],
+        constructed: [],
+        destroyed: [],
+      },
+      type: 'unit' as const,
+      id: 'spearman-2',
+      baseId: 'spearman',
+      name: 'Hardened Spearman',
+      cost: { food: 60, wood: 20, gold: 0, stone: 0, total: 80 },
+      tier: 2,
+      tierMultiplier: 1.2,
+      classes: ['military', 'infantry', 'spearman'],
+      produced: [10, 20, 30],
+      destroyed: [],
+      civs: ['en'],
+    };
+    const veteranSpearman = {
+      originalEntry: {
+        id: 'veteran-spearman',
+        icon: 'icons/races/common/units/spearman_3',
+        pbgid: 8,
+        type: 'Unit' as const,
+        finished: [100],
+        constructed: [],
+        destroyed: [90, 110, 120],
+      },
+      type: 'unit' as const,
+      id: 'spearman-3',
+      baseId: 'spearman',
+      name: 'Veteran Spearman',
+      cost: { food: 60, wood: 20, gold: 0, stone: 0, total: 80 },
+      tier: 3,
+      tierMultiplier: 1.35,
+      classes: ['military', 'infantry', 'spearman'],
+      produced: [100],
+      destroyed: [90, 110, 120],
+      civs: ['en'],
+    };
+
+    const events = detectSignificantResourceLossEvents({
+      summary: summary(140),
+      deployedResourcePools: poolsFromSeries(
+        140,
+        [
+          point(0, 0),
+          point(30, 240),
+          point(90, 160),
+          point(100, 240),
+          point(110, 160),
+          point(120, 80),
+          point(140, 80),
+        ],
+        [point(0, 1000), point(140, 1000)]
+      ),
+      player1Build: { startingAssets: [], resolved: [hardenedSpearman, veteranSpearman], unresolved: [] },
+      player2Build: emptyBuild(),
+    });
+
+    expect(events[0]).toEqual(expect.objectContaining({
+      victimPlayer: 1,
+      kind: 'fight',
+      immediateLoss: 240,
+      grossLoss: 240,
+      preEncounterArmies: {
+        player1: {
+          totalValue: 240,
+          units: [expect.objectContaining({ label: 'Hardened Spearman', value: 240, count: 3 })],
+        },
+        player2: {
+          totalValue: 0,
+          units: [],
+        },
+      },
+    }));
+    expect(events[0].topLosses).toEqual([
+      expect.objectContaining({ label: 'Hardened Spearman', value: 160, count: 2 }),
+      expect.objectContaining({ label: 'Veteran Spearman', value: 80, count: 1 }),
+    ]);
+  });
+
   it('applies the absolute guard to trivial non-villager losses even when percentage is high', () => {
     const p2Build: ResolvedBuildOrder = {
       startingAssets: [],

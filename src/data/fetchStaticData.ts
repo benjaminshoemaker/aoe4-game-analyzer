@@ -54,11 +54,21 @@ async function writeCache(cache: StaticDataCache): Promise<void> {
   await fs.promises.writeFile(CACHE_FILE_PATH, JSON.stringify(normalizeStaticDataCache(cache), null, 2), 'utf-8');
 }
 
-export async function fetchAndCacheStaticData(): Promise<StaticDataCache> {
-  const { fetchAndCacheStaticData: fetchStaticDataFromAoe4World } = require('@aoe4/analyzer-core/data/fetchStaticData') as {
+function loadCoreStaticDataFetcher(): () => Promise<StaticDataCache> {
+  const sourcePath = path.resolve(__dirname, '../../packages/aoe4-core/src/data/fetchStaticData');
+  const distPath = path.resolve(__dirname, '../../packages/aoe4-core/dist/data/fetchStaticData');
+  const canLoadTsSource =
+    fs.existsSync(`${sourcePath}.ts`) &&
+    (Boolean(require.extensions['.ts']) || Boolean(process.env.JEST_WORKER_ID));
+  const modulePath = canLoadTsSource ? sourcePath : distPath;
+  const module = require(modulePath) as {
     fetchAndCacheStaticData: () => Promise<StaticDataCache>;
   };
-  const cache = await fetchStaticDataFromAoe4World();
+  return module.fetchAndCacheStaticData;
+}
+
+export async function fetchAndCacheStaticData(): Promise<StaticDataCache> {
+  const cache = await loadCoreStaticDataFetcher()();
   await writeCache(cache);
   return cache;
 }

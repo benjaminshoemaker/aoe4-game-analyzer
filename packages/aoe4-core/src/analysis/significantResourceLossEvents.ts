@@ -85,6 +85,18 @@ interface GrossLossEvent {
   value: number;
 }
 
+interface LossItemContext {
+  item: ResolvedBuildItem;
+  band: PoolBand;
+  value: number;
+  lineKey: string;
+  order: number;
+}
+
+interface LifecycleLossEvent extends LifecycleEvent {
+  context: LossItemContext;
+}
+
 interface CandidateWindow {
   victimPlayer: 1 | 2;
   start: number;
@@ -137,7 +149,7 @@ function itemMarketValue(item: ResolvedBuildItem): number {
     ? item.cost.total
     : override?.value ?? item.cost.total;
 
-  return baseCost * item.tierMultiplier;
+  return baseCost;
 }
 
 function hasNavalMilitaryProduction(build: ResolvedBuildOrder): boolean {
@@ -163,80 +175,175 @@ function buildLifecycleEvents(item: ResolvedBuildItem): LifecycleEvent[] {
   });
 }
 
-function buildGrossLossEvents(build: ResolvedBuildOrder): GrossLossEvent[] {
-  const context = { hasNavalMilitaryProduction: hasNavalMilitaryProduction(build) };
-  const events: GrossLossEvent[] = [];
+function normalizeLineToken(value: string): string {
+  return normalizeText(value)
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
 
-  for (const item of [...build.startingAssets, ...build.resolved]) {
-    const band = classifyResolvedItemBand(item, context);
+function stripTierSuffix(value: string): string {
+  return normalizeLineToken(value).replace(/-(?:1|2|3|4|5)$/, '');
+}
+
+function stripTierNamePrefix(value: string): string {
+  return normalizeLineToken(value).replace(/^(?:early|hardened|veteran|elite|imperial)-/, '');
+}
+
+function unitLineKey(item: ResolvedBuildItem): string {
+  if (item.type !== 'unit') return `${item.type}:${stripTierSuffix(item.id)}`;
+  if (item.baseId) return stripTierSuffix(item.baseId);
+
+  const idKey = stripTierSuffix(item.id);
+  if (idKey) return idKey;
+
+  return stripTierNamePrefix(item.name);
+}
+
+function activeCountForContext(activeCounts: Map<LossItemContext, number>, context: LossItemContext): number {
+  return activeCounts.get(context) ?? 0;
+}
+
+function findFallbackLossContext(
+  eventContext: LossItemContext,
+  contexts: LossItemContext[],
+  activeCounts: Map<LossItemContext, number>
+): LossItemContext | null {
+  if (eventContext.item.type !== 'unit') return null;
+
+  const eventTier = eventContext.item.tier;
+  const candidates = contexts
+    .filter(context =>
+      context.item.type === 'unit' &&
+      context !== eventContext &&
+      context.band === eventContext.band &&
+      context.lineKey === eventContext.lineKey &&
+      activeCountForContext(activeCounts, context) > 0
+    )
+    .sort((a, b) => {
+      const aAboveEventTier = a.item.tier > eventTier ? 1 : 0;
+      const bAboveEventTier = b.item.tier > eventTier ? 1 : 0;
+      if (aAboveEventTier !== bAboveEventTier) return aAboveEventTier - bAboveEventTier;
+      return b.item.tier - a.item.tier || b.order - a.order;
+    });
+
+  return candidates[0] ?? null;
+}
+
+function buildLossLifecycleContext(build: ResolvedBuildOrder): {
+  contexts: LossItemContext[];
+  events: LifecycleLossEvent[];
+} {
+  const classifierContext = { hasNavalMilitaryProduction: hasNavalMilitaryProduction(build) };
+  const contexts: LossItemContext[] = [];
+  const events: LifecycleLossEvent[] = [];
+
+  for (const [order, item] of [...build.startingAssets, ...build.resolved].entries()) {
+    const band = classifyResolvedItemBand(item, classifierContext);
     if (!band || band === 'research') continue;
 
     const value = itemMarketValue(item);
     if (!Number.isFinite(value) || value <= 0) continue;
 
-    let activeCount = 0;
-    for (const event of buildLifecycleEvents(item)) {
-      if (event.kind === 'produced') {
-        activeCount += 1;
-        continue;
-      }
+    const context: LossItemContext = {
+      item,
+      band,
+      value,
+      lineKey: unitLineKey(item),
+      order,
+    };
+    contexts.push(context);
+    events.push(...buildLifecycleEvents(item).map(event => ({ ...event, context })));
+  }
 
-      if (activeCount <= 0) continue;
-      activeCount -= 1;
-      events.push({
-        timestamp: event.timestamp,
-        band,
-        label: item.name,
-        value,
-      });
+  events.sort((a, b) => {
+    if (a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
+    if (a.kind !== b.kind) return a.kind === 'produced' ? -1 : 1;
+    return a.context.order - b.context.order;
+  });
+
+  return { contexts, events };
+}
+
+function buildGrossLossEvents(build: ResolvedBuildOrder): GrossLossEvent[] {
+  const { contexts, events: lifecycleEvents } = buildLossLifecycleContext(build);
+  const events: GrossLossEvent[] = [];
+  const activeCounts = new Map<LossItemContext, number>();
+
+  for (const event of lifecycleEvents) {
+    if (event.kind === 'produced') {
+      activeCounts.set(event.context, activeCountForContext(activeCounts, event.context) + 1);
+      continue;
     }
+
+    const lossContext = activeCountForContext(activeCounts, event.context) > 0
+      ? event.context
+      : findFallbackLossContext(event.context, contexts, activeCounts);
+    if (!lossContext) continue;
+
+    activeCounts.set(lossContext, activeCountForContext(activeCounts, lossContext) - 1);
+    events.push({
+      timestamp: event.timestamp,
+      band: lossContext.band,
+      label: lossContext.item.name,
+      value: lossContext.value,
+    });
   }
 
   return events.sort((a, b) => a.timestamp - b.timestamp || a.label.localeCompare(b.label));
 }
 
-function activeCountAtWindowStart(item: ResolvedBuildItem, timestamp: number): number {
-  let activeCount = 0;
-  for (const event of buildLifecycleEvents(item)) {
+function activeCountsAtWindowStart(
+  lifecycleEvents: LifecycleLossEvent[],
+  contexts: LossItemContext[],
+  timestamp: number
+): Map<LossItemContext, number> {
+  const activeCounts = new Map<LossItemContext, number>();
+
+  for (const event of lifecycleEvents) {
     if (event.timestamp > timestamp) break;
     if (event.kind === 'produced') {
-      activeCount += 1;
+      activeCounts.set(event.context, activeCountForContext(activeCounts, event.context) + 1);
       continue;
     }
 
-    if (event.timestamp < timestamp && activeCount > 0) {
-      activeCount -= 1;
+    if (event.timestamp < timestamp) {
+      const lossContext = activeCountForContext(activeCounts, event.context) > 0
+        ? event.context
+        : findFallbackLossContext(event.context, contexts, activeCounts);
+      if (lossContext) {
+        activeCounts.set(lossContext, activeCountForContext(activeCounts, lossContext) - 1);
+      }
     }
   }
-  return activeCount;
+
+  return activeCounts;
 }
 
 function buildMilitarySituationAtWindowStart(
   context: LossContext,
   timestamp: number
 ): SignificantResourceMilitarySituation {
-  const classifierContext = { hasNavalMilitaryProduction: hasNavalMilitaryProduction(context.build) };
+  const { contexts, events } = buildLossLifecycleContext(context.build);
+  const activeCounts = activeCountsAtWindowStart(events, contexts, timestamp);
   const byLabel = new Map<string, SignificantResourceLossItem>();
 
-  for (const item of [...context.build.startingAssets, ...context.build.resolved]) {
-    const band = classifyResolvedItemBand(item, classifierContext);
-    if (band !== 'militaryActive') continue;
-
-    const count = activeCountAtWindowStart(item, timestamp);
+  for (const itemContext of contexts) {
+    if (itemContext.band !== 'militaryActive') continue;
+    const count = activeCountForContext(activeCounts, itemContext);
     if (count <= 0) continue;
 
-    const value = itemMarketValue(item);
+    const value = itemContext.value;
     if (!Number.isFinite(value) || value <= 0) continue;
 
-    const existing = byLabel.get(item.name) ?? {
-      label: item.name,
+    const existing = byLabel.get(itemContext.item.name) ?? {
+      label: itemContext.item.name,
       value: 0,
       count: 0,
-      band,
+      band: itemContext.band,
     };
     existing.value += value * count;
     existing.count += count;
-    byLabel.set(item.name, existing);
+    byLabel.set(itemContext.item.name, existing);
   }
 
   const allUnits = [...byLabel.values()]
@@ -472,13 +579,6 @@ function classifyKind(impacts: [WindowImpact, WindowImpact], grossImpact: number
   if (militaryLoss >= Math.max(100, raidLoss, otherLoss)) return 'fight';
 
   return 'loss';
-}
-
-function formatTime(seconds: number): string {
-  const safe = Math.max(0, Math.round(seconds));
-  const mins = Math.floor(safe / 60);
-  const secs = safe % 60;
-  return `${mins}:${String(secs).padStart(2, '0')}`;
 }
 
 function labelForKind(kind: SignificantResourceLossKind): string {
