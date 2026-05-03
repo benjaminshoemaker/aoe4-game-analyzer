@@ -328,18 +328,15 @@ describe('renderPostMatchHtml (web mvp)', () => {
     const html = renderPostMatchHtml(makeMvpModelFixture());
 
     expect(html).toContain('Match recap');
-    expect(html.indexOf('Allocation lead and mix over time')).toBeLessThan(html.indexOf('Dark age'));
-    expect(html.indexOf('Dark age')).toBeLessThan(html.indexOf('Feudal age'));
-    expect(html.indexOf('Feudal age')).toBeLessThan(html.indexOf('Castle age'));
-    expect(html.indexOf('Castle age')).toBeLessThan(html.indexOf('Imperial age'));
-    expect(html.indexOf('Imperial age')).toBeLessThan(html.indexOf('Final pool delta'));
-    expect(html).toContain('Final pool delta');
-    expect(html).toContain('Gap widened: Tied -&gt; English +148.');
-    expect(html).toContain('Allocation: English led by Technology +100; Military was similar.');
-    expect(html).toContain('Destruction: neither player destroyed measurable value.');
-    expect(html).toContain('Meaning: No major conversion signal inside this shared window.');
-    expect(html).toContain('No shared window');
+    expect(html).not.toContain('<section class="panel metrics">');
+    expect(html).not.toContain('Dark age');
+    expect(html).not.toContain('Feudal age');
+    expect(html).not.toContain('Castle age');
+    expect(html).not.toContain('Imperial age');
+    expect(html).not.toContain('Final pool delta');
     expect(html).toContain('Allocation lead and mix over time');
+    expect(html).toContain('Age timings');
+    expect(html).toContain('How to read this chart');
     expect(html).toContain('id="allocation-leader-strip"');
     expect(html).toContain('id="allocation-comparison"');
     expect(html).toContain('data-allocation-leader-segment');
@@ -513,6 +510,9 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).toContain('.band-item-label-truncated {\n      display: block;');
     expect(html).toContain('white-space: normal;');
     expect(html).toContain('box-shadow: inset 3px 0 0 var(--you);');
+    expect(html).toContain('.band-toggle,\n    .allocation-category-toggle,\n    .band-sub-link {\n      min-height: 36px;');
+    expect(html).toContain('.band-toggle:hover,\n    .allocation-category-toggle:hover,\n    .band-sub-link:hover {');
+    expect(html).toContain('.allocation-category-toggle:focus-visible,\n    .band-toggle:focus-visible,\n    .band-sub-link:focus-visible,');
     expect(html).toContain('searchParams.set(\'t\'');
     expect(html).toContain('searchParams.delete(\'t\')');
 

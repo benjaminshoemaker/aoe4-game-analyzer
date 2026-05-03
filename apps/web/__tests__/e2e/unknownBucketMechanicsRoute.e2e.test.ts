@@ -66,8 +66,8 @@ describe('unknown build-order bucket match route e2e', () => {
 
     expect(hoverResponse.status).toBe(200);
     expect(economicSnapshot?.allocationCategory.economic).toEqual(expect.objectContaining({
-      resourceGeneration: expect.objectContaining({ you: 400 }),
-      resourceInfrastructure: expect.objectContaining({ you: 450 }),
+      resourceGeneration: expect.objectContaining({ you: 985 }),
+      resourceInfrastructure: expect.objectContaining({ you: 850 }),
     }));
     expect(economicSnapshot?.bandBreakdown.economic.you).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -76,8 +76,33 @@ describe('unknown build-order bucket match route e2e', () => {
         economicRole: 'resourceGenerator',
       }),
       expect.objectContaining({
+        label: 'Fishing Boat',
+        value: 225,
+        economicRole: 'resourceGenerator',
+      }),
+      expect.objectContaining({
+        label: 'Trader',
+        value: 360,
+        economicRole: 'resourceGenerator',
+      }),
+      expect.objectContaining({
         label: 'Imperial Official',
         value: 450,
+        economicRole: 'resourceInfrastructure',
+      }),
+      expect.objectContaining({
+        label: 'Pit Mine',
+        value: 150,
+        economicRole: 'resourceInfrastructure',
+      }),
+      expect.objectContaining({
+        label: 'Ger',
+        value: 100,
+        economicRole: 'resourceInfrastructure',
+      }),
+      expect.objectContaining({
+        label: 'Ovoo',
+        value: 150,
         economicRole: 'resourceInfrastructure',
       }),
       expect.objectContaining({

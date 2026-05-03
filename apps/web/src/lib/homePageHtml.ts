@@ -1,16 +1,8 @@
+import { escapeHtml } from '@aoe4/analyzer-core/formatters/sharedFormatters';
 import { embeddedAoeTokenCss } from './designTokens';
 
 const exampleUrl = 'https://aoe4world.com/players/111/games/123456';
 const faviconHref = "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='6'%20fill='%239b2f1f'/%3E%3Cpath%20d='M8%2022h16v3H8zM10%208h12l-2%2012h-8z'%20fill='%23fff9f5'/%3E%3C/svg%3E";
-
-function escapeHtml(input: string): string {
-  return input
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
 
 export function renderHomeHtml(errorText?: string | null): string {
   const escapedError = errorText ? escapeHtml(errorText) : '';

@@ -199,13 +199,15 @@ describe('post-match Core Web Vitals budget', () => {
   });
 
   it('inlines sampled hover data so interactions are ready without an external fetch gate', () => {
-    const html = renderPostMatchHtml(makePayloadHeavyModel(), {
-      hoverDataUrl: '/matches/my-slug/230143339/hover-data?sig=abc123',
-    });
+    const html = renderPostMatchHtml(makePayloadHeavyModel());
     const payload = extractHoverPayload(html);
 
+    expect(html).toContain('<link rel="icon" href="data:image/svg+xml');
     expect(html).not.toContain('id="post-match-hover-data-url"');
     expect(html).not.toContain('/matches/my-slug/230143339/hover-data?sig=abc123');
+    expect(html).not.toContain('payloadSourceUrl');
+    expect(html).not.toContain('fetch(payloadSourceUrl');
+    expect(html).not.toContain('/favicon.ico');
     expect(payload).toHaveLength(120);
     expect(Buffer.byteLength(JSON.stringify(payload))).toBeLessThan(1024 * 1024);
     expect(Buffer.byteLength(html)).toBeLessThan(1536 * 1024);
@@ -235,30 +237,30 @@ describe('post-match Core Web Vitals budget', () => {
     const payload = buildPostMatchHoverPayload(makePayloadHeavyModel());
     const firstOpportunityBreakdown = payload[0].bandBreakdown.opportunityLost?.you ?? [];
 
-    expect(firstOpportunityBreakdown).toHaveLength(13);
+    expect(firstOpportunityBreakdown).toHaveLength(9);
     expect(firstOpportunityBreakdown.at(-1)).toEqual(expect.objectContaining({
-      label: 'Later opportunity-loss buckets (28)',
-      count: 742,
+      label: 'Later opportunity-loss buckets (32)',
+      count: 784,
     }));
-    expect(Buffer.byteLength(JSON.stringify(payload))).toBeLessThan(2 * 1024 * 1024);
+    expect(Buffer.byteLength(JSON.stringify(payload))).toBeLessThan(900 * 1024);
   });
 
   it('preserves economic roles when compacting hidden economic breakdown items', () => {
     const payload = buildPostMatchHoverPayload(makeEconomicRoleOverflowModel());
     const economicBreakdown = payload[0].bandBreakdown.economic?.you ?? [];
 
-    expect(economicBreakdown).toHaveLength(14);
+    expect(economicBreakdown).toHaveLength(10);
     expect(economicBreakdown).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        label: 'Other resource generation items (2)',
-        value: 18,
-        count: 2,
+        label: 'Other resource generation items (4)',
+        value: 200,
+        count: 4,
         economicRole: 'resourceGenerator',
       }),
       expect.objectContaining({
-        label: 'Other resource infrastructure items (2)',
-        value: 16,
-        count: 2,
+        label: 'Other resource infrastructure items (4)',
+        value: 196,
+        count: 4,
         economicRole: 'resourceInfrastructure',
       }),
     ]));
@@ -286,8 +288,8 @@ describe('post-match Core Web Vitals budget', () => {
       '1:00-1:30',
       '1:30-2:00',
     ]);
-    expect(yourBreakdown.at(-1)?.label).toBe('Later opportunity-loss buckets (2)');
-    expect(opponentBreakdown.at(-1)?.label).toBe('Later opportunity-loss buckets (2)');
+    expect(yourBreakdown.at(-1)?.label).toBe('Later opportunity-loss buckets (6)');
+    expect(opponentBreakdown.at(-1)?.label).toBe('Later opportunity-loss buckets (6)');
     expect(yourBreakdown.map(entry => entry.label)).not.toContain('Other active items (2)');
   });
 

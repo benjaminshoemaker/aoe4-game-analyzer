@@ -11,6 +11,8 @@ import {
 } from './villagerOpportunity';
 import { SignificantResourceLossEvent, SignificantResourceLossItem, SignificantResourceLossKind } from './significantResourceLossEvents';
 import { isVillagerBuildOrderEntry } from './villagerClassifier';
+import { pointAtOrBefore as seriesPointAtOrBefore } from './timeSeries';
+import { formatTime } from '../formatters/sharedFormatters';
 
 export type BetShapeLabel =
   | 'economic-heavy'
@@ -711,12 +713,6 @@ function normalizeToken(input: string): string {
   return input.trim().toLowerCase();
 }
 
-function formatTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.max(0, Math.floor(seconds % 60));
-  return `${mins}:${String(secs).padStart(2, '0')}`;
-}
-
 const playerColors: Record<'player1' | 'player2', string> = {
   player1: '#378ADD',
   player2: '#D85A30',
@@ -1118,27 +1114,17 @@ export function classifyBetShape(shares: BandShares): BetShapeResult {
 }
 
 function pointAtOrBefore(series: PoolSeriesPoint[], timestamp: number): PoolSeriesPoint {
-  if (series.length === 0) {
-    return {
-      timestamp,
-      economic: 0,
-      populationCap: 0,
-      militaryCapacity: 0,
-      militaryActive: 0,
-      defensive: 0,
-      research: 0,
-      advancement: 0,
-      total: 0,
-    };
-  }
-
-  let candidate = series[0];
-  for (const point of series) {
-    if (point.timestamp > timestamp) break;
-    candidate = point;
-  }
-
-  return candidate;
+  return seriesPointAtOrBefore(series, timestamp, {
+    timestamp,
+    economic: 0,
+    populationCap: 0,
+    militaryCapacity: 0,
+    militaryActive: 0,
+    defensive: 0,
+    research: 0,
+    advancement: 0,
+    total: 0,
+  });
 }
 
 function gatherRateAtOrBefore(series: GatherRatePoint[], timestamp: number): number {
@@ -1157,22 +1143,12 @@ function villagerResourceAtOrBefore(
   series: VillagerOpportunityResourcePoint[],
   timestamp: number
 ): VillagerOpportunityResourcePoint {
-  if (series.length === 0) {
-    return {
-      timestamp,
-      cumulativeLoss: 0,
-      cumulativeResourcesGained: 0,
-      cumulativeResourcesPossible: 0,
-    };
-  }
-
-  let candidate = series[0];
-  for (const point of series) {
-    if (point.timestamp > timestamp) break;
-    candidate = point;
-  }
-
-  return candidate;
+  return seriesPointAtOrBefore(series, timestamp, {
+    timestamp,
+    cumulativeLoss: 0,
+    cumulativeResourcesGained: 0,
+    cumulativeResourcesPossible: 0,
+  });
 }
 
 function adjustedMilitaryAtOrBefore(

@@ -61,7 +61,8 @@ describe('post-match render CLI end-to-end', () => {
     expect(html).toContain('Villager opportunity cost');
     expect(html).toContain('Where the gap came from');
     expect(html).toContain('One-line story');
-    expect(html).toContain('Final pool delta');
+    expect(html).not.toContain('Final pool delta');
+    expect(html).not.toContain('<section class="panel metrics">');
     expect(html).toContain('<svg');
     expect(html).toContain('id="allocation-leader-strip"');
     expect(html).toContain('id="allocation-comparison"');
@@ -231,6 +232,11 @@ describe('post-match render CLI end-to-end', () => {
     expect(html).toContain('"label":"Trade Caravan"');
     expect(html).toContain('"label":"Imperial Official"');
     expect(html).toContain('"label":"Pilgrim"');
+    expect(html).toContain('"label":"Fishing Boat"');
+    expect(html).toContain('"label":"Trader"');
+    expect(html).toContain('"label":"Pit Mine"');
+    expect(html).toContain('"label":"Ger"');
+    expect(html).toContain('"label":"Ovoo"');
     expect(html).toContain('"economicRole":"resourceGenerator"');
     expect(html).toContain('"economicRole":"resourceInfrastructure"');
     expect(html).toContain('data-hover-field="allocationCategory.economic.resourceGeneration.you"');
@@ -248,8 +254,8 @@ describe('post-match render CLI end-to-end', () => {
     expect(html).not.toContain('<li class="band-breakdown-group">Resource generators</li>');
     expect(html).not.toContain('<li class="band-breakdown-group">Resource infrastructure</li>');
     expect(economicSnapshot?.allocationCategory.economic).toEqual(expect.objectContaining({
-      resourceGeneration: expect.objectContaining({ you: 525 }),
-      resourceInfrastructure: expect.objectContaining({ you: 450 }),
+      resourceGeneration: expect.objectContaining({ you: 1110 }),
+      resourceInfrastructure: expect.objectContaining({ you: 850 }),
     }));
     expect(html).toContain('"label":"Tower of the Sultan"');
     expect(html).toContain('"label":"Battering Ram"');

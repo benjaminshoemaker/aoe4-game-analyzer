@@ -46,6 +46,10 @@ describe('unknown build-order bucket audit', () => {
 
     expect(findings).toEqual(expect.arrayContaining([
       expect.objectContaining({ pbgid: 2762454, bucket: '14', status: 'handled' }),
+      expect.objectContaining({ pbgid: 193121, bucket: '14', status: 'handled' }),
+      expect.objectContaining({ pbgid: 132306, bucket: '14', status: 'handled' }),
+      expect.objectContaining({ pbgid: 2123482, bucket: '14', status: 'handled' }),
+      expect.objectContaining({ pbgid: 2123482, bucket: '15', status: 'handled' }),
       expect.objectContaining({ pbgid: 5000301, bucket: '15', status: 'handled' }),
       expect.objectContaining({ pbgid: 9001316, bucket: '15', status: 'handled' }),
       expect.objectContaining({ pbgid: 9003449, bucket: '15', status: 'ignored' }),

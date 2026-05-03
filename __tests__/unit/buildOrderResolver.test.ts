@@ -119,6 +119,190 @@ describe('buildOrderResolver', () => {
     ]));
   });
 
+  it('resolves economic resource-generator buckets and manually mapped economic buildings', () => {
+    const fixture = makeSplitVillagerDeathsFixture();
+    fixture.duration = 1200;
+    fixture.players[1].civilization = 'french';
+    fixture.players[1].buildOrder = [
+      {
+        id: '11171906',
+        icon: 'icons/races/common/units/fishing_boat',
+        pbgid: 193121,
+        type: 'Unit',
+        finished: [],
+        constructed: [],
+        destroyed: [],
+        unknown: { '14': [308, 342, 393, 466] },
+      },
+      {
+        id: '11143609',
+        icon: 'icons/races/common/units/trade_cart',
+        pbgid: 132306,
+        type: 'Unit',
+        finished: [],
+        constructed: [],
+        destroyed: [],
+        unknown: { '14': [323] },
+      },
+      {
+        id: '11143609',
+        icon: 'icons/races/common/units/trade_cart',
+        pbgid: 2123482,
+        type: 'Unit',
+        finished: [],
+        constructed: [],
+        destroyed: [],
+        unknown: {
+          '14': [338, 353, 416, 546],
+          '15': [1134],
+        },
+      },
+      {
+        id: '11218702',
+        icon: 'icons/races/malian/buildings/pit_mine',
+        pbgid: 2076058,
+        type: 'Building',
+        finished: [],
+        constructed: [390],
+        destroyed: [],
+      },
+      {
+        id: '11143387',
+        icon: 'icons/races/mongols/buildings/ger',
+        pbgid: 181324,
+        type: 'Building',
+        finished: [],
+        constructed: [370],
+        destroyed: [],
+      },
+      {
+        id: '11200458',
+        icon: 'icons/races/mongols/buildings/building_ovoo_mon',
+        pbgid: 2074857,
+        type: 'Building',
+        finished: [],
+        constructed: [380],
+        destroyed: [],
+      },
+    ];
+
+    const summary = parseGameSummary(fixture);
+    const player = summary.players[1];
+    const resolved = resolveAllBuildOrders(player, {
+      fetchedAt: new Date().toISOString(),
+      units: [
+        {
+          id: 'fishing-boat-2',
+          name: 'Fishing Boat',
+          baseId: 'fishing-boat',
+          pbgid: 193121,
+          civs: ['fr'],
+          costs: { wood: 75 },
+          classes: ['naval_fishing_ship', 'naval_unit', 'ship', 'worker'],
+          displayClasses: ['Fishing Ship'],
+          age: 2,
+          icon: 'icons/races/common/units/fishing_boat',
+        },
+        {
+          id: 'trader-2',
+          name: 'Trader',
+          baseId: 'trader',
+          pbgid: 132306,
+          civs: ['fr'],
+          costs: { wood: 60, gold: 60 },
+          classes: ['trade_cart', 'worker'],
+          displayClasses: ['Trader'],
+          age: 2,
+          icon: 'icons/races/common/units/trade_cart',
+        },
+      ],
+      buildings: [],
+      technologies: [],
+    });
+    const pool = buildPlayerDeployedPoolSeries(player, resolved, summary.duration);
+
+    expect(resolved.unresolved).toEqual([]);
+    expect(resolved.resolved).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: 'unit',
+        name: 'Fishing Boat',
+        produced: [308, 342, 393, 466],
+      }),
+      expect.objectContaining({
+        type: 'unit',
+        name: 'Trader',
+        produced: [323],
+      }),
+      expect.objectContaining({
+        type: 'unit',
+        name: 'Trader',
+        produced: [338, 353, 416, 546],
+        destroyed: [1134],
+      }),
+      expect.objectContaining({
+        type: 'building',
+        name: 'Pit Mine',
+        produced: [390],
+      }),
+      expect.objectContaining({
+        type: 'building',
+        name: 'Ger',
+        produced: [370],
+      }),
+      expect.objectContaining({
+        type: 'building',
+        name: 'Ovoo',
+        produced: [380],
+      }),
+    ]));
+    expect(pool.series.find(point => point.timestamp === 466)?.economic).toBe(1180);
+    expect(pool.series.find(point => point.timestamp === 1134)?.economic).toBe(1180);
+    expect(pool.bandItemDeltas).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        timestamp: 308,
+        band: 'economic',
+        itemLabel: 'Fishing Boat',
+        deltaValue: 75,
+        itemEconomicRole: 'resourceGenerator',
+      }),
+      expect.objectContaining({
+        timestamp: 323,
+        band: 'economic',
+        itemLabel: 'Trader',
+        deltaValue: 120,
+        itemEconomicRole: 'resourceGenerator',
+      }),
+      expect.objectContaining({
+        timestamp: 1134,
+        band: 'economic',
+        itemLabel: 'Trader',
+        deltaValue: -120,
+        deltaCount: -1,
+      }),
+      expect.objectContaining({
+        timestamp: 390,
+        band: 'economic',
+        itemLabel: 'Pit Mine',
+        deltaValue: 150,
+        itemEconomicRole: 'resourceInfrastructure',
+      }),
+      expect.objectContaining({
+        timestamp: 370,
+        band: 'economic',
+        itemLabel: 'Ger',
+        deltaValue: 100,
+        itemEconomicRole: 'resourceInfrastructure',
+      }),
+      expect.objectContaining({
+        timestamp: 380,
+        band: 'economic',
+        itemLabel: 'Ovoo',
+        deltaValue: 150,
+        itemEconomicRole: 'resourceInfrastructure',
+      }),
+    ]));
+  });
+
   it('resolves confirmed nonstandard unknown buckets as deployed production timestamps', () => {
     const fixture = makeSplitVillagerDeathsFixture();
     fixture.duration = 2600;

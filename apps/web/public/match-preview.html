@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AoE4 Post-Match Analysis</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='6'%20fill='%239b2f1f'/%3E%3Cpath%20d='M8%2022h16v3H8zM10%208h12l-2%2012h-8z'%20fill='%23fff9f5'/%3E%3C/svg%3E" />
   <style>
     :root {
       --aoe-color-bg: #f7f2e8;
@@ -3115,34 +3116,6 @@
       }
 
       setHoverData(JSON.parse(payloadEl.textContent));
-      var payloadSourceEl = document.getElementById('post-match-hover-data-url');
-      var payloadSourceUrl = null;
-      if (payloadSourceEl && payloadSourceEl.textContent) {
-        try {
-          payloadSourceUrl = JSON.parse(payloadSourceEl.textContent).url || null;
-        } catch (_error) {
-          payloadSourceUrl = null;
-        }
-      }
-
-      if (payloadSourceUrl && window.fetch) {
-        fetch(payloadSourceUrl, {
-          credentials: 'same-origin',
-          headers: { accept: 'application/json' }
-        })
-          .then(function (response) {
-            if (!response.ok) throw new Error('Failed to load hover data');
-            return response.json();
-          })
-          .then(function (payload) {
-            setHoverData(Array.isArray(payload) ? payload : payload.hoverSnapshots);
-            initializeSelection();
-          })
-          .catch(function () {
-            initializeSelection();
-          });
-        return;
-      }
       initializeSelection();
     }());
   </script>

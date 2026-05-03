@@ -1,6 +1,12 @@
 import resourceBandConfigJson from '../data/resourceBandConfig.json';
 import { ResolvedBuildItem, ResolvedBuildOrder } from '../parser/buildOrderResolver';
 import { GameSummary, PlayerSummary } from '../parser/gameSummaryParser';
+import {
+  buildLifecycleEvents,
+  findFallbackLifecycleContext as findSharedFallbackLifecycleContext,
+  LifecycleEvent,
+  unitLineKey,
+} from './resourceLifecycle';
 import { isVillagerResolvedItem } from './villagerClassifier';
 
 export type PoolBand =
@@ -434,31 +440,12 @@ function addTimestamp(timestampSet: Set<number>, value: number): void {
   timestampSet.add(value);
 }
 
-type LifecycleEventKind = 'produced' | 'destroyed';
-
-interface LifecycleEvent {
-  timestamp: number;
-  kind: LifecycleEventKind;
-}
-
 function producedTimestampsForPool(item: ResolvedBuildItem, countStartedAdvancement: boolean): number[] {
   if (countStartedAdvancement && item.type === 'upgrade' && item.originalEntry.constructed.length > 0) {
     return item.originalEntry.constructed;
   }
 
   return item.produced;
-}
-
-function buildLifecycleEvents(item: ResolvedBuildItem, countStartedAdvancement = false): LifecycleEvent[] {
-  return [
-    ...producedTimestampsForPool(item, countStartedAdvancement)
-      .map(timestamp => ({ timestamp, kind: 'produced' as const })),
-    ...item.destroyed.map(timestamp => ({ timestamp, kind: 'destroyed' as const })),
-  ].sort((a, b) => {
-    if (a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
-    if (a.kind === b.kind) return 0;
-    return a.kind === 'produced' ? -1 : 1;
-  });
 }
 
 interface PoolItemContext {
@@ -474,30 +461,6 @@ interface PoolItemContext {
 
 interface LifecyclePoolEvent extends LifecycleEvent {
   context: PoolItemContext;
-}
-
-function normalizeLineToken(value: string): string {
-  return normalizeText(value)
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-function stripTierSuffix(value: string): string {
-  return normalizeLineToken(value).replace(/-(?:1|2|3|4|5)$/, '');
-}
-
-function stripTierNamePrefix(value: string): string {
-  return normalizeLineToken(value).replace(/^(?:early|hardened|veteran|elite|imperial)-/, '');
-}
-
-function unitLineKey(item: ResolvedBuildItem): string {
-  if (item.type !== 'unit') return `${item.type}:${stripTierSuffix(item.id)}`;
-  if (item.baseId) return stripTierSuffix(item.baseId);
-
-  const idKey = stripTierSuffix(item.id);
-  if (idKey) return idKey;
-
-  return stripTierNamePrefix(item.name);
 }
 
 function allocationSignature(allocations: BandAllocation[]): string {
@@ -575,25 +538,14 @@ function findFallbackLifecycleContext(
   contexts: PoolItemContext[],
   activeCounts: Map<string, number>
 ): PoolItemContext | null {
-  if (eventContext.item.type !== 'unit') return null;
-
-  const eventTier = eventContext.item.tier;
-  const candidates = contexts
-    .filter(context =>
-      context.item.type === 'unit' &&
-      context.itemKey !== eventContext.itemKey &&
-      context.lineKey === eventContext.lineKey &&
-      context.allocationSignature === eventContext.allocationSignature &&
-      activeCountForContext(activeCounts, context) > 0
-    )
-    .sort((a, b) => {
-      const aAboveEventTier = a.item.tier > eventTier ? 1 : 0;
-      const bAboveEventTier = b.item.tier > eventTier ? 1 : 0;
-      if (aAboveEventTier !== bAboveEventTier) return aAboveEventTier - bAboveEventTier;
-      return b.item.tier - a.item.tier || b.order - a.order;
-    });
-
-  return candidates[0] ?? null;
+  return findSharedFallbackLifecycleContext({
+    eventContext,
+    contexts,
+    activeCount: context => activeCountForContext(activeCounts, context),
+    samePool: (context, currentEventContext) =>
+      context.itemKey !== currentEventContext.itemKey &&
+      context.allocationSignature === currentEventContext.allocationSignature,
+  });
 }
 
 function includesAnyToken(value: string, tokens: string[]): boolean {
@@ -886,7 +838,9 @@ export function buildPlayerDeployedPoolSeries(
 
     const countStartedAdvancement = allocations.some(allocation => allocation.band === 'advancement');
     lifecycleEvents.push(
-      ...buildLifecycleEvents(item, countStartedAdvancement)
+      ...buildLifecycleEvents(item, {
+        producedTimestamps: producedTimestampsForPool(item, countStartedAdvancement),
+      })
         .map(event => ({ ...event, context: itemContext }))
     );
   }

@@ -689,7 +689,9 @@ describe('renderPostMatchHtml', () => {
     expect(html).toContain('.wrap { width: calc(100vw - 24px); max-width: calc(100vw - 24px); }');
     expect(html).toContain('.chips { flex-direction: column; align-items: stretch; }');
     expect(html).toContain('.civ-chip { width: 100%; }');
-    expect(html).toContain('.metrics { grid-template-columns: 1fr; }');
+    expect(html).not.toContain('.metrics { grid-template-columns: 1fr; }');
+    expect(html).not.toContain('<section class="panel metrics">');
+    expect(html).not.toContain('Final pool delta');
     expect(html).toContain('.chart-stack .leader-strip,\n      .chart-stack .strategy-chart { min-width: 0; }');
     expect(html).toContain('font-size: 13px;');
     expect(html).toContain('font-size: 14px;');

@@ -50,6 +50,9 @@ describe('design system documentation and tokens', () => {
     expect(reportHtml).not.toContain('--color-background: #f2f4ee;');
     expect(staticPreviewHtml).toContain('--color-background: var(--aoe-color-report-bg);');
     expect(staticPreviewHtml).toContain('font-family: var(--aoe-font-report);');
+    expect(staticPreviewHtml).toContain('<link rel="icon" href="data:image/svg+xml');
+    expect(staticPreviewHtml).not.toContain('payloadSourceUrl');
+    expect(staticPreviewHtml).not.toContain('/favicon.ico');
     expect(staticPreviewHtml).not.toContain('--color-background: #f2f4ee;');
 
     expect(homeHtml).toContain('--background: var(--aoe-color-bg);');

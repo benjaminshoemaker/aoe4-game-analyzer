@@ -1,38 +1,20 @@
-import { buildMatchHoverPayload, parseMatchRouteParams } from '../../../../../lib/matchPage';
+import { buildMatchHoverPayload } from '../../../../../lib/matchPage';
+import { jsonNoStoreError, jsonNoStoreResponse, readMatchRouteRequest } from '../routeResponses';
+import type { MatchRouteContext } from '../routeResponses';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function GET(
   request: Request,
-  context: { params: Promise<{ profileSlug: string; gameId: string }> }
+  context: MatchRouteContext
 ): Promise<Response> {
   try {
-    const params = await context.params;
-    const parsed = parseMatchRouteParams(params.profileSlug, params.gameId);
-    const url = new URL(request.url);
-    const sig = url.searchParams.get('sig') ?? undefined;
+    const { parsed, sig } = await readMatchRouteRequest(request, context);
     const hoverSnapshots = await buildMatchHoverPayload({ ...parsed, sig });
 
-    return Response.json(
-      { hoverSnapshots },
-      {
-        status: 200,
-        headers: {
-          'cache-control': 'no-store',
-        },
-      }
-    );
+    return jsonNoStoreResponse({ hoverSnapshots }, { status: 200 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return Response.json(
-      { error: message },
-      {
-        status: 500,
-        headers: {
-          'cache-control': 'no-store',
-        },
-      }
-    );
+    return jsonNoStoreError(error);
   }
 }

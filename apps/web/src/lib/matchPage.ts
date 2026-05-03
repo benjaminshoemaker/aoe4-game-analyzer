@@ -6,6 +6,7 @@ import {
   WinProbabilityExample,
 } from '@aoe4/analyzer-core/analysis/winProbability';
 import { buildPostMatchHoverPayload, renderPostMatchHtml } from '@aoe4/analyzer-core/formatters/postMatchHtml';
+import { escapeHtml } from '@aoe4/analyzer-core/formatters/sharedFormatters';
 import { embeddedAoeTokenCss } from './designTokens';
 import { fetchGameSummaryFromApi, GameSummary } from '@aoe4/analyzer-core/parser/gameSummaryParser';
 import { buildWebVitalsScript } from './webVitals';
@@ -14,7 +15,6 @@ export interface MatchPageParams {
   profileSlug: string;
   gameId: number;
   sig?: string;
-  hoverDataUrl?: string;
   matchAverageElo?: number | null;
 }
 
@@ -43,15 +43,6 @@ function normalizeCivilization(value: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '');
-}
-
-function escapeHtml(input: string): string {
-  return input
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }
 
 export function getUnsupportedMatchMessage(summary: GameSummary): string | null {
@@ -146,7 +137,6 @@ export async function buildMatchHtml(params: MatchPageParams): Promise<string> {
   try {
     const model = await buildMatchModel(params);
     return renderPostMatchHtml(model, {
-      hoverDataUrl: params.hoverDataUrl,
       webVitalsScript: buildWebVitalsScript('/api/web-vitals'),
     });
   } catch (error) {

@@ -1,4 +1,4 @@
-import { GET } from '../../src/app/matches/[profileSlug]/[gameId]/route';
+import { GET, clearMatchRouteCacheForTests } from '../../src/app/matches/[profileSlug]/[gameId]/route';
 import { renderPostMatchHtml } from '@aoe4/analyzer-core/formatters/postMatchHtml';
 import {
   addVerboseOpportunityLostBuckets,
@@ -36,6 +36,7 @@ jest.mock('../../src/lib/matchPage', () => ({
 describe('matches route e2e', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    clearMatchRouteCacheForTests();
   });
 
   it('returns rendered HTML and passes sig query to builder', async () => {
@@ -133,8 +134,9 @@ describe('matches route e2e', () => {
       profileSlug: 'my-slug',
       gameId: 230143339,
       sig: 'abc123',
-      hoverDataUrl: '/matches/my-slug/230143339/hover-data?sig=abc123',
     });
+    expect(response.headers.get('cache-control')).toBe('private, max-age=300, stale-while-revalidate=3600');
+    expect(body).toContain('<link rel="icon" href="data:image/svg+xml');
     expect(body).toContain('--aoe-color-report-bg: #f2f4ee;');
     expect(body).toContain('--aoe-color-report-surface: #fbfcf9;');
     expect(body).toContain('--color-background: var(--aoe-color-report-bg);');
@@ -221,9 +223,39 @@ describe('matches route e2e', () => {
     expect(body).not.toContain('data-hover-field="significantEvent.description"');
     expect(body).not.toContain('data-hover-field="significantEvent.grossLoss"');
     expect(body).not.toContain('data-hover-field="significantEvent.topLosses"');
+    expect(body).not.toContain('id="post-match-hover-data-url"');
+    expect(body).not.toContain('/matches/my-slug/230143339/hover-data?sig=abc123');
+    expect(body).not.toContain('payloadSourceUrl');
+    expect(body).not.toContain('fetch(payloadSourceUrl');
+    expect(body).not.toContain('/favicon.ico');
     expect(body).not.toContain('<dt>Share of deployed</dt>');
     expect(body).not.toContain('Deployed resource pool over time');
     expect(body).not.toContain('Strategic allocation state');
+  });
+
+  it('reuses rendered match HTML for repeat requests to the same signed match URL', async () => {
+    parseMatchRouteParams.mockReturnValue({ profileSlug: 'my-slug', gameId: 230143339 });
+    buildMatchHtml.mockResolvedValue('<!doctype html><html><body>cached match</body></html>');
+    const context = {
+      params: Promise.resolve({
+        profileSlug: 'my-slug',
+        gameId: '230143339',
+      }),
+    };
+    const request = new Request('http://localhost/matches/my-slug/230143339?sig=abc123');
+
+    const first = await GET(request, context);
+    const second = await GET(request, {
+      params: Promise.resolve({
+        profileSlug: 'my-slug',
+        gameId: '230143339',
+      }),
+    });
+
+    await expect(first.text()).resolves.toContain('cached match');
+    await expect(second.text()).resolves.toContain('cached match');
+    expect(buildMatchHtml).toHaveBeenCalledTimes(1);
+    expect(second.headers.get('cache-control')).toBe('private, max-age=300, stale-while-revalidate=3600');
   });
 
   it('returns player-2 perspective allocation visuals without switching line identities', async () => {
@@ -318,8 +350,8 @@ describe('matches route e2e', () => {
     expect(response.status).toBe(200);
     expect(youLabels.slice(0, 4)).toEqual(['0:00-0:30', '0:30-1:00', '1:00-1:30', '1:30-2:00']);
     expect(opponentLabels.slice(0, 4)).toEqual(['0:00-0:30', '0:30-1:00', '1:00-1:30', '1:30-2:00']);
-    expect(youLabels.at(-1)).toBe('Later opportunity-loss buckets (2)');
-    expect(opponentLabels.at(-1)).toBe('Later opportunity-loss buckets (2)');
+    expect(youLabels.at(-1)).toBe('Later opportunity-loss buckets (6)');
+    expect(opponentLabels.at(-1)).toBe('Later opportunity-loss buckets (6)');
     expect(youLabels).not.toContain('Other active items (2)');
   });
 

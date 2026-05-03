@@ -1,8 +1,32 @@
 import { AgeMarker, PostMatchPlayerDisplay, PostMatchViewModel, SignificantTimelineEvent } from '../analysis/postMatchViewModel';
 import { GatherRatePoint, PoolSeriesPoint } from '../analysis/resourcePool';
+import { pointAtOrBefore } from '../analysis/timeSeries';
 import { evaluateUnitPairCounterComputation } from '../data/combatValueEngine';
 import type { PairCounterComputation } from '../data/counterMatrix';
 import type { UnitWithValue } from '../types';
+import {
+  allocationLeaderGraphDefs,
+  AllocationCategoryKey,
+  AllocationGraphKey,
+  AllocationLeader,
+  AllocationLeaderSegment,
+  buildAgeMarkerLayer,
+  buildAllocationLeaderStripSvg,
+  buildStrategyAllocationSvg,
+  POST_MATCH_SVG_WIDTH,
+  shareAllocationKeySet,
+  strategyPadding,
+} from './postMatchAllocationCharts';
+import { buildHoverInteractionScript } from './postMatchInteractionScript';
+import {
+  escapeHtml,
+  formatNumber,
+  formatPercent,
+  formatPrecise,
+  formatSigned,
+  formatTime,
+  roundToTenth,
+} from './sharedFormatters';
 
 interface BandDef {
   key: keyof Pick<
@@ -31,21 +55,14 @@ const bandDefs: BandDef[] = [
   { key: 'advancement', label: 'Advancement', color: '#88AD6A' },
 ];
 
-type AllocationCategoryKey = 'economic' | 'technology' | 'military' | 'other';
-type AllocationGraphKey = 'economic' | 'technology' | 'military' | 'destroyed' | 'overall' | 'float' | 'opportunityLost';
-type AllocationLeader = 'you' | 'opponent' | 'tie';
+const faviconHref = "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='6'%20fill='%239b2f1f'/%3E%3Cpath%20d='M8%2022h16v3H8zM10%208h12l-2%2012h-8z'%20fill='%23fff9f5'/%3E%3C/svg%3E";
+
 type EconomicRole = 'resourceGenerator' | 'resourceInfrastructure';
 
 interface AllocationCategoryDef {
   key: AllocationCategoryKey;
   label: string;
   bandKeys: HoverBandKey[];
-}
-
-interface AllocationGraphDef {
-  key: AllocationGraphKey;
-  label: string;
-  mode: 'share' | 'absolute';
 }
 
 export interface AllocationValues {
@@ -79,16 +96,6 @@ type AllocationCategoryAccounting = Record<
   AllocationCategoryRows
 >;
 
-export interface AllocationLeaderSegment {
-  categoryKey: AllocationGraphKey;
-  start: number;
-  end: number;
-  hoverTimestamp: number;
-  leader: AllocationLeader;
-  you: number;
-  opponent: number;
-}
-
 const allocationCategoryDefs: AllocationCategoryDef[] = [
   { key: 'economic', label: 'Economic', bandKeys: ['economic'] },
   { key: 'technology', label: 'Technology', bandKeys: ['research', 'advancement'] },
@@ -96,34 +103,8 @@ const allocationCategoryDefs: AllocationCategoryDef[] = [
   { key: 'other', label: 'Other', bandKeys: ['populationCap'] },
 ];
 
-const allocationGraphDefs: AllocationGraphDef[] = [
-  { key: 'economic', label: 'Economic', mode: 'share' },
-  { key: 'technology', label: 'Technology', mode: 'share' },
-  { key: 'military', label: 'Military', mode: 'share' },
-  { key: 'destroyed', label: 'Destroyed', mode: 'absolute' },
-  { key: 'overall', label: 'Overall', mode: 'absolute' },
-  { key: 'float', label: 'Float', mode: 'absolute' },
-  { key: 'opportunityLost', label: 'Opportunity lost', mode: 'absolute' },
-];
-const shareAllocationKeys: Array<AllocationGraphKey | AllocationCategoryKey> = ['economic', 'technology', 'military'];
-const shareAllocationKeySet = new Set<AllocationGraphKey | AllocationCategoryKey>(shareAllocationKeys);
-const allocationLeaderGraphDefs = allocationGraphDefs.filter(graph =>
-  shareAllocationKeySet.has(graph.key)
-);
-
 type StrategyBucketKey = 'economy' | 'military' | 'technology';
 type SignificantEventPlayerKey = 'player1' | 'player2';
-
-interface StrategyBucketDef {
-  key: StrategyBucketKey;
-  label: string;
-}
-
-const strategyBucketDefs: StrategyBucketDef[] = [
-  { key: 'economy', label: 'Economy' },
-  { key: 'military', label: 'Military' },
-  { key: 'technology', label: 'Technology' },
-];
 
 const embeddedAoeTokenCss = `
       --aoe-color-bg: #f7f2e8;
@@ -169,26 +150,8 @@ const embeddedAoeTokenCss = `
       --aoe-font-display: "Trebuchet MS", "Avenir Next", "Gill Sans", sans-serif;
       --aoe-font-report: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;`.trim();
 
-const svgWidth = 980;
+const svgWidth = POST_MATCH_SVG_WIDTH;
 const poolPadding = { top: 54, right: 12, bottom: 30, left: 58 };
-const poolLaneHeight = 170;
-const poolLaneGap = 42;
-const poolDeltaTopGap = 38;
-const poolDeltaHeight = 72;
-const strategyPadding = { top: 42, right: 12, bottom: 38, left: 96 };
-const strategyLaneHeight = 84;
-const strategyLaneGap = 24;
-const strategyHeight =
-  strategyPadding.top +
-  allocationGraphDefs.length * strategyLaneHeight +
-  (allocationGraphDefs.length - 1) * strategyLaneGap +
-  strategyPadding.bottom;
-const leaderStripRowHeight = 18;
-const leaderStripRowGap = 8;
-const leaderStripFirstRowTop = 18;
-const leaderStripAxisTop = 96;
-const leaderStripAxisHeight = 30;
-const leaderStripHeight = leaderStripAxisTop + leaderStripAxisHeight;
 const gatherPadding = { top: 16, right: 12, bottom: 24, left: 56 };
 const gatherHeight = 150;
 const villagerChartWidth = 470;
@@ -198,11 +161,11 @@ const MATRIX_STRONG_THRESHOLD = 1.2;
 const MATRIX_WEAK_THRESHOLD = 0.85;
 const significantVillagerOpportunityTooltip =
   'Scale-adjusted future missed gathering from killed villagers in this event window. The model removes those deaths, measures the future villager death-loss avoided, then discounts each future increment by event-time deployed resources divided by deployed resources at that later time.';
-const MAX_CLIENT_BAND_BREAKDOWN_ENTRIES = 12;
+const MAX_CLIENT_BAND_BREAKDOWN_ENTRIES = 8;
 const OPPORTUNITY_LOST_VILLAGERS_LOST_CATEGORY = 'villagers-lost';
 const OPPORTUNITY_LOST_UNDERPRODUCTION_CATEGORY = 'villager-underproduction';
 
-type RenderPlayerLabels = Record<'you' | 'opponent', PostMatchPlayerDisplay>;
+export type RenderPlayerLabels = Record<'you' | 'opponent', PostMatchPlayerDisplay>;
 
 interface HoverBandValues {
   economic: number;
@@ -291,7 +254,7 @@ interface HoverSnapshot {
   bandBreakdown: Record<HoverBandKey, BandBreakdownPayload> & Partial<Record<CategoryDestroyedBreakdownKey | 'destroyed' | 'float' | 'opportunityLost', BandBreakdownPayload>>;
 }
 
-type ClientHoverSnapshot = Pick<
+export type ClientHoverSnapshot = Pick<
   HoverSnapshot,
   | 'timestamp'
   | 'timeLabel'
@@ -314,7 +277,6 @@ type ClientHoverSnapshot = Pick<
 };
 
 interface RenderPostMatchHtmlOptions {
-  hoverDataUrl?: string;
   surface?: 'web-mvp' | 'full';
   webVitalsScript?: string;
 }
@@ -352,30 +314,6 @@ interface AdjustedMatrixPayload {
   rows: AdjustedMatrixRowPayload[];
   columns: string[];
   emptyMessage?: string;
-}
-
-function escapeHtml(input: string): string {
-  return input
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function formatTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.max(0, Math.floor(seconds % 60));
-  return `${mins}:${String(secs).padStart(2, '0')}`;
-}
-
-function formatSigned(value: number): string {
-  if (value > 0) return `+${Math.round(value)}`;
-  return `${Math.round(value)}`;
-}
-
-function formatNumber(value: number): string {
-  return Math.round(value).toLocaleString('en-US');
 }
 
 function fallbackPlayerDisplay(
@@ -424,19 +362,6 @@ function renderPlayerLabels(header: PostMatchViewModel['header']): RenderPlayerL
   };
 }
 
-function formatPrecise(value: number, decimals = 2): string {
-  if (!Number.isFinite(value)) return 'n/a';
-  return Number(value.toFixed(decimals)).toLocaleString('en-US', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
-}
-
-function formatPercent(value: number, decimals = 1): string {
-  if (!Number.isFinite(value)) return 'n/a';
-  return `${(value * 100).toFixed(decimals)}%`;
-}
-
 function formatMultiplier(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return 'n/a';
   return `${formatPrecise(value, 3)}x`;
@@ -447,52 +372,6 @@ function formatSignedPercent(value: number | null): string {
   const rounded = Math.round(value * 10) / 10;
   const sign = rounded > 0 ? '+' : '';
   return `${sign}${rounded.toFixed(1)}%`;
-}
-
-function roundToTenth(value: number): number {
-  const rounded = Number(value.toFixed(1));
-  return Object.is(rounded, -0) ? 0 : rounded;
-}
-
-function formatStrategyShare(value: number): string {
-  return `${roundToTenth(value).toFixed(1)}%`;
-}
-
-function formatSignedPercentagePoints(value: number): string {
-  const rounded = roundToTenth(value);
-  const sign = rounded > 0 ? '+' : '';
-  return `${sign}${rounded.toFixed(1)}pp`;
-}
-
-function formatBetLabel(label: string): string {
-  return label
-    .split('-')
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-    .join('-');
-}
-
-function poolPointAtOrBefore(series: PoolSeriesPoint[], timestamp: number): PoolSeriesPoint {
-  if (series.length === 0) {
-    return {
-      timestamp,
-      economic: 0,
-      populationCap: 0,
-      militaryCapacity: 0,
-      militaryActive: 0,
-      defensive: 0,
-      research: 0,
-      advancement: 0,
-      total: 0,
-    };
-  }
-
-  let candidate = series[0];
-  for (const point of series) {
-    if (point.timestamp > timestamp) break;
-    candidate = point;
-  }
-
-  return candidate;
 }
 
 export function buildAllocationCategories(values: HoverBandValues): AllocationValues {
@@ -810,157 +689,6 @@ function totalPoolTooltipText(
   ].join(' | ');
 }
 
-type StrategyFocus = StrategyBucketKey | 'balanced';
-
-function strategyDelta(snapshot: HoverSnapshot, bucket: StrategyBucketKey, side: 'you' | 'opponent'): number {
-  const otherSide = side === 'you' ? 'opponent' : 'you';
-  return snapshot.strategy[bucket][side] - snapshot.strategy[bucket][otherSide];
-}
-
-function topStrategyShare(snapshot: HoverSnapshot, side: 'you' | 'opponent'): { key: StrategyBucketKey; value: number } {
-  const ranked = strategyBucketDefs
-    .map(bucket => ({
-      key: bucket.key,
-      value: snapshot.strategy[bucket.key][side],
-    }))
-    .sort((a, b) => b.value - a.value);
-
-  return ranked[0] ?? { key: 'economy', value: 0 };
-}
-
-function strategyFocus(snapshot: HoverSnapshot, side: 'you' | 'opponent'): StrategyFocus {
-  const earlyMilitaryWindow = snapshot.timestamp <= 8 * 60;
-  const earlyTechnologyWindow = snapshot.timestamp <= 12 * 60;
-  const militaryShare = snapshot.strategy.military[side];
-  const militaryDelta = strategyDelta(snapshot, 'military', side);
-  const technologyShare = snapshot.strategy.technology[side];
-  const technologyDelta = strategyDelta(snapshot, 'technology', side);
-
-  // Early-game investments can be strategically decisive even when economy still dominates share.
-  if (earlyMilitaryWindow && militaryShare >= 8 && militaryDelta >= 8) {
-    return 'military';
-  }
-  if (earlyTechnologyWindow && technologyShare >= 5 && technologyDelta >= 5) {
-    return 'technology';
-  }
-
-  const rankedDelta = strategyBucketDefs
-    .map(bucket => ({
-      key: bucket.key,
-      delta: strategyDelta(snapshot, bucket.key, side),
-    }))
-    .sort((a, b) => b.delta - a.delta);
-  const deltaTop = rankedDelta[0];
-  const deltaSecond = rankedDelta[1];
-  if (
-    deltaTop &&
-    deltaTop.delta >= (deltaTop.key === 'economy' ? 12 : 8) &&
-    deltaTop.delta - (deltaSecond?.delta ?? 0) >= 2
-  ) {
-    return deltaTop.key;
-  }
-
-  const ranked = strategyBucketDefs
-    .map(bucket => ({
-      key: bucket.key,
-      value: snapshot.strategy[bucket.key][side],
-    }))
-    .sort((a, b) => b.value - a.value);
-  const top = ranked[0];
-  const second = ranked[1];
-
-  if (!top || !second || top.value < 45 || top.value - second.value < 8) {
-    return 'balanced';
-  }
-
-  return top.key;
-}
-
-function strategyFocusLabel(focus: StrategyFocus): string {
-  if (focus === 'balanced') return 'Balanced';
-  return strategyBucketDefs.find(bucket => bucket.key === focus)?.label ?? focus;
-}
-
-function strategyFocusSummary(snapshot: HoverSnapshot, side: 'you' | 'opponent', focus: StrategyFocus): string {
-  if (focus === 'balanced') {
-    const top = topStrategyShare(snapshot, side);
-    return `Balanced (top ${strategyFocusLabel(top.key)} ${formatStrategyShare(top.value)})`;
-  }
-  return `${strategyFocusLabel(focus)} ${formatStrategyShare(snapshot.strategy[focus][side])}`;
-}
-
-function strategyImplication(youFocus: StrategyFocus, opponentFocus: StrategyFocus): string {
-  if (youFocus === opponentFocus) {
-    return `Both players are optimizing for ${strategyFocusLabel(youFocus).toLowerCase()} in this window.`;
-  }
-
-  const pair = new Set([youFocus, opponentFocus]);
-  if (pair.has('economy') && pair.has('military')) {
-    return 'Economy vs military: watch whether the military investment converts into damage before the economy scales.';
-  }
-  if (pair.has('technology') && pair.has('military')) {
-    return 'Technology vs military: watch whether pressure denies map access before the tech investment pays off.';
-  }
-  if (pair.has('economy') && pair.has('technology')) {
-    return 'Economy vs technology: watch relics, sacred sites, and castle-unit timing against the economic scaling.';
-  }
-
-  return 'One side is more balanced while the other leans into a specific investment bucket.';
-}
-
-function buildStrategyStateSummary(hoverSnapshots: HoverSnapshot[]): string {
-  if (hoverSnapshots.length === 0) return '';
-
-  const changes: Array<{
-    timestamp: number;
-    timeLabel: string;
-    youFocus: StrategyFocus;
-    opponentFocus: StrategyFocus;
-    youSummary: string;
-    opponentSummary: string;
-  }> = [];
-
-  for (const snapshot of hoverSnapshots) {
-    const youFocus = strategyFocus(snapshot, 'you');
-    const opponentFocus = strategyFocus(snapshot, 'opponent');
-    const previous = changes[changes.length - 1];
-    if (previous && previous.youFocus === youFocus && previous.opponentFocus === opponentFocus) {
-      continue;
-    }
-    changes.push({
-      timestamp: snapshot.timestamp,
-      timeLabel: snapshot.timeLabel,
-      youFocus,
-      opponentFocus,
-      youSummary: strategyFocusSummary(snapshot, 'you', youFocus),
-      opponentSummary: strategyFocusSummary(snapshot, 'opponent', opponentFocus),
-    });
-  }
-
-  const visibleChanges = changes.slice(0, 8);
-  const extraCount = Math.max(0, changes.length - visibleChanges.length);
-
-  return `
-    <div class="strategy-state-strip" aria-label="Strategic state changes">
-      ${visibleChanges
-        .map(change => `
-          <article class="strategy-state-card">
-            <div class="strategy-state-time">${escapeHtml(change.timeLabel)}</div>
-            <div class="strategy-state-title">You ${escapeHtml(strategyFocusLabel(change.youFocus))} · Opp ${escapeHtml(strategyFocusLabel(change.opponentFocus))}</div>
-            <p>${escapeHtml(strategyImplication(change.youFocus, change.opponentFocus))}</p>
-            <div class="strategy-state-meta">You: ${escapeHtml(change.youSummary)} · Opp: ${escapeHtml(change.opponentSummary)}</div>
-          </article>
-        `)
-        .join('')}
-      ${extraCount > 0 ? `<article class="strategy-state-card strategy-state-card-muted"><div class="strategy-state-time">More</div><p>${extraCount} additional state changes later in the game.</p></article>` : ''}
-    </div>`;
-}
-
-function uniqueSortedTimestamps(values: number[]): number[] {
-  return [...new Set(values.filter(value => Number.isFinite(value) && value >= 0))]
-    .sort((a, b) => a - b);
-}
-
 function scaledX(timestamp: number, duration: number, padding: { left: number; right: number }): number {
   const maxX = Math.max(duration, 1);
   const plotWidth = svgWidth - padding.left - padding.right;
@@ -971,48 +699,6 @@ function scaledVillagerX(timestamp: number, duration: number): number {
   const maxX = Math.max(duration, 1);
   const plotWidth = villagerChartWidth - villagerPadding.left - villagerPadding.right;
   return villagerPadding.left + (timestamp / maxX) * plotWidth;
-}
-
-function gatherRateAtOrBefore(series: GatherRatePoint[], timestamp: number): number {
-  if (series.length === 0) return 0;
-
-  let candidate = series[0];
-  for (const point of series) {
-    if (point.timestamp > timestamp) break;
-    candidate = point;
-  }
-
-  return candidate.ratePerMin;
-}
-
-function adjustedMilitaryAtOrBefore(
-  series: PostMatchViewModel['trajectory']['adjustedMilitarySeries'],
-  timestamp: number
-): PostMatchViewModel['trajectory']['adjustedMilitarySeries'][number] {
-  if (series.length === 0) {
-    return {
-      timestamp,
-      you: 0,
-      opponent: 0,
-      delta: 0,
-      youRawMilitaryActive: 0,
-      opponentRawMilitaryActive: 0,
-      youCounterAdjustedMilitaryActive: 0,
-      opponentCounterAdjustedMilitaryActive: 0,
-      youUpgradeMultiplier: 1,
-      opponentUpgradeMultiplier: 1,
-      youUnitBreakdown: [],
-      opponentUnitBreakdown: [],
-    };
-  }
-
-  let candidate = series[0];
-  for (const point of series) {
-    if (point.timestamp > timestamp) break;
-    candidate = point;
-  }
-
-  return candidate;
 }
 
 function sumEconomicRole(entries: BandBreakdownEntry[], role: EconomicRole): number {
@@ -1339,15 +1025,6 @@ export function buildPostMatchHoverPayload(model: PostMatchViewModel): ClientHov
   return buildClientHoverSnapshots(buildHoverSnapshots(model, labels));
 }
 
-function escapeJsonForScript(value: unknown): string {
-  return JSON.stringify(value)
-    .replace(/</g, '\\u003c')
-    .replace(/>/g, '\\u003e')
-    .replace(/&/g, '\\u0026')
-    .replace(/\u2028/g, '\\u2028')
-    .replace(/\u2029/g, '\\u2029');
-}
-
 function hoverLabelX(xPos: number): number {
   return xPos > svgWidth - 170 ? xPos - 8 : xPos + 8;
 }
@@ -1494,25 +1171,8 @@ function significantEventUnderdogDetailsHtml(event: SignificantTimelineEvent | n
             </details>`;
 }
 
-function significantEventAriaLabel(event: SignificantTimelineEvent): string {
-  return `${event.label} at ${event.timeLabel}: ${event.headline || event.description}`;
-}
-
 function playerColor(labels: RenderPlayerLabels, player: keyof RenderPlayerLabels): string {
   return labels[player].color;
-}
-
-function significantEventMarkerColor(
-  event: SignificantTimelineEvent,
-  labels: RenderPlayerLabels
-): string {
-  return playerColor(labels, event.victim);
-}
-
-function significantEventMarkerGlyph(event: SignificantTimelineEvent): string {
-  if (event.kind === 'raid') return 'R';
-  if (event.kind === 'fight') return 'F';
-  return 'L';
 }
 
 function buildSignificantEventImpactHtml(event: SignificantTimelineEvent | null): string {
@@ -1610,7 +1270,7 @@ function buildHoverInspectorHtml(
     return `${entry.label}${countSuffix}`;
   }
 
-  function breakdownRowHtml(entry: BandBreakdownEntry, bandKey: BreakdownKey): string {
+  function breakdownRowHtml(entry: BandBreakdownEntry): string {
     const label = displayBreakdownLabel(entry);
     return `
         <li>
@@ -1637,7 +1297,7 @@ function buildHoverInspectorHtml(
         .map(def => {
           const groupEntries = entries.filter(entry => (entry.category ?? 'other') === def.key);
           if (groupEntries.length === 0) return '';
-          const rows = groupEntries.map(entry => breakdownRowHtml(entry, bandKey)).join('');
+          const rows = groupEntries.map(entry => breakdownRowHtml(entry)).join('');
 
           return `
             <li class="band-breakdown-group">${escapeHtml(def.label)}</li>
@@ -1658,7 +1318,7 @@ function buildHoverInspectorHtml(
         .map(def => {
           const groupEntries = entries.filter(entry => normalizeOpportunityLostCategory(entry) === def.key);
           if (groupEntries.length === 0) return '';
-          const rows = groupEntries.map(entry => breakdownRowHtml(entry, bandKey)).join('');
+          const rows = groupEntries.map(entry => breakdownRowHtml(entry)).join('');
 
           return `
             <li class="band-breakdown-group">${escapeHtml(def.label)}</li>
@@ -1670,7 +1330,7 @@ function buildHoverInspectorHtml(
       if (groupedHtml.length > 0) return groupedHtml;
     }
 
-    return entries.map(entry => breakdownRowHtml(entry, bandKey)).join('');
+    return entries.map(entry => breakdownRowHtml(entry)).join('');
   }
 
   const bandByKey = new Map(bandDefs.map(band => [band.key, band]));
@@ -2248,560 +1908,6 @@ function buildAdjustedMilitaryBreakdownSection(snapshot: HoverSnapshot): string 
     </section>`;
 }
 
-function formatPoolTooltip(label: string, point: PoolSeriesPoint): string[] {
-  return [
-    `${label} total: ${Math.round(point.total)}`,
-    `${label} Economic: ${Math.round(point.economic)}`,
-    `${label} Population cap: ${Math.round(point.populationCap)}`,
-    `${label} Mil cap: ${Math.round(point.militaryCapacity)}`,
-    `${label} Mil active: ${Math.round(point.militaryActive)}`,
-    `${label} Defensive: ${Math.round(point.defensive)}`,
-    `${label} Research: ${Math.round(point.research)}`,
-    `${label} Advancement: ${Math.round(point.advancement)}`,
-  ];
-}
-
-function markerColor(marker: AgeMarker, labels: RenderPlayerLabels): string {
-  return playerColor(labels, marker.player);
-}
-
-function markerDash(marker: AgeMarker): string {
-  return marker.player === 'you' ? '' : ' stroke-dasharray="7 5"';
-}
-
-function markerTextAnchor(xPos: number, width: number): string {
-  if (xPos < 88) return 'start';
-  if (xPos > width - 88) return 'end';
-  return 'middle';
-}
-
-function assignMarkerRows(
-  markers: AgeMarker[],
-  x: (timestamp: number) => number,
-  rowCount: number,
-  minGapPx: number
-): { marker: AgeMarker; xPos: number; row: number }[] {
-  const lastByRow = Array.from({ length: rowCount }, () => Number.NEGATIVE_INFINITY);
-
-  return markers.map(marker => {
-    const xPos = x(marker.timestamp);
-    let row = lastByRow.findIndex(last => xPos - last >= minGapPx);
-    if (row === -1) {
-      row = 0;
-    }
-    lastByRow[row] = xPos;
-    return { marker, xPos, row };
-  });
-}
-
-function buildAgeMarkerLayer(params: {
-  markers: AgeMarker[];
-  duration: number;
-  x: (timestamp: number) => number;
-  width: number;
-  lineStartY: number;
-  lineEndY: number;
-  labelY?: number;
-  showLabels: boolean;
-  labels: RenderPlayerLabels;
-}): string {
-  const markers = params.markers.filter(marker => marker.timestamp >= 0 && marker.timestamp <= params.duration);
-  const rowed = assignMarkerRows(markers, params.x, params.showLabels ? 4 : 1, params.showLabels ? 86 : 0);
-
-  return rowed
-    .map(({ marker, xPos, row }) => {
-      const label = escapeHtml(marker.label);
-      const color = escapeHtml(markerColor(marker, params.labels));
-      const text = params.showLabels
-        ? `<text x="${xPos.toFixed(2)}" y="${((params.labelY ?? 12) + row * 12).toFixed(2)}" text-anchor="${markerTextAnchor(xPos, params.width)}" font-size="10" font-weight="700" fill="${color}">${escapeHtml(marker.shortLabel)}</text>`
-        : '';
-
-      return `<g class="age-marker" data-age-marker="${label}">
-        <line x1="${xPos.toFixed(2)}" y1="${params.lineStartY.toFixed(2)}" x2="${xPos.toFixed(2)}" y2="${params.lineEndY.toFixed(2)}" stroke="${color}" stroke-width="1.4" opacity="0.72"${markerDash(marker)} />
-        ${text}
-        <title>${label}</title>
-      </g>`;
-    })
-    .join('');
-}
-
-function uniqueSignificantEvents(hoverSnapshots: HoverSnapshot[]): SignificantTimelineEvent[] {
-  const byId = new Map<string, SignificantTimelineEvent>();
-  for (const snapshot of hoverSnapshots) {
-    if (snapshot.significantEvent) {
-      byId.set(snapshot.significantEvent.id, snapshot.significantEvent);
-    }
-  }
-  return [...byId.values()].sort((a, b) => a.timestamp - b.timestamp || a.id.localeCompare(b.id));
-}
-
-function buildSignificantEventMarkerLayer(params: {
-  events: SignificantTimelineEvent[];
-  duration: number;
-  x: (timestamp: number) => number;
-  lineStartY: number;
-  lineEndY: number;
-  labels: RenderPlayerLabels;
-}): string {
-  const events = params.events.filter(event => event.timestamp >= 0 && event.timestamp <= params.duration);
-  if (events.length === 0) return '';
-
-  const markerY = Math.max(18, params.lineStartY - 18);
-  return `<g class="significant-event-markers" aria-label="Significant loss events">
-    ${events
-    .map(event => {
-      const xPos = params.x(event.timestamp);
-      const color = escapeHtml(significantEventMarkerColor(event, params.labels));
-      const label = significantEventAriaLabel(event);
-      return `<g class="significant-event-marker hover-target" data-significant-event-marker data-hover-timestamp="${event.timestamp}" role="button" tabindex="0" aria-label="${escapeHtml(label)}">
-        <line class="significant-event-stem" x1="${xPos.toFixed(2)}" y1="${markerY.toFixed(2)}" x2="${xPos.toFixed(2)}" y2="${params.lineEndY.toFixed(2)}" stroke="${color}" />
-        <circle class="significant-event-dot" cx="${xPos.toFixed(2)}" cy="${markerY.toFixed(2)}" r="10" fill="${color}" />
-        <text class="significant-event-glyph" x="${xPos.toFixed(2)}" y="${(markerY + 3.7).toFixed(2)}" text-anchor="middle">${escapeHtml(significantEventMarkerGlyph(event))}</text>
-        <title>${escapeHtml(label)}</title>
-      </g>`;
-    })
-    .join('')}
-  </g>`;
-}
-
-function buildPoolComparisonSvg(
-  youSeries: PoolSeriesPoint[],
-  opponentSeries: PoolSeriesPoint[],
-  duration: number,
-  yMax: number,
-  ageMarkers: AgeMarker[],
-  hoverSnapshots: HoverSnapshot[],
-  labels: RenderPlayerLabels
-): string {
-  const width = svgWidth;
-  const padding = poolPadding;
-  const laneHeight = poolLaneHeight;
-  const laneOneTop = padding.top;
-  const laneTwoTop = laneOneTop + laneHeight + poolLaneGap;
-  const deltaTop = laneTwoTop + laneHeight + poolDeltaTopGap;
-  const deltaBottom = deltaTop + poolDeltaHeight;
-  const height = deltaBottom + padding.bottom;
-  const maxX = Math.max(duration, 1);
-  const maxY = Math.max(yMax, 1);
-
-  const x = (timestamp: number): number => scaledX(timestamp, duration, padding);
-  const y = (value: number, laneTop: number): number =>
-    laneTop + laneHeight - (value / maxY) * laneHeight;
-
-  const buildLanePaths = (series: PoolSeriesPoint[], laneTop: number): string => {
-    if (series.length === 0) return '';
-
-    const cumulativeByBand: Record<BandDef['key'], number[]> = {
-      economic: [],
-      populationCap: [],
-      militaryCapacity: [],
-      militaryActive: [],
-      defensive: [],
-      research: [],
-      advancement: [],
-    };
-
-    for (let i = 0; i < series.length; i += 1) {
-      let sum = 0;
-      for (const band of bandDefs) {
-        sum += series[i][band.key];
-        cumulativeByBand[band.key][i] = sum;
-      }
-    }
-
-    const areaPaths = bandDefs.map((band, bandIndex) => {
-      const upperPoints = series.map((point, idx) =>
-        `${x(point.timestamp).toFixed(2)},${y(cumulativeByBand[band.key][idx], laneTop).toFixed(2)}`
-      );
-      const lowerPoints = series
-        .map((point, idx) => {
-          const lowerValue = bandIndex === 0 ? 0 : cumulativeByBand[bandDefs[bandIndex - 1].key][idx];
-          return `${x(point.timestamp).toFixed(2)},${y(lowerValue, laneTop).toFixed(2)}`;
-        })
-        .reverse();
-
-      const d = `M ${upperPoints.join(' L ')} L ${lowerPoints.join(' L ')} Z`;
-      return `<path d="${d}" fill="${band.color}" fill-opacity="0.88" stroke="none" />`;
-    });
-
-    const totalPath = series
-      .map((point, idx) => `${idx === 0 ? 'M' : 'L'} ${x(point.timestamp).toFixed(2)} ${y(point.total, laneTop).toFixed(2)}`)
-      .join(' ');
-
-    return `
-      ${areaPaths.join('')}
-      <path d="${totalPath}" fill="none" stroke="var(--color-strong)" stroke-width="1.1" opacity="0.55" />`;
-  };
-
-  const buildLaneGrid = (laneTop: number): string => {
-    const horizontal = [0, 0.25, 0.5, 0.75, 1]
-      .map(step => {
-        const value = maxY * step;
-        const yPos = y(value, laneTop);
-        return `<line x1="${padding.left}" y1="${yPos.toFixed(2)}" x2="${(width - padding.right).toFixed(2)}" y2="${yPos.toFixed(2)}" stroke="#D9DDD8" stroke-width="1" />`;
-      })
-      .join('');
-
-    const yLabels = [0, 0.5, 1]
-      .map(step => {
-        const value = Math.round(maxY * step);
-        const yPos = y(value, laneTop);
-        return `<text x="${(padding.left - 8).toFixed(2)}" y="${(yPos + 4).toFixed(2)}" text-anchor="end" font-size="11" fill="#5B6257">${value}</text>`;
-      })
-      .join('');
-
-    return `
-      ${horizontal}
-      <line x1="${padding.left}" y1="${(laneTop + laneHeight).toFixed(2)}" x2="${(width - padding.right).toFixed(2)}" y2="${(laneTop + laneHeight).toFixed(2)}" stroke="#5B6257" stroke-width="1.2" />
-      ${yLabels}`;
-  };
-
-  const xGridAndTicks = [0, 0.25, 0.5, 0.75, 1]
-    .map(step => {
-      const timestamp = Math.round(maxX * step);
-      const xPos = x(timestamp);
-      return [
-        `<line x1="${xPos.toFixed(2)}" y1="${laneOneTop.toFixed(2)}" x2="${xPos.toFixed(2)}" y2="${deltaBottom.toFixed(2)}" stroke="#E2E5DF" stroke-width="1" />`,
-        `<line x1="${xPos.toFixed(2)}" y1="${deltaBottom.toFixed(2)}" x2="${xPos.toFixed(2)}" y2="${(deltaBottom + 4).toFixed(2)}" stroke="#7F867B" stroke-width="1" />`,
-        `<text x="${xPos.toFixed(2)}" y="${(height - 8).toFixed(2)}" text-anchor="middle" font-size="11" fill="#5B6257">${formatTime(timestamp)}</text>`
-      ].join('');
-    })
-    .join('');
-
-  const timestamps = hoverSnapshots.map(snapshot => snapshot.timestamp);
-
-  const deltaPoints = timestamps.map(timestamp => {
-    const youPoint = poolPointAtOrBefore(youSeries, timestamp);
-    const oppPoint = poolPointAtOrBefore(opponentSeries, timestamp);
-    return {
-      timestamp,
-      value: youPoint.total - oppPoint.total,
-      youPoint,
-      oppPoint,
-    };
-  });
-
-  const maxDelta = Math.max(1, ...deltaPoints.map(point => Math.abs(point.value)));
-  const deltaMid = deltaTop + poolDeltaHeight / 2;
-  const deltaScale = poolDeltaHeight / 2 - 8;
-  const deltaY = (value: number): number => deltaMid - (value / maxDelta) * deltaScale;
-  const defaultHover = hoverSnapshots[0];
-
-  const deltaSegments = deltaPoints
-    .slice(1)
-    .map((point, idx) => {
-      const prev = deltaPoints[idx];
-      const color = (prev.value + point.value) / 2 >= 0
-        ? escapeHtml(playerColor(labels, 'you'))
-        : escapeHtml(playerColor(labels, 'opponent'));
-      return `<line x1="${x(prev.timestamp).toFixed(2)}" y1="${deltaY(prev.value).toFixed(2)}" x2="${x(point.timestamp).toFixed(2)}" y2="${deltaY(point.value).toFixed(2)}" stroke="${color}" stroke-width="2.2" stroke-linecap="round" />`;
-    })
-    .join('');
-
-  const hoverColumns = timestamps
-    .map((timestamp, idx) => {
-      const prevTimestamp = idx === 0 ? 0 : timestamps[idx - 1];
-      const nextTimestamp = idx === timestamps.length - 1 ? maxX : timestamps[idx + 1];
-      const leftTimestamp = idx === 0 ? 0 : (prevTimestamp + timestamp) / 2;
-      const rightTimestamp = idx === timestamps.length - 1 ? maxX : (timestamp + nextTimestamp) / 2;
-      const left = x(leftTimestamp);
-      const right = x(rightTimestamp);
-      return `<g class="hover-column" data-hover-column data-hover-timestamp="${timestamp}">
-        <line class="hover-line" x1="${x(timestamp).toFixed(2)}" y1="${laneOneTop.toFixed(2)}" x2="${x(timestamp).toFixed(2)}" y2="${deltaBottom.toFixed(2)}" stroke="#1F2A1F" stroke-width="1.1" />
-        <rect class="hover-target" data-hover-timestamp="${timestamp}" x="${left.toFixed(2)}" y="${laneOneTop.toFixed(2)}" width="${Math.max(2, right - left).toFixed(2)}" height="${(deltaBottom - laneOneTop).toFixed(2)}" fill="transparent" pointer-events="all"><title>${formatTime(timestamp)} - hover for values</title></rect>
-      </g>`;
-    })
-    .join('');
-
-  const ageMarkerLayer = buildAgeMarkerLayer({
-    markers: ageMarkers,
-    duration,
-    x,
-    width,
-    lineStartY: laneOneTop,
-    lineEndY: deltaBottom,
-    labelY: 14,
-    showLabels: true,
-    labels,
-  });
-  const youColor = escapeHtml(playerColor(labels, 'you'));
-  const opponentColor = escapeHtml(playerColor(labels, 'opponent'));
-
-  return `
-<svg id="pool-comparison" class="pool-chart pool-comparison-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Aligned deployed resource pool comparison chart">
-  <rect x="0" y="0" width="${width}" height="${height}" fill="var(--color-chart-bg)" rx="8" />
-  ${xGridAndTicks}
-  ${buildLaneGrid(laneOneTop)}
-  ${buildLaneGrid(laneTwoTop)}
-  <text x="${padding.left}" y="${(laneOneTop - 10).toFixed(2)}" font-size="12" font-weight="700" fill="${youColor}">You</text>
-  <text x="${padding.left}" y="${(laneTwoTop - 10).toFixed(2)}" font-size="12" font-weight="700" fill="${opponentColor}">Opponent</text>
-  <g>${buildLanePaths(youSeries, laneOneTop)}</g>
-  <g>${buildLanePaths(opponentSeries, laneTwoTop)}</g>
-  <text x="${padding.left}" y="${(deltaTop - 13).toFixed(2)}" font-size="12" font-weight="700" fill="var(--color-strong)">Pool delta (You - Opponent)</text>
-  <line x1="${padding.left}" y1="${deltaMid.toFixed(2)}" x2="${(width - padding.right).toFixed(2)}" y2="${deltaMid.toFixed(2)}" stroke="#7F867B" stroke-width="1" />
-  <text x="${(padding.left - 8).toFixed(2)}" y="${(deltaY(maxDelta) + 4).toFixed(2)}" text-anchor="end" font-size="10" fill="${youColor}">+${Math.round(maxDelta)}</text>
-  <text x="${(padding.left - 8).toFixed(2)}" y="${(deltaY(-maxDelta) + 4).toFixed(2)}" text-anchor="end" font-size="10" fill="${opponentColor}">-${Math.round(maxDelta)}</text>
-  ${deltaSegments}
-  ${ageMarkerLayer}
-  <g class="hover-readouts" aria-hidden="true">
-    <line data-hover-line-pool class="hover-active-line" x1="${defaultHover.poolX.toFixed(2)}" y1="${laneOneTop.toFixed(2)}" x2="${defaultHover.poolX.toFixed(2)}" y2="${deltaBottom.toFixed(2)}" />
-    <text data-hover-label-time class="hover-value-label" x="${hoverLabelX(defaultHover.poolX).toFixed(2)}" y="42" text-anchor="${hoverLabelAnchor(defaultHover.poolX)}">${escapeHtml(defaultHover.timeLabel)}</text>
-    <text data-hover-label-pool-total-you class="hover-value-label you-label" x="${hoverLabelX(defaultHover.poolX).toFixed(2)}" y="${(laneOneTop + 20).toFixed(2)}" text-anchor="${hoverLabelAnchor(defaultHover.poolX)}">You ${formatNumber(defaultHover.you.total)}</text>
-    <text data-hover-label-pool-total-opponent class="hover-value-label opponent-label" x="${hoverLabelX(defaultHover.poolX).toFixed(2)}" y="${(laneTwoTop + 20).toFixed(2)}" text-anchor="${hoverLabelAnchor(defaultHover.poolX)}">Opp ${formatNumber(defaultHover.opponent.total)}</text>
-    <text data-hover-label-pool-delta class="hover-value-label delta-label" x="${hoverLabelX(defaultHover.poolX).toFixed(2)}" y="${(deltaTop + 24).toFixed(2)}" text-anchor="${hoverLabelAnchor(defaultHover.poolX)}">Delta ${formatSigned(defaultHover.delta.total)}</text>
-  </g>
-  ${hoverColumns}
-</svg>`;
-}
-
-function leaderColor(leader: AllocationLeader, labels: RenderPlayerLabels): string {
-  if (leader === 'you') return playerColor(labels, 'you');
-  if (leader === 'opponent') return playerColor(labels, 'opponent');
-  return '#A8AEA5';
-}
-
-function roundUpAbsoluteAxisMax(value: number): number {
-  if (!Number.isFinite(value) || value <= 0) return 1;
-  const exponent = Math.floor(Math.log10(value));
-  const step = 10 ** Math.max(0, exponent - 1);
-  return Math.ceil(value / step) * step;
-}
-
-function roundUpPercentAxisMax(value: number): number {
-  if (!Number.isFinite(value) || value <= 0) return 10;
-  return Math.min(100, Math.max(10, Math.ceil(value / 5) * 5));
-}
-
-function allocationLaneMaxY(
-  graph: AllocationGraphDef,
-  hoverSnapshots: HoverSnapshot[]
-): number {
-  const maxValue = Math.max(
-    0,
-    ...hoverSnapshots.flatMap(snapshot => {
-      const row = snapshot.allocation[graph.key];
-      return graph.mode === 'absolute'
-        ? [row.you, row.opponent]
-        : [row.youShare, row.opponentShare];
-    })
-  );
-
-  return graph.mode === 'absolute'
-    ? roundUpAbsoluteAxisMax(maxValue)
-    : roundUpPercentAxisMax(maxValue);
-}
-
-function buildAllocationLeaderStripSvg(
-  hoverSnapshots: HoverSnapshot[],
-  duration: number,
-  labels: RenderPlayerLabels
-): string {
-  const width = svgWidth;
-  const padding = strategyPadding;
-  const plotWidth = width - padding.left - padding.right;
-  const maxX = Math.max(duration, 1);
-  const x = (timestamp: number): number => padding.left + (timestamp / maxX) * plotWidth;
-  const segments = buildAllocationLeaderSegments(hoverSnapshots, duration);
-
-  const rows = allocationLeaderGraphDefs
-    .map((category, idx) => {
-      const rowTop = leaderStripFirstRowTop + idx * (leaderStripRowHeight + leaderStripRowGap);
-      const segmentRects = segments
-        .filter(segment => segment.categoryKey === category.key)
-        .map(segment => {
-          const startX = x(segment.start);
-          const endX = x(segment.end);
-          const widthPx = Math.max(1, endX - startX);
-          const title = `${category.label} ${formatTime(segment.start)}-${formatTime(segment.end)}: ${labels.you.compactLabel} ${formatNumber(segment.you)}, ${labels.opponent.compactLabel} ${formatNumber(segment.opponent)}`;
-          return `<rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="${category.key}" data-leader="${segment.leader}" data-hover-timestamp="${segment.hoverTimestamp}" x="${startX.toFixed(2)}" y="${rowTop.toFixed(2)}" width="${widthPx.toFixed(2)}" height="${leaderStripRowHeight}" fill="${escapeHtml(leaderColor(segment.leader, labels))}" pointer-events="all"><title>${escapeHtml(title)}</title></rect>`;
-        })
-        .join('');
-
-      return `
-        <g>
-          <text x="12" y="${(rowTop + 13).toFixed(2)}" font-size="12" font-weight="700" fill="var(--color-strong)">${escapeHtml(category.label)}</text>
-          ${segmentRects}
-        </g>
-      `;
-    })
-    .join('');
-
-  const verticalTicks = [0, 0.25, 0.5, 0.75, 1]
-    .map(step => {
-      const timestamp = Math.round(maxX * step);
-      const xPos = x(timestamp);
-      return `<line x1="${xPos.toFixed(2)}" y1="12" x2="${xPos.toFixed(2)}" y2="${(leaderStripAxisTop - 8).toFixed(2)}" stroke="#E4E8E1" stroke-width="1" />`;
-    })
-    .join('');
-
-  const xTicks = [0, 0.25, 0.5, 0.75, 1]
-    .map(step => {
-      const timestamp = Math.round(maxX * step);
-      const xPos = x(timestamp);
-      return `
-        <line x1="${xPos.toFixed(2)}" y1="${(leaderStripAxisTop + 3).toFixed(2)}" x2="${xPos.toFixed(2)}" y2="${(leaderStripAxisTop + 9).toFixed(2)}" stroke="#A8AEA5" stroke-width="1" />
-        <text class="leader-strip-time-label" x="${xPos.toFixed(2)}" y="${(leaderStripAxisTop + 22).toFixed(2)}" text-anchor="middle">${formatTime(timestamp)}</text>
-      `;
-    })
-    .join('');
-
-  return `
-<svg id="allocation-leader-strip" class="leader-strip" viewBox="0 0 ${width} ${leaderStripHeight}" role="img" aria-label="Thirty-second leader strip by allocation category">
-  <rect x="0" y="0" width="${width}" height="${leaderStripHeight}" fill="var(--color-chart-bg)" rx="8" />
-  ${verticalTicks}
-  ${rows}
-  <g data-time-axis="allocation-leader">
-    <rect class="leader-strip-axis-bg" x="${padding.left}" y="${(leaderStripAxisTop - 2).toFixed(2)}" width="${plotWidth.toFixed(2)}" height="${(leaderStripAxisHeight - 2).toFixed(2)}" rx="6" />
-    <line x1="${padding.left}" y1="${leaderStripAxisTop.toFixed(2)}" x2="${(padding.left + plotWidth).toFixed(2)}" y2="${leaderStripAxisTop.toFixed(2)}" stroke="#CAD2C7" stroke-width="1" />
-    ${xTicks}
-  </g>
-</svg>`;
-}
-
-function buildStrategyAllocationSvg(
-  hoverSnapshots: HoverSnapshot[],
-  duration: number,
-  ageMarkers: AgeMarker[],
-  labels: RenderPlayerLabels
-): string {
-  const width = svgWidth;
-  const height = strategyHeight;
-  const padding = strategyPadding;
-  const plotWidth = width - padding.left - padding.right;
-  const youColor = escapeHtml(playerColor(labels, 'you'));
-  const opponentColor = escapeHtml(playerColor(labels, 'opponent'));
-  const x = (timestamp: number): number => scaledX(timestamp, duration, padding);
-  const defaultHover = hoverSnapshots[0];
-
-  if (!defaultHover) {
-    return `
-<svg id="allocation-comparison" class="strategy-chart allocation-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Allocation comparison chart">
-  <rect x="0" y="0" width="${width}" height="${height}" fill="var(--color-chart-bg)" rx="10" />
-</svg>`;
-  }
-
-  const maxX = Math.max(duration, 1);
-  const yFor = (value: number, laneTop: number, maxY: number): number =>
-    laneTop + strategyLaneHeight - (Math.max(0, Math.min(maxY, value)) / maxY) * strategyLaneHeight;
-  const xTicks = [0, 0.25, 0.5, 0.75, 1]
-    .map(step => {
-      const timestamp = Math.round(maxX * step);
-      const xPos = x(timestamp);
-      return `
-        <line x1="${xPos.toFixed(2)}" y1="${padding.top.toFixed(2)}" x2="${xPos.toFixed(2)}" y2="${(height - padding.bottom).toFixed(2)}" stroke="#E2E5DF" stroke-width="1" />
-        <text x="${xPos.toFixed(2)}" y="${(height - 7).toFixed(2)}" text-anchor="middle" font-size="11" fill="#5B6257">${formatTime(timestamp)}</text>
-      `;
-    })
-    .join('');
-
-  const timestamps = hoverSnapshots.map(snapshot => snapshot.timestamp);
-  const hoverColumns = hoverSnapshots
-    .map((snapshot, idx) => {
-      const timestamp = snapshot.timestamp;
-      const prevTimestamp = idx === 0 ? 0 : timestamps[idx - 1];
-      const nextTimestamp = idx === hoverSnapshots.length - 1 ? maxX : timestamps[idx + 1];
-      const leftTimestamp = idx === 0 ? 0 : (prevTimestamp + timestamp) / 2;
-      const rightTimestamp = idx === hoverSnapshots.length - 1 ? maxX : (timestamp + nextTimestamp) / 2;
-      const left = x(leftTimestamp);
-      const right = x(rightTimestamp);
-      const title = allocationGraphDefs
-        .map(graph => {
-          const row = snapshot.allocation[graph.key];
-          if (graph.mode === 'absolute') {
-            return `${graph.label}: ${labels.you.compactLabel} ${formatNumber(row.you)}, ${labels.opponent.compactLabel} ${formatNumber(row.opponent)}, Delta ${formatSigned(row.delta)}`;
-          }
-          return `${graph.label}: ${labels.you.compactLabel} ${formatStrategyShare(row.youShare)}, ${labels.opponent.compactLabel} ${formatStrategyShare(row.opponentShare)}, Delta ${formatSignedPercentagePoints(row.shareDelta)}`;
-        })
-        .join(' | ');
-
-      return `<rect class="hover-target strategy-hover-target" data-hover-timestamp="${timestamp}" x="${left.toFixed(2)}" y="${padding.top.toFixed(2)}" width="${Math.max(2, right - left).toFixed(2)}" height="${(height - padding.top - padding.bottom).toFixed(2)}" fill="transparent" pointer-events="all"><title>${formatTime(timestamp)} - ${escapeHtml(title)}</title></rect>`;
-    })
-    .join('');
-
-  const lanes = allocationGraphDefs
-    .map((graph, idx) => {
-      const laneTop = padding.top + idx * (strategyLaneHeight + strategyLaneGap);
-      const laneBottom = laneTop + strategyLaneHeight;
-      const maxY = allocationLaneMaxY(graph, hoverSnapshots);
-      const valueFor = (snapshot: HoverSnapshot, side: 'you' | 'opponent'): number => {
-        const row = snapshot.allocation[graph.key];
-        return graph.mode === 'absolute' ? row[side] : side === 'you' ? row.youShare : row.opponentShare;
-      };
-      const youPath = hoverSnapshots
-        .map((snapshot, pointIdx) => `${pointIdx === 0 ? 'M' : 'L'} ${x(snapshot.timestamp).toFixed(2)} ${yFor(valueFor(snapshot, 'you'), laneTop, maxY).toFixed(2)}`)
-        .join(' ');
-      const opponentPath = hoverSnapshots
-        .map((snapshot, pointIdx) => `${pointIdx === 0 ? 'M' : 'L'} ${x(snapshot.timestamp).toFixed(2)} ${yFor(valueFor(snapshot, 'opponent'), laneTop, maxY).toFixed(2)}`)
-        .join(' ');
-      const topLabel = graph.mode === 'absolute' ? formatNumber(maxY) : formatStrategyShare(maxY);
-      const midLabel = graph.mode === 'absolute' ? formatNumber(maxY / 2) : formatStrategyShare(maxY / 2);
-      const bottomLabel = graph.mode === 'absolute' ? '0' : '0%';
-      const defaultRow = defaultHover.allocation[graph.key];
-      const labelText = graph.mode === 'absolute'
-        ? `${graph.label} Δ ${formatSigned(defaultRow.delta)}`
-        : `${graph.label} Δ ${formatSignedPercentagePoints(defaultRow.shareDelta)}`;
-      const readoutX = padding.left + plotWidth - 8;
-
-      const laneClass = `allocation-lane allocation-lane-${graph.key}`;
-      const laneBackground = graph.mode === 'absolute'
-        ? `<rect class="allocation-lane-bg" x="${padding.left}" y="${(laneTop - 8).toFixed(2)}" width="${plotWidth.toFixed(2)}" height="${(strategyLaneHeight + 16).toFixed(2)}" rx="6" />`
-        : '';
-      const laneDivider = graph.mode === 'absolute'
-        ? `<line class="allocation-lane-divider" x1="0" y1="${(laneTop - 14).toFixed(2)}" x2="${width}" y2="${(laneTop - 14).toFixed(2)}" />`
-        : '';
-      return `
-        <g class="${laneClass}">
-          ${laneDivider}
-          ${laneBackground}
-          <text x="12" y="${(laneTop + 19).toFixed(2)}" font-size="13" font-weight="800" fill="var(--color-strong)">${escapeHtml(graph.label)}</text>
-          <text x="${(padding.left - 8).toFixed(2)}" y="${(laneTop + 4).toFixed(2)}" text-anchor="end" font-size="11" fill="#5B6257">${topLabel}</text>
-          <text x="${(padding.left - 8).toFixed(2)}" y="${(laneTop + strategyLaneHeight / 2 + 4).toFixed(2)}" text-anchor="end" font-size="11" fill="#5B6257">${midLabel}</text>
-          <text x="${(padding.left - 8).toFixed(2)}" y="${(laneBottom + 4).toFixed(2)}" text-anchor="end" font-size="11" fill="#5B6257">${bottomLabel}</text>
-          <line x1="${padding.left}" y1="${laneTop.toFixed(2)}" x2="${(padding.left + plotWidth).toFixed(2)}" y2="${laneTop.toFixed(2)}" stroke="#D9DDD8" stroke-width="1" />
-          <line x1="${padding.left}" y1="${(laneTop + strategyLaneHeight / 2).toFixed(2)}" x2="${(padding.left + plotWidth).toFixed(2)}" y2="${(laneTop + strategyLaneHeight / 2).toFixed(2)}" stroke="#D9DDD8" stroke-width="1" />
-          <line x1="${padding.left}" y1="${laneBottom.toFixed(2)}" x2="${(padding.left + plotWidth).toFixed(2)}" y2="${laneBottom.toFixed(2)}" stroke="#5B6257" stroke-width="1.1" />
-          <path d="${youPath}" fill="none" stroke="${youColor}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
-          <path d="${opponentPath}" fill="none" stroke="${opponentColor}" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
-          <text data-hover-label-strategy-${graph.key} data-fixed-label="true" class="hover-value-label delta-label" x="${readoutX.toFixed(2)}" y="${(laneTop + 18).toFixed(2)}" text-anchor="end">${escapeHtml(labelText)}</text>
-        </g>
-      `;
-    })
-    .join('');
-
-  const ageMarkerLayer = buildAgeMarkerLayer({
-    markers: ageMarkers,
-    duration,
-    x,
-    width,
-    lineStartY: padding.top,
-    lineEndY: height - padding.bottom,
-    showLabels: false,
-    labels,
-  });
-  const significantEventLayer = buildSignificantEventMarkerLayer({
-    events: uniqueSignificantEvents(hoverSnapshots),
-    duration,
-    x,
-    lineStartY: padding.top,
-    lineEndY: height - padding.bottom,
-    labels,
-  });
-
-  return `
-<svg id="allocation-comparison" class="strategy-chart allocation-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Allocation comparison chart">
-  <rect x="0" y="0" width="${width}" height="${height}" fill="var(--color-chart-bg)" rx="10" />
-  ${xTicks}
-  ${ageMarkerLayer}
-  ${lanes}
-  <g class="hover-readouts" aria-hidden="true">
-    <line data-hover-line-strategy class="hover-active-line" x1="${defaultHover.strategyX.toFixed(2)}" y1="${padding.top.toFixed(2)}" x2="${defaultHover.strategyX.toFixed(2)}" y2="${(height - padding.bottom).toFixed(2)}" />
-    <text data-hover-label-strategy-time class="hover-value-label" x="${hoverLabelX(defaultHover.strategyX).toFixed(2)}" y="38" text-anchor="${hoverLabelAnchor(defaultHover.strategyX)}">${escapeHtml(defaultHover.timeLabel)}</text>
-  </g>
-  ${hoverColumns}
-  ${significantEventLayer}
-</svg>`;
-}
-
 function buildGatherRateSvg(
   youSeries: GatherRatePoint[],
   opponentSeries: GatherRatePoint[],
@@ -2813,7 +1919,6 @@ function buildGatherRateSvg(
   const width = svgWidth;
   const height = gatherHeight;
   const padding = gatherPadding;
-  const plotWidth = width - padding.left - padding.right;
   const plotHeight = height - padding.top - padding.bottom;
   const maxX = Math.max(duration, 1);
   const maxRate = Math.max(
@@ -2909,22 +2014,12 @@ function villagerResourceAtOrBefore(
   series: PostMatchViewModel['villagerOpportunity']['resourceSeries']['you'],
   timestamp: number
 ): PostMatchViewModel['villagerOpportunity']['resourceSeries']['you'][number] {
-  if (series.length === 0) {
-    return {
-      timestamp,
-      cumulativeLoss: 0,
-      cumulativeResourcesGained: 0,
-      cumulativeResourcesPossible: 0,
-    };
-  }
-
-  let candidate = series[0];
-  for (const point of series) {
-    if (point.timestamp > timestamp) break;
-    candidate = point;
-  }
-
-  return candidate;
+  return pointAtOrBefore(series, timestamp, {
+    timestamp,
+    cumulativeLoss: 0,
+    cumulativeResourcesGained: 0,
+    cumulativeResourcesPossible: 0,
+  });
 }
 
 function cumulativeVillagerDeficitSeconds(
@@ -3251,1070 +2346,6 @@ function buildFullSurfaceSections(
   `;
 }
 
-function buildHoverInteractionScript(
-  hoverSnapshots: ClientHoverSnapshot[],
-  labels: RenderPlayerLabels,
-  hoverDataUrl?: string,
-  options: { includeAdjustedMilitary?: boolean } = {}
-): string {
-  const hoverDataUrlScript = hoverDataUrl
-    ? `\n  <script id="post-match-hover-data-url" type="application/json">${escapeJsonForScript({ url: hoverDataUrl })}</script>`
-    : '';
-  const adjustedHelpers = options.includeAdjustedMilitary ? `
-      function setAdjustedField(name, text) {
-        setText('[data-adjusted-field="' + name + '"]', text);
-      }
-
-      function setAdjustedFieldHtml(name, html) {
-        document.querySelectorAll('[data-adjusted-field="' + name + '"]').forEach(function (el) {
-          el.innerHTML = html;
-        });
-      }
-
-      function setFieldHtml(name, html) {
-        document.querySelectorAll('[data-hover-field="' + name + '"]').forEach(function (el) {
-          el.innerHTML = html;
-        });
-      }
-` : '';
-  const adjustedFormatters = options.includeAdjustedMilitary ? `
-      function formatMultiplier(value) {
-        var numeric = Number(value);
-        if (!Number.isFinite(numeric)) return 'n/a';
-        return formatPrecise(numeric, 3) + 'x';
-      }
-
-      function adjustedPctText(value) {
-        if (value === null || value === undefined || Number.isNaN(Number(value))) return 'n/a';
-        var rounded = Math.round(Number(value) * 10) / 10;
-        var sign = rounded > 0 ? '+' : '';
-        return sign + rounded.toFixed(1) + '%';
-      }
-
-      function matrixWhyHtmlFromCell(cell) {
-        if (typeof cell.whyHtml === 'string' && cell.whyHtml.length > 0) {
-          return cell.whyHtml;
-        }
-        return '<div class="adjusted-matrix-why-title">Select a matchup cell</div><p class="section-note adjusted-matrix-why-note">Click any matrix value to see that cell\\'s exact computation and explanation.</p>';
-      }
-
-      function adjustedMatrixHtml(point) {
-        var matrix = point.adjustedMilitary && point.adjustedMilitary.matrix
-          ? point.adjustedMilitary.matrix
-          : null;
-        if (!matrix) {
-          return '<p class="section-note adjusted-matrix-note">Not enough military-active units to render the matchup matrix at this timestamp.</p>';
-        }
-
-        if (matrix.emptyMessage) {
-          return '<p class="section-note adjusted-matrix-note">' + escapeHtml(matrix.emptyMessage) + '</p>';
-        }
-
-        var columns = Array.isArray(matrix.columns) ? matrix.columns : [];
-        var rows = Array.isArray(matrix.rows) ? matrix.rows : [];
-        if (columns.length === 0 || rows.length === 0) {
-          return '<p class="section-note adjusted-matrix-note">Not enough military-active units to render the matchup matrix at this timestamp.</p>';
-        }
-
-        var header = '<tr><th>Unit</th>' + columns.map(function (unitName) {
-          return '<th>' + escapeHtml(unitName) + '</th>';
-        }).join('') + '</tr>';
-
-        var body = rows.map(function (row) {
-          var cells = (row.cells || []).map(function (cell) {
-            var whyHtml = matrixWhyHtmlFromCell(cell);
-            return '<td class="adjusted-matrix-cell"><button type="button" class="adjusted-matrix-cell-btn ' + escapeHtml(cell.heatClass || 'is-even') + '"' +
-              ' data-matrix-why-html="' + escapeHtml(whyHtml) + '"' +
-              '>' + formatPrecise(cell.score, 2) + 'x</button></td>';
-          }).join('');
-          return '<tr><th>' + escapeHtml(row.unitName || '') + '</th>' + cells + '</tr>';
-        }).join('');
-
-        var defaultWhy = typeof matrix.defaultWhyHtml === 'string' && matrix.defaultWhyHtml.length > 0
-          ? matrix.defaultWhyHtml
-          : '<div class="adjusted-matrix-why-title">Select a matchup cell</div><p class="section-note adjusted-matrix-why-note">Click any matrix value to see that cell\\'s exact computation and explanation.</p>';
-        var matrixNote = typeof matrix.note === 'string' && matrix.note.length > 0
-          ? matrix.note
-          : 'Rows are your top military units. Columns are opponent top military units. Each cell is a direct pairwise interaction.';
-
-        return '<p class="section-note adjusted-matrix-note">' + escapeHtml(matrixNote) + '</p>' +
-          '<table class="adjusted-matrix-table"><thead>' + header + '</thead><tbody>' + body + '</tbody></table>' +
-          '<div class="adjusted-matrix-why" data-adjusted-field="matrixWhy">' + defaultWhy + '</div>';
-      }
-
-      function wireAdjustedMatrixInteractions() {
-        var container = document.querySelector('[data-adjusted-field="matrixMock"]');
-        if (!container) return;
-        var buttons = container.querySelectorAll('.adjusted-matrix-cell-btn');
-        if (!buttons || buttons.length === 0) return;
-
-        function applyFromButton(button) {
-          var whyHtml = button.getAttribute('data-matrix-why-html') || '';
-          if (whyHtml) {
-            setAdjustedFieldHtml('matrixWhy', whyHtml);
-          }
-          buttons.forEach(function (btn) {
-            btn.classList.remove('is-selected');
-          });
-          button.classList.add('is-selected');
-        }
-
-        buttons.forEach(function (button) {
-          button.addEventListener('click', function () {
-            applyFromButton(button);
-          });
-        });
-
-        applyFromButton(buttons[0]);
-      }
-` : '';
-  const adjustedUpdate = options.includeAdjustedMilitary ? `
-        var adjustedMilitary = point.adjustedMilitary || {};
-        setFieldHtml('adjustedMilitary.you', '<span class="inspector-adjusted-value-main">' + formatNumber(adjustedMilitary.you) + '</span><small class="inspector-adjusted-value-pct">(' + adjustedPctText(adjustedMilitary.youPct) + ')</small>');
-        setFieldHtml('adjustedMilitary.opponent', '<span class="inspector-adjusted-value-main">' + formatNumber(adjustedMilitary.opponent) + '</span><small class="inspector-adjusted-value-pct">(' + adjustedPctText(adjustedMilitary.opponentPct) + ')</small>');
-        setField('adjustedMilitary.delta', formatSigned(adjustedMilitary.delta));
-        setAdjustedField('timeLabel', point.timeLabel);
-        setAdjustedField('you.raw', formatNumber(adjustedMilitary.youRaw));
-        setAdjustedField('you.counterMultiplier', formatMultiplier(adjustedMilitary.youCounterMultiplier));
-        setAdjustedField('you.counterAdjusted', formatPrecise(adjustedMilitary.youCounterAdjusted, 2));
-        setAdjustedField('you.upgradeMultiplier', formatMultiplier(adjustedMilitary.youUpgradeMultiplier));
-        setAdjustedField('you.final', formatNumber(adjustedMilitary.you));
-        setAdjustedField(
-          'you.formula',
-          'You: ' + formatNumber(adjustedMilitary.youRaw) + ' × ' +
-          formatMultiplier(adjustedMilitary.youCounterMultiplier) + ' × ' +
-          formatMultiplier(adjustedMilitary.youUpgradeMultiplier) + ' = ' +
-          formatNumber(adjustedMilitary.you)
-        );
-        setAdjustedField('opponent.raw', formatNumber(adjustedMilitary.opponentRaw));
-        setAdjustedField('opponent.counterMultiplier', formatMultiplier(adjustedMilitary.opponentCounterMultiplier));
-        setAdjustedField('opponent.counterAdjusted', formatPrecise(adjustedMilitary.opponentCounterAdjusted, 2));
-        setAdjustedField('opponent.upgradeMultiplier', formatMultiplier(adjustedMilitary.opponentUpgradeMultiplier));
-        setAdjustedField('opponent.final', formatNumber(adjustedMilitary.opponent));
-        setAdjustedField(
-          'opponent.formula',
-          'Opponent: ' + formatNumber(adjustedMilitary.opponentRaw) + ' × ' +
-          formatMultiplier(adjustedMilitary.opponentCounterMultiplier) + ' × ' +
-          formatMultiplier(adjustedMilitary.opponentUpgradeMultiplier) + ' = ' +
-          formatNumber(adjustedMilitary.opponent)
-        );
-        setAdjustedFieldHtml('matrixMock', adjustedMatrixHtml(point));
-        wireAdjustedMatrixInteractions();
-` : '';
-  const inspectorContextUpdate = options.includeAdjustedMilitary ? `
-          var markerText = point.markers && point.markers.length > 0 ? point.markers.join(' · ') : '';
-          contextEl.textContent = pinned
-            ? (markerText ? 'Pinned · ' + markerText + ' · Esc to clear' : 'Pinned · Esc to clear')
-            : (markerText || 'Click to pin · Esc to clear');
-` : `
-          contextEl.textContent = mobileContext(point);
-`;
-
-  return `
-  <script id="post-match-hover-data" type="application/json">${escapeJsonForScript(hoverSnapshots)}</script>${hoverDataUrlScript}
-  <script>
-    (function () {
-      var payloadEl = document.getElementById('post-match-hover-data');
-      if (!payloadEl || !payloadEl.textContent) return;
-
-      var hoverData = [];
-      var byTimestamp = new Map();
-      var pinned = false;
-      var selectedBand = 'economic';
-      var selectedEconomicRoleFilter = '';
-      var selectedInvestmentCategory = '';
-      var currentTimestamp = null;
-      var scheduledTimestamp = null;
-      var framePending = false;
-      var playerLabels = ${escapeJsonForScript({
-        you: labels.you.compactShortLabel,
-        opponent: labels.opponent.compactShortLabel,
-      })};
-      var bandLabels = {
-        economic: 'Economic',
-        populationCap: 'Population cap',
-        militaryCapacity: 'Military buildings',
-        militaryActive: 'Mil active',
-        defensive: 'Defensive',
-        research: 'Research',
-        advancement: 'Advancement',
-        destroyed: 'Destroyed',
-        economicDestroyed: 'Economic destroyed',
-        technologyDestroyed: 'Advancement destroyed',
-        militaryDestroyed: 'Military destroyed',
-        otherDestroyed: 'Other destroyed',
-        float: 'Float',
-        opportunityLost: 'Opportunity lost'
-      };
-      var economicRoleFilterLabels = {
-        resourceGenerator: 'Resource generation',
-        resourceInfrastructure: 'Resource infrastructure'
-      };
-      var economicRoleBasisMap = {
-        resourceGenerator: 'resourceGeneration',
-        resourceInfrastructure: 'resourceInfrastructure'
-      };
-      var opportunityLostCategoryDefs = [
-        { key: 'villagers-lost', label: 'Villagers lost' },
-        { key: 'villager-underproduction', label: 'Villager underproduction' }
-      ];
-      var investmentCategoryLabels = {
-        economic: 'Total Economic Investment',
-        technology: 'Total Technology Investment',
-        military: 'Total Military Investment',
-        other: 'Total Other Investment'
-      };
-      var investmentCategoryBandKeys = {
-        economic: ['economic'],
-        technology: ['research', 'advancement'],
-        military: ['militaryCapacity', 'militaryActive', 'defensive'],
-        other: ['populationCap']
-      };
-      var investmentCategoryDestroyedKeys = {
-        economic: 'economicDestroyed',
-        technology: 'technologyDestroyed',
-        military: 'militaryDestroyed',
-        other: 'otherDestroyed'
-      };
-      var categoryDestroyedBandMap = {
-        economicDestroyed: 'economic',
-        technologyDestroyed: 'technology',
-        militaryDestroyed: 'military',
-        otherDestroyed: 'other'
-      };
-      var allocationGraphDefs = {
-        economic: { label: 'Economic', mode: 'share' },
-        technology: { label: 'Technology', mode: 'share' },
-        military: { label: 'Military', mode: 'share' },
-        destroyed: { label: 'Destroyed', mode: 'absolute' },
-        overall: { label: 'Overall', mode: 'absolute' },
-        float: { label: 'Float', mode: 'absolute' },
-        opportunityLost: { label: 'Opportunity lost', mode: 'absolute' }
-      };
-
-      function formatNumber(value) {
-        return Math.round(Number(value) || 0).toLocaleString('en-US');
-      }
-
-      function formatSigned(value) {
-        var rounded = Math.round(Number(value) || 0);
-        return rounded > 0 ? '+' + rounded.toLocaleString('en-US') : rounded.toLocaleString('en-US');
-      }
-
-      function formatPrecise(value, decimals) {
-        var digits = Number.isFinite(decimals) ? decimals : 2;
-        var numeric = Number(value);
-        if (!Number.isFinite(numeric)) return 'n/a';
-        return numeric.toLocaleString('en-US', {
-          minimumFractionDigits: digits,
-          maximumFractionDigits: digits
-        });
-      }
-
-      function escapeHtml(value) {
-        return String(value)
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#39;');
-      }
-
-      function labelX(x) {
-        return x > 810 ? x - 8 : x + 8;
-      }
-
-      function labelAnchor(x) {
-        return x > 810 ? 'end' : 'start';
-      }
-
-      function replaceTimestampInUrl(timestamp) {
-        try {
-          var url = new URL(window.location.href);
-          if (timestamp === null || timestamp === undefined || Number.isNaN(Number(timestamp))) {
-            url.searchParams.delete('t');
-          } else {
-            url.searchParams.set('t', String(Math.max(0, Math.round(Number(timestamp)))));
-          }
-          var nextHref = url.pathname + (url.search || '') + (url.hash || '');
-          window.history.replaceState({}, '', nextHref);
-        } catch (_error) {
-          // no-op on malformed browser URL parsing
-        }
-      }
-
-      function requestedTimestampFromUrl() {
-        try {
-          var url = new URL(window.location.href);
-          if (!url.searchParams.has('t')) return null;
-          var value = Number(url.searchParams.get('t'));
-          return Number.isFinite(value) ? value : null;
-        } catch (_error) {
-          return null;
-        }
-      }
-
-      function nearestTimestamp(target) {
-        if (!Number.isFinite(target) || hoverData.length === 0) return null;
-        var closest = hoverData[0].timestamp;
-        var minDistance = Math.abs(target - closest);
-        for (var idx = 1; idx < hoverData.length; idx += 1) {
-          var timestamp = Number(hoverData[idx].timestamp);
-          var distance = Math.abs(target - timestamp);
-          if (distance < minDistance) {
-            closest = timestamp;
-            minDistance = distance;
-          }
-        }
-        return closest;
-      }
-
-      function setHoverData(nextHoverData) {
-        hoverData = Array.isArray(nextHoverData) ? nextHoverData : [];
-        byTimestamp = new Map(hoverData.map(function (point) { return [String(point.timestamp), point]; }));
-        currentTimestamp = hoverData[0] ? hoverData[0].timestamp : null;
-      }
-
-      function pointIndexForTimestamp(timestamp) {
-        for (var idx = 0; idx < hoverData.length; idx += 1) {
-          if (String(hoverData[idx].timestamp) === String(timestamp)) return idx;
-        }
-        return 0;
-      }
-
-      function setText(selector, text) {
-        document.querySelectorAll(selector).forEach(function (el) {
-          el.textContent = text;
-        });
-      }
-
-      function setField(name, text) {
-        setText('[data-hover-field="' + name + '"]', text);
-      }
-${adjustedHelpers}
-
-      function setTitle(selector, text) {
-        document.querySelectorAll(selector).forEach(function (el) {
-          el.setAttribute('title', text);
-        });
-      }
-
-      function mobileContext(point) {
-        return point.markers && point.markers.length > 0
-          ? point.markers.join(' · ')
-          : 'Use the slider or step buttons to inspect a timestamp.';
-      }
-
-      function setMobileSummary(key, row) {
-        var safeRow = row || { you: 0, opponent: 0, delta: 0 };
-        setText('[data-mobile-summary-value="' + key + '"]', formatSigned(safeRow.delta));
-        setText(
-          '[data-mobile-summary-detail="' + key + '"]',
-          playerLabels.you + ' ' + formatNumber(safeRow.you) + ' · ' + playerLabels.opponent + ' ' + formatNumber(safeRow.opponent)
-        );
-      }
-
-      function syncMobileTimeline(point) {
-        var currentIndex = pointIndexForTimestamp(point.timestamp);
-        var maxIndex = Math.max(0, hoverData.length - 1);
-
-        document.querySelectorAll('[data-mobile-timeline-slider]').forEach(function (slider) {
-          slider.setAttribute('max', String(maxIndex));
-          slider.value = String(currentIndex);
-          slider.disabled = hoverData.length <= 1;
-        });
-        document.querySelectorAll('[data-mobile-timeline-step]').forEach(function (button) {
-          var step = Number(button.getAttribute('data-mobile-timeline-step') || 0);
-          button.disabled = hoverData.length <= 1 ||
-            (step < 0 && currentIndex <= 0) ||
-            (step > 0 && currentIndex >= maxIndex);
-        });
-
-        setText('[data-mobile-current-time]', point.timeLabel);
-        setText('[data-mobile-current-context]', mobileContext(point));
-        var allocation = point.allocation || {};
-        setMobileSummary('overall', allocation.overall);
-        setMobileSummary('technology', allocation.technology);
-        setMobileSummary('military', allocation.military);
-        setMobileSummary('destroyed', allocation.destroyed);
-      }
-
-      function setSvgLabel(selector, x, text) {
-        document.querySelectorAll(selector).forEach(function (el) {
-          if (!el.hasAttribute('data-fixed-label')) {
-            el.setAttribute('x', String(labelX(x)));
-            el.setAttribute('text-anchor', labelAnchor(x));
-          }
-          el.textContent = text;
-        });
-      }
-
-      function setVerticalLine(selector, x) {
-        document.querySelectorAll(selector).forEach(function (line) {
-          line.setAttribute('x1', String(x));
-          line.setAttribute('x2', String(x));
-        });
-      }
-
-      function renderBandBreakdown(point) {
-        var bandData = point.bandBreakdown && point.bandBreakdown[selectedBand]
-          ? point.bandBreakdown[selectedBand]
-          : { you: [], opponent: [] };
-        var filteredBandData = bandData;
-        if (selectedInvestmentCategory) {
-          filteredBandData = combinedInvestmentBreakdown(point, selectedInvestmentCategory);
-        } else if (selectedBand === 'economic' && selectedEconomicRoleFilter) {
-          filteredBandData = {
-            you: bandData.you.filter(function (entry) {
-              return (entry.economicRole || 'resourceInfrastructure') === selectedEconomicRoleFilter;
-            }),
-            opponent: bandData.opponent.filter(function (entry) {
-              return (entry.economicRole || 'resourceInfrastructure') === selectedEconomicRoleFilter;
-            })
-          };
-        }
-        var bandLabel = selectedInvestmentCategory
-          ? investmentCategoryLabels[selectedInvestmentCategory] || selectedInvestmentCategory
-          : selectedBand === 'economic' && selectedEconomicRoleFilter
-          ? economicRoleFilterLabels[selectedEconomicRoleFilter] || bandLabels[selectedBand] || selectedBand
-          : bandLabels[selectedBand] || selectedBand;
-        var destroyedCategory = categoryDestroyedBandMap[selectedBand];
-        var economicRoleBasis = selectedBand === 'economic' && selectedEconomicRoleFilter
-          ? economicRoleBasisMap[selectedEconomicRoleFilter]
-          : '';
-        var selectedValues = selectedInvestmentCategory && point.allocationCategory && point.allocationCategory[selectedInvestmentCategory]
-          ? point.allocationCategory[selectedInvestmentCategory].investment
-          : economicRoleBasis && point.allocationCategory && point.allocationCategory.economic && point.allocationCategory.economic[economicRoleBasis]
-          ? point.allocationCategory.economic[economicRoleBasis]
-          : destroyedCategory
-          ? ((point.allocationCategory &&
-              point.allocationCategory[destroyedCategory] &&
-              point.allocationCategory[destroyedCategory].destroyed) ||
-              { you: 0, opponent: 0, delta: 0 })
-          : selectedBand === 'destroyed' || selectedBand === 'float' || selectedBand === 'opportunityLost'
-            ? ((point.allocation && point.allocation[selectedBand]) || { you: 0, opponent: 0, delta: 0 })
-            : {
-                you: point.you && Number.isFinite(Number(point.you[selectedBand])) ? Number(point.you[selectedBand]) : 0,
-                opponent: point.opponent && Number.isFinite(Number(point.opponent[selectedBand])) ? Number(point.opponent[selectedBand]) : 0,
-                delta: point.delta && Number.isFinite(Number(point.delta[selectedBand])) ? Number(point.delta[selectedBand]) : 0
-              };
-
-        var titleEl = document.querySelector('[data-band-breakdown-title]');
-        if (titleEl) {
-          titleEl.textContent = selectedBand === 'opportunityLost'
-            ? 'Opportunity lost: components and death windows'
-            : bandLabel + ' composition';
-        }
-        setText('[data-band-summary-label]', bandLabel);
-        setText('[data-band-summary-you]', formatNumber(selectedValues.you));
-        setText('[data-band-summary-opponent]', formatNumber(selectedValues.opponent));
-        setText('[data-band-summary-delta]', formatSigned(selectedValues.delta));
-        document.querySelectorAll('[data-band-summary-value]').forEach(function (el) {
-          el.hidden = selectedBand === 'opportunityLost';
-        });
-        document.querySelectorAll('[data-opportunity-lost-components]').forEach(function (el) {
-          el.hidden = selectedBand !== 'opportunityLost';
-        });
-        var opportunityComponents = point.opportunityLostComponents || {};
-        var opportunityTotal = (point.allocation && point.allocation.opportunityLost) || { you: 0, opponent: 0, delta: 0 };
-        var villagersLost = opportunityComponents.villagersLost || { you: 0, opponent: 0, delta: 0 };
-        var underproduction = opportunityComponents.underproduction || { you: 0, opponent: 0, delta: 0 };
-        setText('[data-opportunity-lost-component-total-you]', formatNumber(opportunityTotal.you));
-        setText('[data-opportunity-lost-component-total-opponent]', formatNumber(opportunityTotal.opponent));
-        setText('[data-opportunity-lost-component-total-delta]', formatSigned(opportunityTotal.delta));
-        setText('[data-opportunity-lost-component-villagers-lost-you]', formatNumber(villagersLost.you));
-        setText('[data-opportunity-lost-component-villagers-lost-opponent]', formatNumber(villagersLost.opponent));
-        setText('[data-opportunity-lost-component-villagers-lost-delta]', formatSigned(villagersLost.delta));
-        setText('[data-opportunity-lost-component-underproduction-you]', formatNumber(underproduction.you));
-        setText('[data-opportunity-lost-component-underproduction-opponent]', formatNumber(underproduction.opponent));
-        setText('[data-opportunity-lost-component-underproduction-delta]', formatSigned(underproduction.delta));
-
-        function listHtml(entries, bandKey) {
-          if (!entries || entries.length === 0) {
-            return bandKey === 'opportunityLost'
-              ? '<li class="band-breakdown-empty">No villager deaths</li>'
-              : '<li class="band-breakdown-empty">No active items</li>';
-          }
-
-          function opportunityLostCategoryKey(entry) {
-            if (entry.category === 'villager-underproduction') return 'villager-underproduction';
-            return 'villagers-lost';
-          }
-
-          function displayLabel(entry) {
-            var count = Number(entry.count);
-            return entry.label + (Number.isFinite(count) && count > 0 ? ' (' + formatNumber(count) + ')' : '');
-          }
-
-          function breakdownEntryHtml(entry) {
-            var label = displayLabel(entry);
-            return '<li><span class="band-item-label band-item-label-truncated" title="' + escapeHtml(label) + '" tabindex="0">' + escapeHtml(label) + '</span><span class="band-item-metric">' + formatNumber(entry.value) + '</span></li>';
-          }
-
-          if (bandKey === 'research') {
-            var categoryDefs = [
-              { key: 'military', label: 'Military research' },
-              { key: 'economic', label: 'Economic research' },
-              { key: 'other', label: 'Other research' }
-            ];
-
-            var grouped = categoryDefs.map(function (def) {
-              var groupEntries = entries.filter(function (entry) {
-                return (entry.category || 'other') === def.key;
-              });
-              if (groupEntries.length === 0) return '';
-              var rows = groupEntries.map(function (entry) {
-                return breakdownEntryHtml(entry);
-              }).join('');
-              return '<li class="band-breakdown-group">' + escapeHtml(def.label) + '</li>' + rows;
-            }).join('');
-
-            if (grouped.length > 0) return grouped;
-          }
-
-          if (bandKey === 'opportunityLost') {
-            var opportunityGroups = opportunityLostCategoryDefs.map(function (def) {
-              var groupEntries = entries.filter(function (entry) {
-                return opportunityLostCategoryKey(entry) === def.key;
-              });
-              if (groupEntries.length === 0) return '';
-              var rows = groupEntries.map(function (entry) {
-                return breakdownEntryHtml(entry);
-              }).join('');
-              return '<li class="band-breakdown-group">' + escapeHtml(def.label) + '</li>' + rows;
-            }).join('');
-
-            if (opportunityGroups.length > 0) return opportunityGroups;
-          }
-
-          return entries.map(function (entry) {
-            return breakdownEntryHtml(entry);
-          }).join('');
-        }
-
-        var youList = document.querySelector('[data-band-breakdown-list="you"]');
-        var oppList = document.querySelector('[data-band-breakdown-list="opponent"]');
-        if (youList) youList.innerHTML = listHtml(filteredBandData.you, selectedBand);
-        if (oppList) oppList.innerHTML = listHtml(filteredBandData.opponent, selectedBand);
-      }
-
-      function combinedInvestmentBreakdown(point, category) {
-        function entriesFor(side) {
-          var entries = [];
-          var bandKeys = investmentCategoryBandKeys[category] || [];
-          bandKeys.forEach(function (bandKey) {
-            var data = point.bandBreakdown && point.bandBreakdown[bandKey];
-            if (data && Array.isArray(data[side])) {
-              entries = entries.concat(data[side]);
-            }
-          });
-
-          var destroyedKey = investmentCategoryDestroyedKeys[category];
-          var destroyedData = destroyedKey && point.bandBreakdown && point.bandBreakdown[destroyedKey];
-          if (destroyedData && Array.isArray(destroyedData[side])) {
-            entries = entries.concat(destroyedData[side].map(function (entry) {
-              return Object.assign({}, entry, {
-                label: 'Destroyed ' + entry.label
-              });
-            }));
-          }
-
-          var total = entries.reduce(function (sum, entry) {
-            return sum + Math.max(0, Number(entry.value) || 0);
-          }, 0);
-
-          return entries.map(function (entry) {
-            var value = Math.max(0, Number(entry.value) || 0);
-            return Object.assign({}, entry, {
-              value: value,
-              percent: total > 0 ? value / total * 100 : 0
-            });
-          });
-        }
-
-        return {
-          you: entriesFor('you'),
-          opponent: entriesFor('opponent')
-        };
-      }
-
-      function syncBandSelection() {
-        document.querySelectorAll('.band-toggle[data-band-key]').forEach(function (button) {
-          var key = button.getAttribute('data-band-key');
-          var roleFilter = button.getAttribute('data-economic-role-filter') || '';
-          var investmentCategory = button.getAttribute('data-allocation-investment-category') || '';
-          var isSelected = key === selectedBand &&
-            roleFilter === selectedEconomicRoleFilter &&
-            investmentCategory === selectedInvestmentCategory;
-          button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
-          var row = button.closest('tr.band-row');
-          if (row) {
-            if (isSelected) row.classList.add('is-selected');
-            else row.classList.remove('is-selected');
-          }
-        });
-      }
-
-      function isCategoryCollapsed(category) {
-        var button = document.querySelector('[data-allocation-category-toggle="' + category + '"]');
-        return !!button && button.getAttribute('aria-expanded') === 'false';
-      }
-
-      function syncDestroyedRowVisibility(point) {
-        ['economic', 'technology', 'military', 'other'].forEach(function (category) {
-          var destroyedRow = point.allocationCategory &&
-            point.allocationCategory[category] &&
-            point.allocationCategory[category].destroyed
-            ? point.allocationCategory[category].destroyed
-            : { you: 0, opponent: 0 };
-          var isEmpty = Math.max(0, Number(destroyedRow.you) || 0) <= 0 &&
-            Math.max(0, Number(destroyedRow.opponent) || 0) <= 0;
-          document.querySelectorAll('[data-destroyed-row-category="' + category + '"]').forEach(function (row) {
-            row.setAttribute('data-destroyed-row-empty', isEmpty ? 'true' : 'false');
-            row.hidden = isCategoryCollapsed(category) || isEmpty;
-          });
-        });
-      }
-
-      function setCategoryCollapsed(key, collapsed) {
-        document.querySelectorAll('[data-allocation-category-child="' + key + '"]').forEach(function (row) {
-          var isEmptyDestroyed = row.getAttribute('data-destroyed-row-empty') === 'true';
-          row.hidden = collapsed || isEmptyDestroyed;
-        });
-        document.querySelectorAll('[data-allocation-category-toggle="' + key + '"]').forEach(function (button) {
-          button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-        });
-      }
-
-      function formatStrategyShare(value) {
-        var numeric = Number(value);
-        if (!Number.isFinite(numeric)) numeric = 0;
-        return numeric.toFixed(1) + '%';
-      }
-
-      function formatSignedPercentagePoints(value) {
-        var numeric = Number(value);
-        if (!Number.isFinite(numeric)) numeric = 0;
-        var rounded = Math.round(numeric * 10) / 10;
-        if (Object.is(rounded, -0)) rounded = 0;
-        var sign = rounded > 0 ? '+' : '';
-        return sign + rounded.toFixed(1) + 'pp';
-      }
-${adjustedFormatters}
-
-      function significantEventLossRowsHtml(items) {
-        if (!Array.isArray(items) || items.length === 0) {
-          return '<li class="event-impact-loss-row event-impact-loss-row-empty">No losses</li>';
-        }
-        return items.map(function (item) {
-          return '<li class="event-impact-loss-row">' +
-            '<span class="event-impact-loss-name">' + escapeHtml(item.label || 'Loss') + ' x' + formatNumber(item.count || 0) + '</span>' +
-            '<span class="event-impact-loss-value">' + formatNumber(item.value || 0) + '</span>' +
-            '</li>';
-        }).join('');
-      }
-
-      function significantEventArmyRowsHtml(items) {
-        if (!Array.isArray(items) || items.length === 0) {
-          return '<li class="event-impact-loss-row event-impact-loss-row-empty">No active military</li>';
-        }
-        return significantEventLossRowsHtml(items);
-      }
-
-      function significantEventArmyValue(event, playerKey) {
-        var armies = event && event.preEncounterArmies ? event.preEncounterArmies : null;
-        var army = armies ? armies[playerKey] : null;
-        return army && Number.isFinite(Number(army.totalValue)) ? Number(army.totalValue) : 0;
-      }
-
-      function updateSignificantEventUnderdog(event) {
-        var context = event && event.favorableUnderdogFight ? event.favorableUnderdogFight : null;
-        document.querySelectorAll('[data-significant-event-underdog-toggle]').forEach(function (el) {
-          el.hidden = !context;
-        });
-        document.querySelectorAll('[data-significant-event-underdog-details]').forEach(function (el) {
-          el.hidden = !context;
-          if (!context) el.open = false;
-        });
-        document.querySelectorAll('[data-significant-event-underdog-details-text]').forEach(function (el) {
-          el.textContent = context ? context.details || '' : '';
-        });
-      }
-
-      function significantEventLossValue(event, playerKey, metric) {
-        if (!event) return 0;
-        var impact = event.playerImpacts ? event.playerImpacts[playerKey] : null;
-        if (impact && Number.isFinite(Number(impact[metric]))) {
-          return Number(impact[metric]);
-        }
-        if (metric === 'immediateLoss' || metric === 'grossLoss') {
-          var losses = event.encounterLosses && Array.isArray(event.encounterLosses[playerKey])
-            ? event.encounterLosses[playerKey]
-            : [];
-          return losses.reduce(function (sum, item) {
-            return sum + Number(item.value || 0);
-          }, 0);
-        }
-        return 0;
-      }
-
-      function setSignificantLossSummaryText(attr, playerKey, value) {
-        document.querySelectorAll('[data-significant-event-loss-' + attr + '="' + playerKey + '"]').forEach(function (el) {
-          el.textContent = value;
-        });
-      }
-
-      function updateSignificantEventLossSummary(event, playerKey, playerLabel) {
-        var totalLoss = significantEventLossValue(event, playerKey, 'grossLoss');
-        var immediateLoss = significantEventLossValue(event, playerKey, 'immediateLoss');
-        var villagerOpportunityLoss = significantEventLossValue(event, playerKey, 'villagerOpportunityLoss');
-        var pctOfDeployed = significantEventLossValue(event, playerKey, 'pctOfDeployed');
-        setSignificantLossSummaryText('total', playerKey, event ? formatNumber(totalLoss) : '');
-        setSignificantLossSummaryText('immediate', playerKey, event ? formatNumber(immediateLoss) : '');
-        setSignificantLossSummaryText('villager-opportunity', playerKey, event ? formatNumber(villagerOpportunityLoss) : '');
-        setSignificantLossSummaryText('share', playerKey, event ? formatPrecise(pctOfDeployed, 1) + '%' : '');
-        document.querySelectorAll('[data-significant-event-loss-share-label="' + playerKey + '"]').forEach(function (el) {
-          el.textContent = 'Share of ' + playerLabel + ' deployed';
-        });
-        document.querySelectorAll('[data-significant-event-loss-villager-opportunity-row="' + playerKey + '"]').forEach(function (el) {
-          el.hidden = !event || villagerOpportunityLoss <= 0;
-        });
-      }
-
-      function updateSignificantEventLosses(event) {
-        var player1Label = event && (event.player1Label || event.player1Civilization) ? (event.player1Label || event.player1Civilization) : 'Player 1';
-        var player2Label = event && (event.player2Label || event.player2Civilization) ? (event.player2Label || event.player2Civilization) : 'Player 2';
-        document.querySelectorAll('[data-significant-event-loss-heading="player1"]').forEach(function (el) {
-          el.textContent = player1Label + ' losses';
-        });
-        document.querySelectorAll('[data-significant-event-loss-heading="player2"]').forEach(function (el) {
-          el.textContent = player2Label + ' losses';
-        });
-        document.querySelectorAll('[data-significant-event-loss-list="player1"]').forEach(function (el) {
-          el.innerHTML = significantEventLossRowsHtml(event && event.encounterLosses ? event.encounterLosses.player1 : []);
-        });
-        document.querySelectorAll('[data-significant-event-loss-list="player2"]').forEach(function (el) {
-          el.innerHTML = significantEventLossRowsHtml(event && event.encounterLosses ? event.encounterLosses.player2 : []);
-        });
-        updateSignificantEventLossSummary(event, 'player1', player1Label);
-        updateSignificantEventLossSummary(event, 'player2', player2Label);
-      }
-
-      function updateSignificantEventArmies(event) {
-        var showArmies = !!(event && event.kind === 'fight' && event.preEncounterArmies);
-        var player1Label = event && (event.player1Label || event.player1Civilization) ? (event.player1Label || event.player1Civilization) : 'Player 1';
-        var player2Label = event && (event.player2Label || event.player2Civilization) ? (event.player2Label || event.player2Civilization) : 'Player 2';
-        document.querySelectorAll('[data-significant-event-armies]').forEach(function (el) {
-          el.hidden = !showArmies;
-        });
-        document.querySelectorAll('[data-significant-event-army-heading="player1"]').forEach(function (el) {
-          el.textContent = player1Label + ' army before fight';
-        });
-        document.querySelectorAll('[data-significant-event-army-heading="player2"]').forEach(function (el) {
-          el.textContent = player2Label + ' army before fight';
-        });
-        document.querySelectorAll('[data-significant-event-army-total="player1"]').forEach(function (el) {
-          el.textContent = event ? formatNumber(significantEventArmyValue(event, 'player1')) : '';
-        });
-        document.querySelectorAll('[data-significant-event-army-total="player2"]').forEach(function (el) {
-          el.textContent = event ? formatNumber(significantEventArmyValue(event, 'player2')) : '';
-        });
-        document.querySelectorAll('[data-significant-event-army-list="player1"]').forEach(function (el) {
-          el.innerHTML = significantEventArmyRowsHtml(event && event.preEncounterArmies ? event.preEncounterArmies.player1.units : []);
-        });
-        document.querySelectorAll('[data-significant-event-army-list="player2"]').forEach(function (el) {
-          el.innerHTML = significantEventArmyRowsHtml(event && event.preEncounterArmies ? event.preEncounterArmies.player2.units : []);
-        });
-      }
-
-      function updateSignificantEvent(point) {
-        var event = point.significantEvent || null;
-        document.querySelectorAll('[data-significant-event]').forEach(function (el) {
-          el.hidden = !event;
-        });
-        if (!event) {
-          setField('significantEvent.label', '');
-          updateSignificantEventUnderdog(null);
-          updateSignificantEventArmies(null);
-          updateSignificantEventLosses(null);
-          return;
-        }
-
-        setField('significantEvent.label', event.headline || ((event.victimLabel ? event.victimLabel + ' ' : '') + (event.label || 'Event')));
-        updateSignificantEventUnderdog(event);
-        updateSignificantEventArmies(event);
-        updateSignificantEventLosses(event);
-      }
-
-      function updateInspector(timestamp) {
-        var point = byTimestamp.get(String(timestamp));
-        if (!point) return;
-        currentTimestamp = point.timestamp;
-
-        setField('timeLabel', point.timeLabel);
-        var contextEl = document.querySelector('[data-hover-context]');
-        if (contextEl) {
-${inspectorContextUpdate}
-        }
-        updateSignificantEvent(point);
-
-        ['economic', 'populationCap', 'militaryCapacity', 'militaryActive', 'defensive', 'research', 'advancement', 'total'].forEach(function (key) {
-          setField('you.' + key, formatNumber(point.you[key]));
-          setField('opponent.' + key, formatNumber(point.opponent[key]));
-          setField('delta.' + key, formatSigned(point.delta[key]));
-        });
-        ['economic', 'technology', 'military', 'other', 'destroyed', 'overall', 'float', 'opportunityLost'].forEach(function (key) {
-          var allocationRow = point.allocation && point.allocation[key]
-            ? point.allocation[key]
-            : { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 };
-          setField('allocation.' + key + '.you', formatNumber(allocationRow.you));
-          setField('allocation.' + key + '.opponent', formatNumber(allocationRow.opponent));
-          setField('allocation.' + key + '.delta', formatSigned(allocationRow.delta));
-        });
-        ['economic', 'technology', 'military', 'other'].forEach(function (categoryKey) {
-          var basisKeys = categoryKey === 'economic'
-            ? ['net', 'resourceGeneration', 'resourceInfrastructure', 'destroyed', 'investment']
-            : ['net', 'destroyed', 'investment'];
-          basisKeys.forEach(function (basisKey) {
-            var categoryRow = point.allocationCategory &&
-              point.allocationCategory[categoryKey] &&
-              point.allocationCategory[categoryKey][basisKey]
-              ? point.allocationCategory[categoryKey][basisKey]
-              : { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 };
-            setField('allocationCategory.' + categoryKey + '.' + basisKey + '.you', formatNumber(categoryRow.you));
-            setField('allocationCategory.' + categoryKey + '.' + basisKey + '.opponent', formatNumber(categoryRow.opponent));
-            setField('allocationCategory.' + categoryKey + '.' + basisKey + '.delta', formatSigned(categoryRow.delta));
-          });
-        });
-        syncDestroyedRowVisibility(point);
-        setTitle(
-          '[data-total-pool-tooltip]',
-          point.totalPoolTooltip || 'Economic net + Technology net + Military net + Other net = Total pool'
-        );
-${adjustedUpdate}
-        setField('gather.you', formatNumber(point.gather.you));
-        setField('gather.opponent', formatNumber(point.gather.opponent));
-        setField('gather.delta', formatSigned(point.gather.delta));
-        ['economy', 'military', 'technology'].forEach(function (key) {
-          var strategyRow = point.strategy && point.strategy[key]
-            ? point.strategy[key]
-            : { you: 0, opponent: 0, delta: 0 };
-          setField('strategy.' + key + '.you', formatStrategyShare(strategyRow.you));
-          setField('strategy.' + key + '.opponent', formatStrategyShare(strategyRow.opponent));
-          setField('strategy.' + key + '.delta', formatSignedPercentagePoints(strategyRow.delta));
-        });
-        Object.keys(allocationGraphDefs).forEach(function (key) {
-          var def = allocationGraphDefs[key];
-          var allocationRow = point.allocation && point.allocation[key]
-            ? point.allocation[key]
-            : { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 };
-          var labelText = def.mode === 'absolute'
-            ? def.label + ' Δ ' + formatSigned(allocationRow.delta)
-            : def.label + ' Δ ' + formatSignedPercentagePoints(allocationRow.shareDelta);
-          setSvgLabel('[data-hover-label-strategy-' + key + ']', point.strategyX, labelText);
-        });
-
-        setVerticalLine('[data-hover-line-strategy]', point.strategyX);
-        setSvgLabel('[data-hover-label-strategy-time]', point.strategyX, point.timeLabel);
-        renderBandBreakdown(point);
-        syncMobileTimeline(point);
-      }
-
-      function selectPointByIndex(index, shouldUpdateUrl) {
-        if (hoverData.length === 0) return;
-        var safeIndex = Math.max(0, Math.min(hoverData.length - 1, Number(index) || 0));
-        var point = hoverData[safeIndex];
-        if (!point) return;
-        pinned = true;
-        document.body.setAttribute('data-hover-pinned', 'true');
-        updateInspector(point.timestamp);
-        if (shouldUpdateUrl) replaceTimestampInUrl(point.timestamp);
-      }
-
-      function selectTimestamp(timestamp, shouldUpdateUrl) {
-        var nearest = nearestTimestamp(Number(timestamp));
-        if (nearest === null) return;
-        selectPointByIndex(pointIndexForTimestamp(nearest), shouldUpdateUrl);
-      }
-
-      function scheduleInspector(timestamp) {
-        scheduledTimestamp = timestamp;
-        if (framePending) return;
-        framePending = true;
-        var run = function () {
-          framePending = false;
-          if (!pinned && scheduledTimestamp !== null) updateInspector(scheduledTimestamp);
-        };
-        if (window.requestAnimationFrame) {
-          window.requestAnimationFrame(run);
-        } else {
-          window.setTimeout(run, 16);
-        }
-      }
-
-      document.querySelectorAll('.band-toggle[data-band-key]').forEach(function (button) {
-        button.addEventListener('click', function () {
-          var key = button.getAttribute('data-band-key');
-          if (!key) return;
-          selectedBand = key;
-          selectedInvestmentCategory = button.getAttribute('data-allocation-investment-category') || '';
-          selectedEconomicRoleFilter = key === 'economic'
-            ? button.getAttribute('data-economic-role-filter') || ''
-            : '';
-          if (selectedInvestmentCategory) selectedEconomicRoleFilter = '';
-          syncBandSelection();
-          if (currentTimestamp !== null) {
-            updateInspector(currentTimestamp);
-          }
-        });
-      });
-
-      document.querySelectorAll('[data-allocation-category-toggle]').forEach(function (button) {
-        button.addEventListener('click', function () {
-          var key = button.getAttribute('data-allocation-category-toggle');
-          if (!key) return;
-          var collapsed = button.getAttribute('aria-expanded') !== 'false';
-          setCategoryCollapsed(key, collapsed);
-        });
-      });
-
-      document.querySelectorAll('.inspector-table-wrap').forEach(function (wrap) {
-        wrap.addEventListener('keydown', function (event) {
-          if (event.key === 'ArrowRight') {
-            wrap.scrollLeft += 40;
-            event.preventDefault();
-            return;
-          }
-          if (event.key === 'ArrowLeft') {
-            wrap.scrollLeft -= 40;
-            event.preventDefault();
-          }
-        });
-      });
-
-      document.querySelectorAll('[data-mobile-timeline-slider]').forEach(function (slider) {
-        slider.addEventListener('input', function () {
-          selectPointByIndex(Number(slider.value), true);
-        });
-      });
-
-      document.querySelectorAll('[data-mobile-timeline-step]').forEach(function (button) {
-        button.addEventListener('click', function () {
-          var step = Number(button.getAttribute('data-mobile-timeline-step') || 0);
-          selectPointByIndex(pointIndexForTimestamp(currentTimestamp) + step, true);
-        });
-      });
-
-      document.querySelectorAll('[data-mobile-details] > summary').forEach(function (summary) {
-        summary.addEventListener('click', function () {
-          var details = summary.parentElement;
-          if (details) details.setAttribute('data-mobile-user-toggled', 'true');
-        });
-      });
-
-      document.querySelectorAll('[data-significant-event-underdog-toggle]').forEach(function (button) {
-        button.addEventListener('click', function () {
-          document.querySelectorAll('[data-significant-event-underdog-details]').forEach(function (details) {
-            if (details.hidden) return;
-            details.open = true;
-            if (details.scrollIntoView) details.scrollIntoView({ block: 'nearest' });
-          });
-        });
-      });
-
-      function syncMobileDetailsForViewport() {
-        var isMobile = window.matchMedia && window.matchMedia('(max-width: 760px), (pointer: coarse)').matches;
-        document.querySelectorAll('[data-mobile-details]').forEach(function (details) {
-          if (isMobile) {
-            if (!details.hasAttribute('data-mobile-user-toggled')) details.removeAttribute('open');
-            return;
-          }
-          details.setAttribute('open', '');
-        });
-      }
-
-      if (window.addEventListener) {
-        window.addEventListener('resize', syncMobileDetailsForViewport);
-      }
-
-      document.querySelectorAll('.hover-target[data-hover-timestamp]').forEach(function (target) {
-        target.addEventListener('pointerenter', function () {
-          if (!pinned) scheduleInspector(target.getAttribute('data-hover-timestamp'));
-        });
-        target.addEventListener('pointermove', function () {
-          if (!pinned) scheduleInspector(target.getAttribute('data-hover-timestamp'));
-        });
-        target.addEventListener('click', function () {
-          var selectedTimestamp = Number(target.getAttribute('data-hover-timestamp'));
-          selectTimestamp(selectedTimestamp, true);
-        });
-        target.addEventListener('keydown', function (event) {
-          if (event.key !== 'Enter' && event.key !== ' ') return;
-          event.preventDefault();
-          var selectedTimestamp = Number(target.getAttribute('data-hover-timestamp'));
-          selectTimestamp(selectedTimestamp, true);
-        });
-      });
-
-      document.addEventListener('keydown', function (event) {
-        if (event.key !== 'Escape') return;
-        pinned = false;
-        document.body.removeAttribute('data-hover-pinned');
-        replaceTimestampInUrl(null);
-        if (hoverData[0]) updateInspector(hoverData[0].timestamp);
-      });
-
-      function initializeSelection() {
-        syncBandSelection();
-        var requestedTimestamp = requestedTimestampFromUrl();
-        if (requestedTimestamp !== null) {
-          var nearest = nearestTimestamp(requestedTimestamp);
-          if (nearest !== null) {
-            pinned = true;
-            document.body.setAttribute('data-hover-pinned', 'true');
-            replaceTimestampInUrl(nearest);
-            updateInspector(nearest);
-            syncMobileDetailsForViewport();
-            return;
-          }
-        }
-        if (hoverData[0]) updateInspector(hoverData[0].timestamp);
-        syncMobileDetailsForViewport();
-      }
-
-      setHoverData(JSON.parse(payloadEl.textContent));
-      var payloadSourceEl = document.getElementById('post-match-hover-data-url');
-      var payloadSourceUrl = null;
-      if (payloadSourceEl && payloadSourceEl.textContent) {
-        try {
-          payloadSourceUrl = JSON.parse(payloadSourceEl.textContent).url || null;
-        } catch (_error) {
-          payloadSourceUrl = null;
-        }
-      }
-
-      if (payloadSourceUrl && window.fetch) {
-        fetch(payloadSourceUrl, {
-          credentials: 'same-origin',
-          headers: { accept: 'application/json' }
-        })
-          .then(function (response) {
-            if (!response.ok) throw new Error('Failed to load hover data');
-            return response.json();
-          })
-          .then(function (payload) {
-            setHoverData(Array.isArray(payload) ? payload : payload.hoverSnapshots);
-            initializeSelection();
-          })
-          .catch(function () {
-            initializeSelection();
-          });
-        return;
-      }
-      initializeSelection();
-    }());
-  </script>`;
-}
 
 export function renderPostMatchHtml(
   model: PostMatchViewModel,
@@ -4488,6 +2519,7 @@ export function renderPostMatchHtml(
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AoE4 Post-Match Analysis</title>
+  <link rel="icon" href="${faviconHref}" />
   <style>
     :root {
       ${embeddedAoeTokenCss}
@@ -6026,7 +4058,11 @@ ${fullSurfaceNarrowStyles}
       ${buildMobileSnapshotControlsHtml(hoverSnapshots, defaultHoverSnapshot, playerLabels)}
       <div class="trajectory-grid">
         <div class="chart-stack">
-          ${buildAllocationLeaderStripSvg(hoverSnapshots, model.trajectory.durationSeconds, playerLabels)}
+          ${buildAllocationLeaderStripSvg(
+            buildAllocationLeaderSegments(hoverSnapshots, model.trajectory.durationSeconds),
+            model.trajectory.durationSeconds,
+            playerLabels
+          )}
           ${buildStrategyAllocationSvg(
             hoverSnapshots,
             model.trajectory.durationSeconds,
@@ -6041,7 +4077,7 @@ ${fullSurfaceNarrowStyles}
     ${surface === 'full' ? buildFullSurfaceSections(model, hoverSnapshots, defaultHoverSnapshot, playerLabels) : ''}
 
   </main>
-  ${buildHoverInteractionScript(inlineHoverSnapshots, playerLabels, undefined, { includeAdjustedMilitary })}
+  ${buildHoverInteractionScript(inlineHoverSnapshots, playerLabels, { includeAdjustedMilitary })}
   ${options.webVitalsScript ? `<script id="web-vitals-monitor">${options.webVitalsScript}</script>` : ''}
 </body>
 </html>`;

@@ -82,7 +82,7 @@ export function auditUnknownBuildOrderBuckets(
 
       const resolved = resolveBuildOrderItem(entry, staticData);
       for (const [bucket, timestamps] of bucketEntries) {
-        let handling = getUnknownBuildOrderBucketHandling(entry.pbgid, bucket, entry.type);
+        let handling = getUnknownBuildOrderBucketHandling(entry.pbgid, bucket, entry.type, resolved);
         let status = statusFromHandling(handling);
         if (status === 'needs-review' && isOutputOnlySelection(resolved)) {
           handling = 'ignored';

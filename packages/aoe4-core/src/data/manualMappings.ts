@@ -45,6 +45,30 @@ export const manualMappings: ManualMapping[] = [
     classes: ['cattle'],
     civs: ['ma', 'malians']
   },
+  {
+    pbgid: 2076058,
+    name: 'Pit Mine',
+    id: 'pit-mine-1',
+    cost: { food: 0, wood: 150, gold: 0, stone: 0, total: 150 },
+    classes: ['building', 'economy_building', 'resource_drop_off', 'pit_mine'],
+    civs: ['ma', 'malians']
+  },
+  {
+    pbgid: 181324,
+    name: 'Ger',
+    id: 'ger-1',
+    cost: { food: 0, wood: 100, gold: 0, stone: 0, total: 100 },
+    classes: ['building', 'economy_building', 'ger', 'mill', 'resource_drop_off'],
+    civs: ['mo', 'mongols']
+  },
+  {
+    pbgid: 2074857,
+    name: 'Ovoo',
+    id: 'ovoo-1',
+    cost: { food: 0, wood: 150, gold: 0, stone: 0, total: 150 },
+    classes: ['building', 'ovoo', 'research_building'],
+    civs: ['mo', 'mongols']
+  },
   // Sengoku Daimyo (Japanese variant) - clan selection widgets (no cost, UI elements)
   {
     pbgid: 9003595,
@@ -95,6 +119,14 @@ export const manualMappings: ManualMapping[] = [
     cost: { food: 0, wood: 40, gold: 40, stone: 0, total: 80 },
     classes: ['human', 'trade_camel', 'trade_cart', 'worker'],
     civs: ['ay']
+  },
+  {
+    pbgid: 2123482,
+    name: 'Trader',
+    id: 'trader-2',
+    cost: { food: 0, wood: 60, gold: 60, stone: 0, total: 120 },
+    classes: ['human', 'trade_cart', 'worker'],
+    civs: ['fr', 'je']
   },
   {
     pbgid: 2631059,

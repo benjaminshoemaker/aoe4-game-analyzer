@@ -1,8 +1,59 @@
-import { buildMatchHtml, parseMatchRouteParams } from '../../../../lib/matchPage';
+import { buildMatchHtml } from '../../../../lib/matchPage';
 import { embeddedAoeTokenCss } from '../../../../lib/designTokens';
+import { readMatchRouteRequest } from './routeResponses';
+import type { MatchRouteContext } from './routeResponses';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+const MATCH_HTML_CACHE_TTL_MS = 5 * 60 * 1000;
+const MATCH_HTML_CACHE_LIMIT = 25;
+const SIGNED_MATCH_CACHE_CONTROL = 'private, max-age=300, stale-while-revalidate=3600';
+const PUBLIC_MATCH_CACHE_CONTROL = 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800';
+
+type MatchHtmlCacheEntry = {
+  html: string;
+  expiresAt: number;
+};
+
+const matchHtmlCache = new Map<string, MatchHtmlCacheEntry>();
+
+function matchCacheKey(profileSlug: string, gameId: number, sig?: string): string {
+  return `${profileSlug}/${gameId}?sig=${sig ?? ''}`;
+}
+
+function getCachedMatchHtml(cacheKey: string, now: number): string | null {
+  const cached = matchHtmlCache.get(cacheKey);
+  if (!cached) return null;
+  if (cached.expiresAt <= now) {
+    matchHtmlCache.delete(cacheKey);
+    return null;
+  }
+  matchHtmlCache.delete(cacheKey);
+  matchHtmlCache.set(cacheKey, cached);
+  return cached.html;
+}
+
+function setCachedMatchHtml(cacheKey: string, html: string, now: number): void {
+  matchHtmlCache.set(cacheKey, {
+    html,
+    expiresAt: now + MATCH_HTML_CACHE_TTL_MS,
+  });
+
+  while (matchHtmlCache.size > MATCH_HTML_CACHE_LIMIT) {
+    const oldestKey = matchHtmlCache.keys().next().value;
+    if (!oldestKey) break;
+    matchHtmlCache.delete(oldestKey);
+  }
+}
+
+function matchCacheControl(sig?: string): string {
+  return sig ? SIGNED_MATCH_CACHE_CONTROL : PUBLIC_MATCH_CACHE_CONTROL;
+}
+
+export function clearMatchRouteCacheForTests(): void {
+  matchHtmlCache.clear();
+}
 
 function errorDocument(message: string, status: number): string {
   return `<!doctype html>
@@ -37,28 +88,23 @@ function errorDocument(message: string, status: number): string {
 
 export async function GET(
   request: Request,
-  context: { params: Promise<{ profileSlug: string; gameId: string }> }
+  context: MatchRouteContext
 ): Promise<Response> {
   try {
-    const params = await context.params;
-    const parsed = parseMatchRouteParams(params.profileSlug, params.gameId);
-    const url = new URL(request.url);
-    const sig = url.searchParams.get('sig') ?? undefined;
-    const hoverDataUrl = new URL(`${url.pathname.replace(/\/$/, '')}/hover-data`, request.url);
-    if (sig) {
-      hoverDataUrl.searchParams.set('sig', sig);
+    const { parsed, sig } = await readMatchRouteRequest(request, context);
+    const now = Date.now();
+    const cacheKey = matchCacheKey(parsed.profileSlug, parsed.gameId, sig);
+    const cachedHtml = getCachedMatchHtml(cacheKey, now);
+    const html = cachedHtml ?? await buildMatchHtml({ ...parsed, sig });
+    if (!cachedHtml) {
+      setCachedMatchHtml(cacheKey, html, now);
     }
-    const html = await buildMatchHtml({
-      ...parsed,
-      sig,
-      hoverDataUrl: hoverDataUrl.pathname + hoverDataUrl.search,
-    });
 
     return new Response(html, {
       status: 200,
       headers: {
         'content-type': 'text/html; charset=utf-8',
-        'cache-control': 'no-store',
+        'cache-control': matchCacheControl(sig),
       },
     });
   } catch (error) {

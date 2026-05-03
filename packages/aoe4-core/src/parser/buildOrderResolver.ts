@@ -10,6 +10,8 @@ const SENGOKU_YATAI_PRODUCED_UNKNOWN_BUCKET = '14';
 const SENGOKU_YATAI_DESTROYED_UNKNOWN_BUCKET = '15';
 const TRADE_CART_IGNORED_UNKNOWN_BUCKET = '15';
 const AGE_PRODUCED_UNKNOWN_BUCKET = '10';
+const RESOURCE_GENERATOR_PRODUCED_UNKNOWN_BUCKET = '14';
+const RESOURCE_GENERATOR_DESTROYED_UNKNOWN_BUCKET = '15';
 const producedUnknownBucketByPbgid = new Map<number, string>([
   [2762454, '14'],
   [2631059, '14'],
@@ -30,15 +32,97 @@ const ignoredUnknownBucketsByPbgid = new Map<number, Set<string>>([
 
 export type UnknownBuildOrderBucketHandling = 'produced' | 'destroyed' | 'ignored' | null;
 
+interface UnknownBucketItemContext {
+  type?: string;
+  id?: string;
+  baseId?: string;
+  name?: string;
+  classes?: string[];
+}
+
+function normalizeTokenText(value: string): string {
+  return value.toLowerCase().replace(/[_\s]+/g, '-');
+}
+
+function includesAnyToken(value: string, tokens: string[]): boolean {
+  const normalized = normalizeTokenText(value);
+  return tokens.some(token => normalized.includes(normalizeTokenText(token)));
+}
+
+function hasClassToken(classes: string[] | undefined, tokens: string[]): boolean {
+  if (!classes) return false;
+  const tokenSet = new Set(tokens.map(token => token.toLowerCase()));
+  return classes.some(cls => tokenSet.has(cls.toLowerCase()));
+}
+
+const resourceGeneratorIdNameTokens = [
+  'villager',
+  'trader',
+  'trade-caravan',
+  'trade-cart',
+  'trade-ship',
+  'fishing-boat',
+  'fishing-ship',
+  'worker-elephant',
+  'cattle',
+  'yatai',
+  'pilgrim',
+];
+
+const resourceGeneratorClassTokens = [
+  'villager',
+  'trade_cart',
+  'trade_camel',
+  'naval_trade_ship',
+  'naval_fishing_ship',
+  'cattle',
+  'yatai',
+  'pilgrim',
+];
+
+function isResourceGeneratorUnit(
+  entryType: BuildOrderEntry['type'] | string | undefined,
+  item?: UnknownBucketItemContext | null
+): boolean {
+  const type = item?.type ?? entryType;
+  if (type !== 'Unit' && type !== 'unit') return false;
+
+  const values = [
+    item?.id,
+    item?.baseId,
+    item?.name,
+  ].filter((value): value is string => typeof value === 'string');
+
+  return (
+    values.some(value => includesAnyToken(value, resourceGeneratorIdNameTokens)) ||
+    hasClassToken(item?.classes, resourceGeneratorClassTokens)
+  );
+}
+
+function inferUnknownBuildOrderBucketHandling(
+  pbgid: number,
+  bucket: string,
+  entryType?: BuildOrderEntry['type'],
+  item?: UnknownBucketItemContext | null
+): UnknownBuildOrderBucketHandling {
+  if (!isResourceGeneratorUnit(entryType, item)) return null;
+  if (bucket === RESOURCE_GENERATOR_PRODUCED_UNKNOWN_BUCKET) return 'produced';
+  if (bucket === RESOURCE_GENERATOR_DESTROYED_UNKNOWN_BUCKET) return 'destroyed';
+  return null;
+}
+
 export function getUnknownBuildOrderBucketHandling(
   pbgid: number,
   bucket: string,
-  entryType?: BuildOrderEntry['type']
+  entryType?: BuildOrderEntry['type'],
+  item?: UnknownBucketItemContext | null
 ): UnknownBuildOrderBucketHandling {
   if (entryType === 'Age' && bucket === AGE_PRODUCED_UNKNOWN_BUCKET) return 'produced';
   if (producedUnknownBucketByPbgid.get(pbgid) === bucket) return 'produced';
   if (destroyedUnknownBucketByPbgid.get(pbgid) === bucket) return 'destroyed';
   if (ignoredUnknownBucketsByPbgid.get(pbgid)?.has(bucket)) return 'ignored';
+  const inferred = inferUnknownBuildOrderBucketHandling(pbgid, bucket, entryType, item);
+  if (inferred) return inferred;
   return null;
 }
 
@@ -171,7 +255,11 @@ function mergeTimestamps(...groups: number[][]): number[] {
     .sort((a, b) => a - b);
 }
 
-function getProducedTimestamps(entry: BuildOrderEntry, type: ResolvedBuildItem['type']): number[] {
+function getProducedTimestamps(
+  entry: BuildOrderEntry,
+  type: ResolvedBuildItem['type'],
+  item?: UnknownBucketItemContext | null
+): number[] {
   if (type === 'age') {
     return mergeTimestamps(entry.finished, entry.unknown?.[AGE_PRODUCED_UNKNOWN_BUCKET] ?? []);
   }
@@ -181,6 +269,14 @@ function getProducedTimestamps(entry: BuildOrderEntry, type: ResolvedBuildItem['
     return mergeTimestamps(entry.finished, entry.unknown?.[unknownBucket] ?? []);
   }
 
+  const inferredHandling = getUnknownBuildOrderBucketHandling(entry.pbgid, RESOURCE_GENERATOR_PRODUCED_UNKNOWN_BUCKET, entry.type, {
+    ...item,
+    type,
+  });
+  if (inferredHandling === 'produced') {
+    return mergeTimestamps(entry.finished, entry.unknown?.[RESOURCE_GENERATOR_PRODUCED_UNKNOWN_BUCKET] ?? []);
+  }
+
   if (type === 'building') {
     return entry.constructed;
   }
@@ -188,10 +284,22 @@ function getProducedTimestamps(entry: BuildOrderEntry, type: ResolvedBuildItem['
   return entry.finished;
 }
 
-function getDestroyedTimestamps(entry: BuildOrderEntry): number[] {
+function getDestroyedTimestamps(
+  entry: BuildOrderEntry,
+  type?: ResolvedBuildItem['type'],
+  item?: UnknownBucketItemContext | null
+): number[] {
   const unknownBucket = destroyedUnknownBucketByPbgid.get(entry.pbgid);
   if (unknownBucket) {
     return mergeTimestamps(entry.destroyed, entry.unknown?.[unknownBucket] ?? []);
+  }
+
+  const inferredHandling = getUnknownBuildOrderBucketHandling(entry.pbgid, RESOURCE_GENERATOR_DESTROYED_UNKNOWN_BUCKET, entry.type, {
+    ...item,
+    type,
+  });
+  if (inferredHandling === 'destroyed') {
+    return mergeTimestamps(entry.destroyed, entry.unknown?.[RESOURCE_GENERATOR_DESTROYED_UNKNOWN_BUCKET] ?? []);
   }
 
   return entry.destroyed;
@@ -218,8 +326,8 @@ function resolveFromManualMapping(entry: BuildOrderEntry): ResolvedBuildItem | n
     tier,
     tierMultiplier: multiplier,
     classes: mapping.classes ?? [],
-    produced: getProducedTimestamps(entry, entryType),
-    destroyed: getDestroyedTimestamps(entry),
+    produced: getProducedTimestamps(entry, entryType, mapping),
+    destroyed: getDestroyedTimestamps(entry, entryType, mapping),
     civs: mapping.civs ?? []
   };
 }
@@ -295,8 +403,8 @@ export function resolveBuildOrderItem(
         tier,
         tierMultiplier: multiplier,
         classes: unit.classes ?? [],
-        produced: getProducedTimestamps(entry, 'unit'),
-        destroyed: getDestroyedTimestamps(entry),
+        produced: getProducedTimestamps(entry, 'unit', unit),
+        destroyed: getDestroyedTimestamps(entry, 'unit', unit),
         civs: unit.civs
       };
     }
@@ -315,8 +423,8 @@ export function resolveBuildOrderItem(
         tier,
         tierMultiplier: multiplier,
         classes: building.classes ?? [],
-        produced: getProducedTimestamps(entry, 'building'),
-        destroyed: getDestroyedTimestamps(entry),
+        produced: getProducedTimestamps(entry, 'building', building),
+        destroyed: getDestroyedTimestamps(entry, 'building', building),
         civs: building.civs
       };
     }
@@ -355,7 +463,7 @@ export function resolveBuildOrderItem(
         tier,
         tierMultiplier: multiplier,
         classes: tech.classes ?? [],
-        produced: getProducedTimestamps(entry, 'upgrade'),
+        produced: getProducedTimestamps(entry, 'upgrade', tech),
         destroyed: [],
         civs: tech.civs
       };
@@ -373,8 +481,8 @@ export function resolveBuildOrderItem(
         tier,
         tierMultiplier: multiplier,
         classes: building.classes ?? [],
-        produced: getProducedTimestamps(entry, 'building'),
-        destroyed: getDestroyedTimestamps(entry),
+        produced: getProducedTimestamps(entry, 'building', building),
+        destroyed: getDestroyedTimestamps(entry, 'building', building),
         civs: building.civs
       };
     }
@@ -391,8 +499,8 @@ export function resolveBuildOrderItem(
         tier,
         tierMultiplier: multiplier,
         classes: unit.classes ?? [],
-        produced: getProducedTimestamps(entry, 'unit'),
-        destroyed: getDestroyedTimestamps(entry),
+        produced: getProducedTimestamps(entry, 'unit', unit),
+        destroyed: getDestroyedTimestamps(entry, 'unit', unit),
         civs: unit.civs
       };
     }
@@ -412,8 +520,8 @@ export function resolveBuildOrderItem(
       tier,
       tierMultiplier: multiplier,
       classes: (item as Unit).classes ?? (item as Building).classes ?? [],
-      produced: getProducedTimestamps(entry, type),
-      destroyed: getDestroyedTimestamps(entry),
+      produced: getProducedTimestamps(entry, type, item),
+      destroyed: getDestroyedTimestamps(entry, type, item),
       civs: item.civs
     };
   }

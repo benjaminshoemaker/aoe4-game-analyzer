@@ -2,6 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import counterMatrixConfigJson from './counterMatrixConfig.json';
 import {
+  classifyUnitByRules,
+  unitClassCategories,
+} from './unitClassificationRules';
+import type { UnitClassCategory } from './unitClassificationRules';
+import {
   CounterMatchup,
   MatchupAnalysis,
   MatchupDetail,
@@ -12,21 +17,8 @@ import {
   ValueAdjustedMatchup
 } from '../types';
 
-export const unitClassCategories = [
-  'heavy_melee_infantry',
-  'light_melee_infantry',
-  'spearman',
-  'heavy_melee_cavalry',
-  'light_melee_cavalry',
-  'ranged_infantry',
-  'heavy_ranged_infantry',
-  'light_ranged_cavalry',
-  'siege',
-  'monk',
-  'hero'
-] as const;
-
-export type UnitClassCategory = (typeof unitClassCategories)[number];
+export { unitClassCategories };
+export type { UnitClassCategory };
 
 export interface CombatEffectSelector {
   id?: string[];
@@ -170,101 +162,11 @@ const baseCounterPairs: Array<[UnitClassCategory, UnitClassCategory, number]> = 
 
 baseCounterPairs.forEach(([attacker, defender, value]) => setSymmetricClassEffect(attacker, defender, value));
 
-function normalizeValues(values: string[]): string[] {
-  return values
-    .filter(Boolean)
-    .map((value) => value.toLowerCase().replace(/[_-]/g, ' '))
-    .map((value) => value.replace(/[^a-z0-9\s]/g, '').trim());
-}
-
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function hasStandaloneKeyword(values: string[], keyword: string): boolean {
-  const pattern = new RegExp(`\\b${escapeRegex(keyword)}\\b`);
-  const negatedPattern = new RegExp(`\\bnon\\s+${escapeRegex(keyword)}\\b`);
-  return values.some(value => pattern.test(value) && !negatedPattern.test(value));
-}
-
-function hasKeyword(values: string[], keyword: string): boolean {
-  const token = keyword.toLowerCase().replace(/[_-]/g, ' ').trim();
-  if (!token) return false;
-  return values.some(value => value.includes(token));
-}
-
-function hasAllKeywords(values: string[], keywords: string[]): boolean {
-  return values.some((value) => keywords.every((keyword) => value.includes(keyword)));
-}
-
-export function classifyUnit(unit: Unit): UnitClassCategory[] {
-  const normalized = normalizeValues([...(unit.classes ?? []), ...(unit.displayClasses ?? []), unit.name, unit.baseId]);
-
-  const categories: UnitClassCategory[] = [];
-  const addCategory = (category: UnitClassCategory): void => {
-    if (!categories.includes(category)) categories.push(category);
-  };
-
-  if (hasStandaloneKeyword(normalized, 'hero') || hasStandaloneKeyword(normalized, 'jeanne') || hasStandaloneKeyword(normalized, 'khan') || hasStandaloneKeyword(normalized, 'daimyo')) {
-    addCategory('hero');
-  }
-
-  if (hasStandaloneKeyword(normalized, 'monk') || hasStandaloneKeyword(normalized, 'imam') || hasStandaloneKeyword(normalized, 'prelate') || hasStandaloneKeyword(normalized, 'scholar') || hasStandaloneKeyword(normalized, 'religious')) {
-    addCategory('monk');
-  }
-
-  if (
-    hasStandaloneKeyword(normalized, 'siege') ||
-    hasStandaloneKeyword(normalized, 'ram') ||
-    hasStandaloneKeyword(normalized, 'bombard') ||
-    hasStandaloneKeyword(normalized, 'mangonel') ||
-    hasStandaloneKeyword(normalized, 'trebuchet') ||
-    hasStandaloneKeyword(normalized, 'springald')
-  ) {
-    addCategory('siege');
-  }
-
-  if (
-    hasStandaloneKeyword(normalized, 'spear') ||
-    hasStandaloneKeyword(normalized, 'spearman') ||
-    hasStandaloneKeyword(normalized, 'pike') ||
-    hasStandaloneKeyword(normalized, 'pikeman')
-  ) {
-    addCategory('spearman');
-  }
-
-  if (hasKeyword(normalized, 'crossbow') || hasKeyword(normalized, 'arbaletrier') || hasKeyword(normalized, 'handcannon')) {
-    addCategory('heavy_ranged_infantry');
-  } else if (hasAllKeywords(normalized, ['heavy', 'ranged', 'infantry'])) {
-    addCategory('heavy_ranged_infantry');
-  }
-
-  if (hasAllKeywords(normalized, ['ranged', 'cavalry']) || hasKeyword(normalized, 'horse archer') || hasKeyword(normalized, 'mangudai')) {
-    addCategory('light_ranged_cavalry');
-  }
-
-  if (hasAllKeywords(normalized, ['light', 'melee', 'cavalry']) || hasStandaloneKeyword(normalized, 'horseman') || hasStandaloneKeyword(normalized, 'sofa')) {
-    addCategory('light_melee_cavalry');
-  }
-
-  if (hasAllKeywords(normalized, ['heavy', 'melee', 'cavalry']) || hasStandaloneKeyword(normalized, 'knight') || hasStandaloneKeyword(normalized, 'lancer')) {
-    addCategory('heavy_melee_cavalry');
-  }
-
-  if (hasAllKeywords(normalized, ['heavy', 'melee', 'infantry']) || hasStandaloneKeyword(normalized, 'man at arms') || hasStandaloneKeyword(normalized, 'samurai')) {
-    addCategory('heavy_melee_infantry');
-  }
-
-  if (!categories.includes('heavy_ranged_infantry') && (hasStandaloneKeyword(normalized, 'archer') || hasAllKeywords(normalized, ['ranged', 'infantry']))) {
-    addCategory('ranged_infantry');
-  }
-
-  if (!categories.includes('spearman') && (hasAllKeywords(normalized, ['light', 'melee', 'infantry']) || hasStandaloneKeyword(normalized, 'musofadi') || hasStandaloneKeyword(normalized, 'warrior'))) {
-    addCategory('light_melee_infantry');
-  }
-
-  return categories;
-}
+export const classifyUnit = classifyUnitByRules;
 
 function evaluateClassCounter(attackerClasses: UnitClassCategory[], defenderClasses: UnitClassCategory[]): {
   value: number;

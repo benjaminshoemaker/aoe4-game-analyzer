@@ -6,9 +6,8 @@ import {
   ResourceAllocation,
   IncomeSnapshot,
   InflectionPoint,
-  PlayerAnalysisSummary,
 } from '../analysis/types';
-import { ScoreBreakdown, ResourceTotals } from '../parser/gameSummaryParser';
+import { ResourceTotals } from '../parser/gameSummaryParser';
 import { generateGameEconomicInsights, generatePhaseEconomicInsights } from '../analysis/economicInsights';
 
 function formatTime(seconds: number): string {

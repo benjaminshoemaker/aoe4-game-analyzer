@@ -79,7 +79,6 @@ describe('buildMatchHtml integration', () => {
       profileSlug: 'my-slug',
       gameId: 230143339,
       sig: 'abc123',
-      hoverDataUrl: '/matches/my-slug/230143339/hover-data?sig=abc123',
     });
 
     expect(fetchGameSummaryFromApi).toHaveBeenCalledWith('my-slug', 230143339, 'abc123');
@@ -95,7 +94,6 @@ describe('buildMatchHtml integration', () => {
       summarySig: 'abc123',
     });
     expect(renderPostMatchHtml).toHaveBeenCalledWith(model, {
-      hoverDataUrl: '/matches/my-slug/230143339/hover-data?sig=abc123',
       webVitalsScript: expect.stringContaining('/api/web-vitals'),
     });
     expect(html).toBe('<html>ok</html>');

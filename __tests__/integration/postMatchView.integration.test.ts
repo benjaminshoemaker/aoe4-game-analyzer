@@ -423,6 +423,42 @@ describe('post-match view integration', () => {
         deltaValue: 120,
         itemEconomicRole: 'resourceGenerator',
       }),
+      expect.objectContaining({
+        band: 'economic',
+        itemLabel: 'Fishing Boat',
+        deltaValue: 75,
+        itemEconomicRole: 'resourceGenerator',
+      }),
+      expect.objectContaining({
+        band: 'economic',
+        itemLabel: 'Trader',
+        deltaValue: 120,
+        itemEconomicRole: 'resourceGenerator',
+      }),
+      expect.objectContaining({
+        band: 'economic',
+        itemLabel: 'Trader',
+        deltaValue: -120,
+        deltaCount: -1,
+      }),
+      expect.objectContaining({
+        band: 'economic',
+        itemLabel: 'Pit Mine',
+        deltaValue: 150,
+        itemEconomicRole: 'resourceInfrastructure',
+      }),
+      expect.objectContaining({
+        band: 'economic',
+        itemLabel: 'Ger',
+        deltaValue: 100,
+        itemEconomicRole: 'resourceInfrastructure',
+      }),
+      expect.objectContaining({
+        band: 'economic',
+        itemLabel: 'Ovoo',
+        deltaValue: 150,
+        itemEconomicRole: 'resourceInfrastructure',
+      }),
       expect.objectContaining({ band: 'militaryActive', itemLabel: 'Tower of the Sultan', deltaValue: 1000 }),
       expect.objectContaining({ band: 'militaryActive', itemLabel: 'Battering Ram', deltaValue: 200 }),
       expect.objectContaining({ band: 'militaryActive', itemLabel: 'Mangonel', deltaValue: 600 }),
@@ -442,6 +478,11 @@ describe('post-match view integration', () => {
     const renderedEconomicSnapshot = hoverPayload.find(point => point.timestamp === 415);
 
     expect(html).toContain('"label":"Trade Caravan"');
+    expect(html).toContain('"label":"Fishing Boat"');
+    expect(html).toContain('"label":"Trader"');
+    expect(html).toContain('"label":"Pit Mine"');
+    expect(html).toContain('"label":"Ger"');
+    expect(html).toContain('"label":"Ovoo"');
     expect(html).toContain('data-hover-field="allocationCategory.economic.resourceGeneration.you"');
     expect(html).toContain('data-hover-field="allocationCategory.economic.resourceInfrastructure.you"');
     expect(html).toContain('data-economic-role-filter="resourceGenerator"');
@@ -454,13 +495,18 @@ describe('post-match view integration', () => {
     expect(html).toContain('"label":"Pilgrim"');
     expect(html).toContain('"label":"Cheirosiphon"');
     expect(renderedEconomicSnapshot?.allocationCategory.economic).toEqual(expect.objectContaining({
-      resourceGeneration: expect.objectContaining({ you: 525 }),
-      resourceInfrastructure: expect.objectContaining({ you: 450 }),
+      resourceGeneration: expect.objectContaining({ you: 1110 }),
+      resourceInfrastructure: expect.objectContaining({ you: 850 }),
     }));
     expect(hoverPoint?.bandBreakdown.economic.you).toEqual(expect.arrayContaining([
       expect.objectContaining({ label: 'Trade Caravan', economicRole: 'resourceGenerator' }),
       expect.objectContaining({ label: 'Imperial Official', economicRole: 'resourceInfrastructure' }),
+      expect.objectContaining({ label: 'Pit Mine', value: 150, economicRole: 'resourceInfrastructure' }),
+      expect.objectContaining({ label: 'Ger', value: 100, economicRole: 'resourceInfrastructure' }),
+      expect.objectContaining({ label: 'Ovoo', value: 150, economicRole: 'resourceInfrastructure' }),
       expect.objectContaining({ label: 'Pilgrim', economicRole: 'resourceGenerator' }),
+      expect.objectContaining({ label: 'Fishing Boat', value: 225, economicRole: 'resourceGenerator' }),
+      expect.objectContaining({ label: 'Trader', value: 360, economicRole: 'resourceGenerator' }),
     ]));
     expect(html).not.toContain('"label":"Trade Cart"');
   });

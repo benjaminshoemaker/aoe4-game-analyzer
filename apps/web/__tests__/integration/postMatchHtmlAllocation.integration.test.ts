@@ -285,14 +285,16 @@ describe('post-match allocation widget integration', () => {
   });
 
   it('renders dense source data as coarse interaction targets without a blocking hover fetch', () => {
-    const html = renderPostMatchHtml(makeDenseInteractionModel(), {
-      hoverDataUrl: '/matches/my-slug/230143339/hover-data?sig=abc123',
-    });
+    const html = renderPostMatchHtml(makeDenseInteractionModel());
     const payload = extractHoverPayload(html);
 
     expect(payload.map(point => point.timestamp)).toEqual([0, 30, 47, 60, 90, 120]);
+    expect(html).toContain('<link rel="icon" href="data:image/svg+xml');
     expect(html).not.toContain('id="post-match-hover-data-url"');
     expect(html).not.toContain('/matches/my-slug/230143339/hover-data?sig=abc123');
+    expect(html).not.toContain('payloadSourceUrl');
+    expect(html).not.toContain('fetch(payloadSourceUrl');
+    expect(html).not.toContain('/favicon.ico');
     expect(html).not.toContain('data-hover-timestamp="1"');
     expect(html).toContain('data-hover-timestamp="30"');
     expect(html).toContain('data-hover-timestamp="47"');
@@ -306,8 +308,8 @@ describe('post-match allocation widget integration', () => {
 
     expect(youLabels.slice(0, 4)).toEqual(['0:00-0:30', '0:30-1:00', '1:00-1:30', '1:30-2:00']);
     expect(opponentLabels.slice(0, 4)).toEqual(['0:00-0:30', '0:30-1:00', '1:00-1:30', '1:30-2:00']);
-    expect(youLabels.at(-1)).toBe('Later opportunity-loss buckets (2)');
-    expect(opponentLabels.at(-1)).toBe('Later opportunity-loss buckets (2)');
+    expect(youLabels.at(-1)).toBe('Later opportunity-loss buckets (6)');
+    expect(opponentLabels.at(-1)).toBe('Later opportunity-loss buckets (6)');
     expect(youLabels).not.toContain('Other active items (2)');
   });
 
