@@ -3,6 +3,7 @@ import { renderPostMatchHtml } from '@aoe4/analyzer-core/formatters/postMatchHtm
 import {
   addVerboseOpportunityLostBuckets,
   makeMvpModelFixture,
+  makeSwappedPerspectiveColorModel,
   makeUnderproductionOnlyOpportunityLostModel,
 } from '../helpers/mvpModelFixture';
 
@@ -12,6 +13,12 @@ const parseMatchRouteParams = jest.fn();
 function extractSvg(html: string, id: string): string {
   const match = html.match(new RegExp(`<svg id="${id}"[\\s\\S]*?</svg>`));
   if (!match) throw new Error(`Expected SVG ${id}`);
+  return match[0];
+}
+
+function extractAllocationLane(html: string, key: string): string {
+  const match = html.match(new RegExp(`<g class="allocation-lane allocation-lane-${key}">[\\s\\S]*?</g>`));
+  if (!match) throw new Error(`Expected allocation lane ${key}`);
   return match[0];
 }
 
@@ -204,6 +211,35 @@ describe('matches route e2e', () => {
     expect(body).not.toContain('<dt>Share of deployed</dt>');
     expect(body).not.toContain('Deployed resource pool over time');
     expect(body).not.toContain('Strategic allocation state');
+  });
+
+  it('returns player-2 perspective allocation visuals without switching line identities', async () => {
+    parseMatchRouteParams.mockReturnValue({ profileSlug: '8097972-RepleteCactus', gameId: 231277359 });
+    buildMatchHtml.mockResolvedValue(renderPostMatchHtml(makeSwappedPerspectiveColorModel()));
+
+    const request = new Request('http://localhost/matches/8097972-RepleteCactus/231277359?sig=abc123');
+    const response = await GET(request, {
+      params: Promise.resolve({
+        profileSlug: '8097972-RepleteCactus',
+        gameId: '231277359',
+      }),
+    });
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(body).toContain('<span class="age-line" style="border-color:#D85A30"></span>RepleteCactus · Ottomans age-up');
+    expect(body).toContain('<span class="age-line dashed" style="border-color:#378ADD"></span>sohaijim2022 · Golden Horde age-up');
+
+    const leaderStrip = extractSvg(body, 'allocation-leader-strip');
+    expect(leaderStrip).toMatch(/data-category-key="technology" data-leader="you"[^>]*fill="#D85A30"/);
+
+    const economicLane = extractAllocationLane(body, 'economic');
+    expect(economicLane).toMatch(/<path d="[^"]+" fill="none" stroke="#D85A30" stroke-width="2\.4" stroke-linejoin="round" stroke-linecap="round" \/>/);
+    expect(economicLane).toMatch(/<path d="[^"]+" fill="none" stroke="#378ADD" stroke-width="2\.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" \/>/);
+
+    const allocationSvg = extractSvg(body, 'allocation-comparison');
+    expect(allocationSvg).toMatch(/data-age-marker="RepleteCactus · Ottomans Feudal 1:00"[\s\S]*?stroke="#D85A30"[\s\S]*?<\/g>/);
+    expect(allocationSvg).toMatch(/data-age-marker="sohaijim2022 · Golden Horde Feudal 2:00"[\s\S]*?stroke="#378ADD"[\s\S]*?stroke-dasharray="7 5"[\s\S]*?<\/g>/);
   });
 
   it('can return the Delhi unsupported page from the match route', async () => {

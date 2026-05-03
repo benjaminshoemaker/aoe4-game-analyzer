@@ -473,3 +473,56 @@ export function makeMvpModelFixture(): PostMatchViewModel {
     oneLineStory: 'Example story',
   };
 }
+
+export function makeSwappedPerspectiveColorModel(): PostMatchViewModel {
+  const model = structuredClone(makeMvpModelFixture());
+  const you = {
+    ...model.header.youPlayer,
+    name: 'RepleteCactus',
+    civilization: 'Ottomans',
+    label: 'RepleteCactus · Ottomans',
+    compactLabel: 'Ottomans',
+    compactShortLabel: 'Ottomans',
+    ageLabel: 'RepleteCactus · Ottomans',
+    color: '#D85A30',
+  };
+  const opponent = {
+    ...model.header.opponentPlayer,
+    name: 'sohaijim2022',
+    civilization: 'Golden Horde',
+    label: 'sohaijim2022 · Golden Horde',
+    shortLabel: 'sohaijim2022',
+    compactLabel: 'Golden Horde',
+    compactShortLabel: 'Golden Horde',
+    ageLabel: 'sohaijim2022 · Golden Horde',
+    ageShortLabel: 'sohaijim2022',
+    color: '#378ADD',
+  };
+
+  model.header.youCivilization = 'Ottomans';
+  model.header.opponentCivilization = 'Golden Horde';
+  model.header.youPlayer = you;
+  model.header.opponentPlayer = opponent;
+  model.header.player1 = opponent;
+  model.header.player2 = you;
+  model.trajectory.ageMarkers = [
+    {
+      player: 'you',
+      age: 'Feudal',
+      timestamp: 60,
+      label: 'RepleteCactus · Ottomans Feudal 1:00',
+      shortLabel: 'RepleteCactus Feudal',
+      timeLabel: '1:00',
+    },
+    {
+      player: 'opponent',
+      age: 'Feudal',
+      timestamp: 120,
+      label: 'sohaijim2022 · Golden Horde Feudal 2:00',
+      shortLabel: 'sohaijim2022 Feudal',
+      timeLabel: '2:00',
+    },
+  ];
+
+  return model;
+}

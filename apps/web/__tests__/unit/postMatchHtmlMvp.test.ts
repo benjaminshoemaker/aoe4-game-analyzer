@@ -3,7 +3,7 @@ import {
   buildAllocationLeaderSegments,
   renderPostMatchHtml,
 } from '@aoe4/analyzer-core/formatters/postMatchHtml';
-import { makeMvpModelFixture } from '../helpers/mvpModelFixture';
+import { makeMvpModelFixture, makeSwappedPerspectiveColorModel } from '../helpers/mvpModelFixture';
 
 function extractSvg(html: string, id: string): string {
   const match = html.match(new RegExp(`<svg id="${id}"[\\s\\S]*?</svg>`));
@@ -14,6 +14,12 @@ function extractSvg(html: string, id: string): string {
 function extractAllocationLane(html: string, key: string): string {
   const match = html.match(new RegExp(`<g class="allocation-lane allocation-lane-${key}">[\\s\\S]*?</g>`));
   if (!match) throw new Error(`Expected allocation lane ${key}`);
+  return match[0];
+}
+
+function extractAgeMarker(svg: string, label: string): string {
+  const match = svg.match(new RegExp(`<g class="age-marker" data-age-marker="${label}">[\\s\\S]*?</g>`));
+  if (!match) throw new Error(`Expected age marker ${label}`);
   return match[0];
 }
 
@@ -596,5 +602,28 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).toContain('<th scope="col">French</th>');
     expect(html).toContain('color: var(--opportunity-you-color, var(--you));');
     expect(html).toContain('color: var(--opportunity-opponent-color, var(--opponent));');
+  });
+
+  it('keeps allocation line styles aligned with player colors when the perspective player is player 2', () => {
+    const html = renderPostMatchHtml(makeSwappedPerspectiveColorModel());
+
+    expect(html).toContain('<span class="age-line" style="border-color:#D85A30"></span>RepleteCactus · Ottomans age-up');
+    expect(html).toContain('<span class="age-line dashed" style="border-color:#378ADD"></span>sohaijim2022 · Golden Horde age-up');
+
+    const leaderStrip = extractSvg(html, 'allocation-leader-strip');
+    expect(leaderStrip).toContain('data-category-key="technology" data-leader="you"');
+    expect(leaderStrip).toMatch(/data-category-key="technology" data-leader="you"[^>]*fill="#D85A30"/);
+
+    const economicLane = extractAllocationLane(html, 'economic');
+    expect(economicLane).toMatch(/<path d="[^"]+" fill="none" stroke="#D85A30" stroke-width="2\.4" stroke-linejoin="round" stroke-linecap="round" \/>/);
+    expect(economicLane).toMatch(/<path d="[^"]+" fill="none" stroke="#378ADD" stroke-width="2\.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" \/>/);
+
+    const allocationSvg = extractSvg(html, 'allocation-comparison');
+    const youAgeMarker = extractAgeMarker(allocationSvg, 'RepleteCactus · Ottomans Feudal 1:00');
+    const opponentAgeMarker = extractAgeMarker(allocationSvg, 'sohaijim2022 · Golden Horde Feudal 2:00');
+    expect(youAgeMarker).toContain('stroke="#D85A30"');
+    expect(youAgeMarker).not.toContain('stroke-dasharray="7 5"');
+    expect(opponentAgeMarker).toContain('stroke="#378ADD"');
+    expect(opponentAgeMarker).toContain('stroke-dasharray="7 5"');
   });
 });

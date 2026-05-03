@@ -6,6 +6,7 @@
 
 ## Decisions
 
+- **[2026-05-03]** Player color identity in post-match charts must come from `PostMatchPlayerDisplay.color`; dash style remains the perspective encoding (`you` solid, `opponent` dashed). This prevents mismatches when the viewed player is player 2 and therefore has the player-2 color. *(source: conversation/code verification)*
 - **[2026-05-02]** Post-match `militaryActive` should match AoE4World army value semantics: live units use base resource cost, not tier-scaled replacement value. Upgrade/tier scaling belongs in separate combat-adjusted views, not the raw army-value hover number. *(source: conversation/code verification)*
 - **[2026-05-02]** Unit lifecycle accounting must operate across a unit line, not only per resolved build-order row; upgraded-row deaths should consume active lower-tier units with the same `baseId`/line key when the upgraded row has no active count. *(source: conversation/code verification)*
 - **[2026-05-02]** Destroyed-only upgraded unit rows must remain in `ResolvedBuildOrder.resolved`; dropping them loses AoE4World death events such as Veteran Spearman/Sipahi deaths after an upgrade. *(source: conversation/code verification)*
@@ -40,6 +41,7 @@
 
 ## Context
 
+- **[2026-05-03]** Regression coverage for the allocation legend/line identity bug uses a player-2 perspective fixture where RepleteCactus/Ottomans is red and `sohaijim2022`/Golden Horde is blue; unit, integration, and route e2e tests assert the legend, leader strip, allocation paths, and age markers all use the same player-color mapping. *(source: conversation/code verification)*
 - **[2026-05-02]** In RepleteCactus/Ottomans game `231277359`, AoE4World army value at `17:40` (`t=1060`) is `1485`; after the fix, the web hover model reports `Mehter=720`, `Spearman=400`, `Imam=300`, and `Scout=65`. *(source: conversation/code verification)*
 - **[2026-05-02]** The discrepancy for game `231277359` was decomposed as: Hardened/Sipahi tier multipliers inflated live value, Veteran destroyed-only rows were dropped or could not subtract lower-tier active units, and Imams were excluded from `militaryActive`. *(source: conversation/code verification)*
 - **[2026-05-02]** Regression coverage for upgraded-unit army value now spans unit tests (`resourcePool`, `buildOrderResolver`), post-match integration, and CLI e2e via `__tests__/helpers/upgradedUnitDeathsFixture.ts`. *(source: conversation/code verification)*
@@ -59,6 +61,7 @@
 
 ## Bugs & Issues
 
+- **[2026-05-03]** `Allocation lead and mix over time` could show a legend with RepleteCactus/Ottomans as red and Golden Horde as blue while the plotted paths remained hardcoded blue solid for `you` and red dashed for `opponent`. Fixed by threading `playerLabels` colors through the leader strip, allocation paths, age markers, significant-event markers, gather chart, and CSS player variables. *(source: conversation/code verification)*
 - **[2026-05-02]** Webapp army value showed `5313` instead of AoE4World `1485` at `17:40` for RepleteCactus game `231277359`. Fixed in commit `46ea161` by using base unit cost for raw live army value, preserving destroyed-only upgraded rows, applying upgraded deaths across active unit-line tiers, and classifying religious units as military army value. *(source: conversation/code verification)*
 - **[2026-05-02]** Local port `3000` had an older unresponsive `next-server`; fixed-route verification used a fresh dev server on `3001` and also found an older server on `3005` still serving stale `1185` output. Status: local environment cleanup may be needed outside the committed fix. *(source: conversation/code verification)*
 - **[2026-05-01]** Yatai active count regressed to `9` when `9001316` bucket `15` was changed back to ignored. Fixed by restoring bucket `15` as destruction/removal and updating tests/audit expectations. *(source: conversation/code verification)*

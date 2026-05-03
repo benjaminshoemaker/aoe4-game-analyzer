@@ -1474,8 +1474,15 @@ function significantEventAriaLabel(event: SignificantTimelineEvent): string {
   return `${event.label} at ${event.timeLabel}: ${event.headline || event.description}`;
 }
 
-function significantEventMarkerColor(event: SignificantTimelineEvent): string {
-  return event.victim === 'you' ? '#378ADD' : '#D85A30';
+function playerColor(labels: RenderPlayerLabels, player: keyof RenderPlayerLabels): string {
+  return labels[player].color;
+}
+
+function significantEventMarkerColor(
+  event: SignificantTimelineEvent,
+  labels: RenderPlayerLabels
+): string {
+  return playerColor(labels, event.victim);
 }
 
 function significantEventMarkerGlyph(event: SignificantTimelineEvent): string {
@@ -2230,8 +2237,8 @@ function formatPoolTooltip(label: string, point: PoolSeriesPoint): string[] {
   ];
 }
 
-function markerColor(marker: AgeMarker): string {
-  return marker.player === 'you' ? '#378ADD' : '#D85A30';
+function markerColor(marker: AgeMarker, labels: RenderPlayerLabels): string {
+  return playerColor(labels, marker.player);
 }
 
 function markerDash(marker: AgeMarker): string {
@@ -2272,6 +2279,7 @@ function buildAgeMarkerLayer(params: {
   lineEndY: number;
   labelY?: number;
   showLabels: boolean;
+  labels: RenderPlayerLabels;
 }): string {
   const markers = params.markers.filter(marker => marker.timestamp >= 0 && marker.timestamp <= params.duration);
   const rowed = assignMarkerRows(markers, params.x, params.showLabels ? 4 : 1, params.showLabels ? 86 : 0);
@@ -2279,12 +2287,13 @@ function buildAgeMarkerLayer(params: {
   return rowed
     .map(({ marker, xPos, row }) => {
       const label = escapeHtml(marker.label);
+      const color = escapeHtml(markerColor(marker, params.labels));
       const text = params.showLabels
-        ? `<text x="${xPos.toFixed(2)}" y="${((params.labelY ?? 12) + row * 12).toFixed(2)}" text-anchor="${markerTextAnchor(xPos, params.width)}" font-size="10" font-weight="700" fill="${markerColor(marker)}">${escapeHtml(marker.shortLabel)}</text>`
+        ? `<text x="${xPos.toFixed(2)}" y="${((params.labelY ?? 12) + row * 12).toFixed(2)}" text-anchor="${markerTextAnchor(xPos, params.width)}" font-size="10" font-weight="700" fill="${color}">${escapeHtml(marker.shortLabel)}</text>`
         : '';
 
       return `<g class="age-marker" data-age-marker="${label}">
-        <line x1="${xPos.toFixed(2)}" y1="${params.lineStartY.toFixed(2)}" x2="${xPos.toFixed(2)}" y2="${params.lineEndY.toFixed(2)}" stroke="${markerColor(marker)}" stroke-width="1.4" opacity="0.72"${markerDash(marker)} />
+        <line x1="${xPos.toFixed(2)}" y1="${params.lineStartY.toFixed(2)}" x2="${xPos.toFixed(2)}" y2="${params.lineEndY.toFixed(2)}" stroke="${color}" stroke-width="1.4" opacity="0.72"${markerDash(marker)} />
         ${text}
         <title>${label}</title>
       </g>`;
@@ -2308,6 +2317,7 @@ function buildSignificantEventMarkerLayer(params: {
   x: (timestamp: number) => number;
   lineStartY: number;
   lineEndY: number;
+  labels: RenderPlayerLabels;
 }): string {
   const events = params.events.filter(event => event.timestamp >= 0 && event.timestamp <= params.duration);
   if (events.length === 0) return '';
@@ -2317,7 +2327,7 @@ function buildSignificantEventMarkerLayer(params: {
     ${events
     .map(event => {
       const xPos = params.x(event.timestamp);
-      const color = significantEventMarkerColor(event);
+      const color = escapeHtml(significantEventMarkerColor(event, params.labels));
       const label = significantEventAriaLabel(event);
       return `<g class="significant-event-marker hover-target" data-significant-event-marker data-hover-timestamp="${event.timestamp}" role="button" tabindex="0" aria-label="${escapeHtml(label)}">
         <line class="significant-event-stem" x1="${xPos.toFixed(2)}" y1="${markerY.toFixed(2)}" x2="${xPos.toFixed(2)}" y2="${params.lineEndY.toFixed(2)}" stroke="${color}" />
@@ -2336,7 +2346,8 @@ function buildPoolComparisonSvg(
   duration: number,
   yMax: number,
   ageMarkers: AgeMarker[],
-  hoverSnapshots: HoverSnapshot[]
+  hoverSnapshots: HoverSnapshot[],
+  labels: RenderPlayerLabels
 ): string {
   const width = svgWidth;
   const padding = poolPadding;
@@ -2456,7 +2467,9 @@ function buildPoolComparisonSvg(
     .slice(1)
     .map((point, idx) => {
       const prev = deltaPoints[idx];
-      const color = (prev.value + point.value) / 2 >= 0 ? '#378ADD' : '#D85A30';
+      const color = (prev.value + point.value) / 2 >= 0
+        ? escapeHtml(playerColor(labels, 'you'))
+        : escapeHtml(playerColor(labels, 'opponent'));
       return `<line x1="${x(prev.timestamp).toFixed(2)}" y1="${deltaY(prev.value).toFixed(2)}" x2="${x(point.timestamp).toFixed(2)}" y2="${deltaY(point.value).toFixed(2)}" stroke="${color}" stroke-width="2.2" stroke-linecap="round" />`;
     })
     .join('');
@@ -2485,7 +2498,10 @@ function buildPoolComparisonSvg(
     lineEndY: deltaBottom,
     labelY: 14,
     showLabels: true,
+    labels,
   });
+  const youColor = escapeHtml(playerColor(labels, 'you'));
+  const opponentColor = escapeHtml(playerColor(labels, 'opponent'));
 
   return `
 <svg id="pool-comparison" class="pool-chart pool-comparison-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Aligned deployed resource pool comparison chart">
@@ -2493,14 +2509,14 @@ function buildPoolComparisonSvg(
   ${xGridAndTicks}
   ${buildLaneGrid(laneOneTop)}
   ${buildLaneGrid(laneTwoTop)}
-  <text x="${padding.left}" y="${(laneOneTop - 10).toFixed(2)}" font-size="12" font-weight="700" fill="#378ADD">You</text>
-  <text x="${padding.left}" y="${(laneTwoTop - 10).toFixed(2)}" font-size="12" font-weight="700" fill="#D85A30">Opponent</text>
+  <text x="${padding.left}" y="${(laneOneTop - 10).toFixed(2)}" font-size="12" font-weight="700" fill="${youColor}">You</text>
+  <text x="${padding.left}" y="${(laneTwoTop - 10).toFixed(2)}" font-size="12" font-weight="700" fill="${opponentColor}">Opponent</text>
   <g>${buildLanePaths(youSeries, laneOneTop)}</g>
   <g>${buildLanePaths(opponentSeries, laneTwoTop)}</g>
   <text x="${padding.left}" y="${(deltaTop - 13).toFixed(2)}" font-size="12" font-weight="700" fill="#253226">Pool delta (You - Opponent)</text>
   <line x1="${padding.left}" y1="${deltaMid.toFixed(2)}" x2="${(width - padding.right).toFixed(2)}" y2="${deltaMid.toFixed(2)}" stroke="#7F867B" stroke-width="1" />
-  <text x="${(padding.left - 8).toFixed(2)}" y="${(deltaY(maxDelta) + 4).toFixed(2)}" text-anchor="end" font-size="10" fill="#378ADD">+${Math.round(maxDelta)}</text>
-  <text x="${(padding.left - 8).toFixed(2)}" y="${(deltaY(-maxDelta) + 4).toFixed(2)}" text-anchor="end" font-size="10" fill="#D85A30">-${Math.round(maxDelta)}</text>
+  <text x="${(padding.left - 8).toFixed(2)}" y="${(deltaY(maxDelta) + 4).toFixed(2)}" text-anchor="end" font-size="10" fill="${youColor}">+${Math.round(maxDelta)}</text>
+  <text x="${(padding.left - 8).toFixed(2)}" y="${(deltaY(-maxDelta) + 4).toFixed(2)}" text-anchor="end" font-size="10" fill="${opponentColor}">-${Math.round(maxDelta)}</text>
   ${deltaSegments}
   ${ageMarkerLayer}
   <g class="hover-readouts" aria-hidden="true">
@@ -2514,9 +2530,9 @@ function buildPoolComparisonSvg(
 </svg>`;
 }
 
-function leaderColor(leader: AllocationLeader): string {
-  if (leader === 'you') return '#378ADD';
-  if (leader === 'opponent') return '#D85A30';
+function leaderColor(leader: AllocationLeader, labels: RenderPlayerLabels): string {
+  if (leader === 'you') return playerColor(labels, 'you');
+  if (leader === 'opponent') return playerColor(labels, 'opponent');
   return '#A8AEA5';
 }
 
@@ -2573,7 +2589,7 @@ function buildAllocationLeaderStripSvg(
           const endX = x(segment.end);
           const widthPx = Math.max(1, endX - startX);
           const title = `${category.label} ${formatTime(segment.start)}-${formatTime(segment.end)}: ${labels.you.compactLabel} ${formatNumber(segment.you)}, ${labels.opponent.compactLabel} ${formatNumber(segment.opponent)}`;
-          return `<rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="${category.key}" data-leader="${segment.leader}" data-hover-timestamp="${segment.hoverTimestamp}" x="${startX.toFixed(2)}" y="${rowTop.toFixed(2)}" width="${widthPx.toFixed(2)}" height="${leaderStripRowHeight}" fill="${leaderColor(segment.leader)}" pointer-events="all"><title>${escapeHtml(title)}</title></rect>`;
+          return `<rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="${category.key}" data-leader="${segment.leader}" data-hover-timestamp="${segment.hoverTimestamp}" x="${startX.toFixed(2)}" y="${rowTop.toFixed(2)}" width="${widthPx.toFixed(2)}" height="${leaderStripRowHeight}" fill="${escapeHtml(leaderColor(segment.leader, labels))}" pointer-events="all"><title>${escapeHtml(title)}</title></rect>`;
         })
         .join('');
 
@@ -2628,6 +2644,8 @@ function buildStrategyAllocationSvg(
   const height = strategyHeight;
   const padding = strategyPadding;
   const plotWidth = width - padding.left - padding.right;
+  const youColor = escapeHtml(playerColor(labels, 'you'));
+  const opponentColor = escapeHtml(playerColor(labels, 'opponent'));
   const x = (timestamp: number): number => scaledX(timestamp, duration, padding);
   const defaultHover = hoverSnapshots[0];
 
@@ -2718,8 +2736,8 @@ function buildStrategyAllocationSvg(
           <line x1="${padding.left}" y1="${laneTop.toFixed(2)}" x2="${(padding.left + plotWidth).toFixed(2)}" y2="${laneTop.toFixed(2)}" stroke="#D9DDD8" stroke-width="1" />
           <line x1="${padding.left}" y1="${(laneTop + strategyLaneHeight / 2).toFixed(2)}" x2="${(padding.left + plotWidth).toFixed(2)}" y2="${(laneTop + strategyLaneHeight / 2).toFixed(2)}" stroke="#D9DDD8" stroke-width="1" />
           <line x1="${padding.left}" y1="${laneBottom.toFixed(2)}" x2="${(padding.left + plotWidth).toFixed(2)}" y2="${laneBottom.toFixed(2)}" stroke="#5B6257" stroke-width="1.1" />
-          <path d="${youPath}" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
-          <path d="${opponentPath}" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
+          <path d="${youPath}" fill="none" stroke="${youColor}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+          <path d="${opponentPath}" fill="none" stroke="${opponentColor}" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
           <text data-hover-label-strategy-${graph.key} data-fixed-label="true" class="hover-value-label delta-label" x="${readoutX.toFixed(2)}" y="${(laneTop + 18).toFixed(2)}" text-anchor="end">${escapeHtml(labelText)}</text>
         </g>
       `;
@@ -2734,6 +2752,7 @@ function buildStrategyAllocationSvg(
     lineStartY: padding.top,
     lineEndY: height - padding.bottom,
     showLabels: false,
+    labels,
   });
   const significantEventLayer = buildSignificantEventMarkerLayer({
     events: uniqueSignificantEvents(hoverSnapshots),
@@ -2741,6 +2760,7 @@ function buildStrategyAllocationSvg(
     x,
     lineStartY: padding.top,
     lineEndY: height - padding.bottom,
+    labels,
   });
 
   return `
@@ -2763,7 +2783,8 @@ function buildGatherRateSvg(
   opponentSeries: GatherRatePoint[],
   duration: number,
   ageMarkers: AgeMarker[],
-  hoverSnapshots: HoverSnapshot[]
+  hoverSnapshots: HoverSnapshot[],
+  labels: RenderPlayerLabels
 ): string {
   const width = svgWidth;
   const height = gatherHeight;
@@ -2787,6 +2808,8 @@ function buildGatherRateSvg(
 
   const youPath = linePath(youSeries);
   const oppPath = linePath(opponentSeries);
+  const youColor = escapeHtml(playerColor(labels, 'you'));
+  const opponentColor = escapeHtml(playerColor(labels, 'opponent'));
 
   const xTicks = [0, 0.25, 0.5, 0.75, 1]
     .map(step => {
@@ -2812,6 +2835,7 @@ function buildGatherRateSvg(
     lineStartY: padding.top,
     lineEndY: height - padding.bottom,
     showLabels: false,
+    labels,
   });
   const defaultHover = hoverSnapshots[0];
   const timestamps = hoverSnapshots.map(snapshot => snapshot.timestamp);
@@ -2832,8 +2856,8 @@ function buildGatherRateSvg(
 <svg class="gather-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Gather rate chart">
   <rect x="0" y="0" width="${width}" height="${height}" fill="#F7FAF8" rx="10" />
   <line x1="${padding.left}" y1="${(height - padding.bottom).toFixed(2)}" x2="${(width - padding.right).toFixed(2)}" y2="${(height - padding.bottom).toFixed(2)}" stroke="#5B6257" stroke-width="1.2" />
-  <path d="${youPath}" fill="none" stroke="#378ADD" stroke-width="2.5" />
-  <path d="${oppPath}" fill="none" stroke="#D85A30" stroke-width="2.5" stroke-dasharray="7 5" />
+  <path d="${youPath}" fill="none" stroke="${youColor}" stroke-width="2.5" />
+  <path d="${oppPath}" fill="none" stroke="${opponentColor}" stroke-width="2.5" stroke-dasharray="7 5" />
   ${ageMarkerLayer}
   ${xTicks}
   ${yTicks}
@@ -3166,7 +3190,8 @@ function buildFullSurfaceSections(
           model.gatherRate.opponentSeries,
           model.gatherRate.durationSeconds,
           model.trajectory.ageMarkers,
-          hoverSnapshots
+          hoverSnapshots,
+          labels
         )}
         <div class="gather-legend">
           <span class="line-chip"><span class="line-swatch" style="border-color:${escapeHtml(labels.you.color)}"></span>${escapeHtml(labels.you.compactShortLabel)}</span>
@@ -4447,8 +4472,8 @@ export function renderPostMatchHtml(
       --color-text: #1f2a1f;
       --color-muted: #5b6257;
       --color-border: #d6ddd1;
-      --you: #378ADD;
-      --opponent: #D85A30;
+      --you: ${escapeHtml(playerLabels.you.color)};
+      --opponent: ${escapeHtml(playerLabels.opponent.color)};
       --report-max-width: 1440px;
       --inspector-min-width: 380px;
       --inspector-max-width: 460px;

@@ -2,12 +2,19 @@ import { renderPostMatchHtml } from '@aoe4/analyzer-core/formatters/postMatchHtm
 import {
   addVerboseOpportunityLostBuckets,
   makeMvpModelFixture,
+  makeSwappedPerspectiveColorModel,
   makeUnderproductionOnlyOpportunityLostModel,
 } from '../helpers/mvpModelFixture';
 
 function extractSvg(html: string, id: string): string {
   const match = html.match(new RegExp(`<svg id="${id}"[\\s\\S]*?</svg>`));
   if (!match) throw new Error(`Expected SVG ${id}`);
+  return match[0];
+}
+
+function extractAllocationLane(html: string, key: string): string {
+  const match = html.match(new RegExp(`<g class="allocation-lane allocation-lane-${key}">[\\s\\S]*?</g>`));
+  if (!match) throw new Error(`Expected allocation lane ${key}`);
   return match[0];
 }
 
@@ -299,6 +306,24 @@ describe('post-match allocation widget integration', () => {
     expect(youLabels.at(-1)).toBe('Later opportunity-loss buckets (2)');
     expect(opponentLabels.at(-1)).toBe('Later opportunity-loss buckets (2)');
     expect(youLabels).not.toContain('Other active items (2)');
+  });
+
+  it('renders player-2 perspective allocation visuals with matching legend, leader strip, and paths', () => {
+    const html = renderPostMatchHtml(makeSwappedPerspectiveColorModel());
+
+    expect(html).toContain('<span class="age-line" style="border-color:#D85A30"></span>RepleteCactus · Ottomans age-up');
+    expect(html).toContain('<span class="age-line dashed" style="border-color:#378ADD"></span>sohaijim2022 · Golden Horde age-up');
+
+    const leaderStrip = extractSvg(html, 'allocation-leader-strip');
+    expect(leaderStrip).toMatch(/data-category-key="technology" data-leader="you"[^>]*fill="#D85A30"/);
+
+    const economicLane = extractAllocationLane(html, 'economic');
+    expect(economicLane).toMatch(/<path d="[^"]+" fill="none" stroke="#D85A30" stroke-width="2\.4" stroke-linejoin="round" stroke-linecap="round" \/>/);
+    expect(economicLane).toMatch(/<path d="[^"]+" fill="none" stroke="#378ADD" stroke-width="2\.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" \/>/);
+
+    const allocationSvg = extractSvg(html, 'allocation-comparison');
+    expect(allocationSvg).toMatch(/data-age-marker="RepleteCactus · Ottomans Feudal 1:00"[\s\S]*?stroke="#D85A30"[\s\S]*?<\/g>/);
+    expect(allocationSvg).toMatch(/data-age-marker="sohaijim2022 · Golden Horde Feudal 2:00"[\s\S]*?stroke="#378ADD"[\s\S]*?stroke-dasharray="7 5"[\s\S]*?<\/g>/);
   });
 
   it('keeps opportunity-lost underproduction in the summary instead of the bucket list', () => {
