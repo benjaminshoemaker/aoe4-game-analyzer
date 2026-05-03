@@ -484,7 +484,7 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).toContain('data-band-summary-you');
     expect(html).toContain('data-band-summary-opponent');
     expect(html).toContain('data-band-summary-delta');
-    expect(html).toContain('Opportunity lost: components and death windows');
+    expect(html).toContain('Opportunity lost: resources lost by selected time');
     expect(html).toContain("el.hidden = selectedBand === 'opportunityLost';");
     expect(html).toContain('grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));');
     expect(html).toContain('.band-summary-label {\n      grid-column: 1 / -1;');

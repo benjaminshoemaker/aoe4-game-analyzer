@@ -2,6 +2,7 @@ import { renderPostMatchHtml } from '@aoe4/analyzer-core/formatters/postMatchHtm
 import {
   addVerboseOpportunityLostBuckets,
   makeMvpModelFixture,
+  makePointInTimeOpportunityLostModel,
   makeSwappedPerspectiveColorModel,
   makeUnderproductionOnlyOpportunityLostModel,
 } from '../helpers/mvpModelFixture';
@@ -375,5 +376,30 @@ describe('post-match allocation widget integration', () => {
     expect(html).toContain('data-opportunity-lost-component="underproduction"');
     expect(html).toContain('<span title="Villager underproduction">Under-production</span>');
     expect(html).not.toContain('<th scope="row">Villager underproduction</th>');
+  });
+
+  it('renders opportunity lost as resources lost by the selected time', () => {
+    const html = renderPostMatchHtml(makePointInTimeOpportunityLostModel());
+    const payload = extractHoverPayload(html);
+    const at90 = payload.find((snapshot: { timestamp: number }) => snapshot.timestamp === 90);
+    const at180 = payload.find((snapshot: { timestamp: number }) => snapshot.timestamp === 180);
+
+    expect(at90.opportunityLostComponents.villagersLost).toEqual(expect.objectContaining({
+      you: 20,
+      opponent: 0,
+      delta: 20,
+    }));
+    expect(at90.bandBreakdown.opportunityLost.you.map((entry: { label: string }) => entry.label))
+      .not.toContain('2:00-2:30');
+    expect(at180.opportunityLostComponents.villagersLost).toEqual(expect.objectContaining({
+      you: 120,
+      opponent: 0,
+      delta: 120,
+    }));
+    expect(at90.allocation.opportunityLost.you).toBe(
+      at90.opportunityLostComponents.villagersLost.you +
+      at90.opportunityLostComponents.underproduction.you
+    );
+    expect(html).toContain('resources lost by selected time');
   });
 });

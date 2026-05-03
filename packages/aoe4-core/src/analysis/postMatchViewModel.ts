@@ -1431,8 +1431,16 @@ function collectVillagerDeathTimes(player: GameSummary['players'][number]): numb
     .sort((a, b) => a - b);
 }
 
-function finalDeathOpportunityLoss(opportunity: VillagerOpportunityForPlayer): number {
-  return Math.max(0, finalVillagerOpportunityPoint(opportunity).cumulativeDeathLoss);
+function deathOpportunityLossAtOrBefore(
+  opportunity: VillagerOpportunityForPlayer,
+  timestamp: number
+): number {
+  let candidate = opportunity.series[0];
+  for (const point of opportunity.series) {
+    if (point.timestamp > timestamp) break;
+    candidate = point;
+  }
+  return Math.max(0, candidate?.cumulativeDeathLoss ?? 0);
 }
 
 const OPPORTUNITY_LOST_VILLAGERS_LOST_CATEGORY = 'villagers-lost';
@@ -1494,12 +1502,12 @@ function createOpportunityLostBreakdownBuilder(
   duration: number
 ): (timestamp: number) => HoverBandBreakdownEntry[] {
   const bucketSeconds = 30;
-  const originalFinalDeathLoss = finalDeathOpportunityLoss(opportunity);
   const allDeathTimes = collectVillagerDeathTimes(player);
-  const valueCache = new Map<string, number>();
+  const counterfactualCache = new Map<string, VillagerOpportunityForPlayer>();
 
   return (timestamp: number): HoverBandBreakdownEntry[] => {
     const safeTimestamp = Math.max(0, timestamp);
+    const originalDeathLossAtTimestamp = deathOpportunityLossAtOrBefore(opportunity, safeTimestamp);
 
     const deathTimesByBucket = new Map<number, number[]>();
     for (const deathTime of allDeathTimes) {
@@ -1514,18 +1522,21 @@ function createOpportunityLostBreakdownBuilder(
       .sort(([a], [b]) => a - b)
       .map(([start, deathTimes]) => {
         const cacheKey = deathTimes.join(',');
-        let value = valueCache.get(cacheKey);
-        if (value === undefined) {
-          const counterfactual = buildVillagerOpportunityForPlayer({
+        let counterfactual = counterfactualCache.get(cacheKey);
+        if (counterfactual === undefined) {
+          counterfactual = buildVillagerOpportunityForPlayer({
             player: removeVillagerDeathsByTimestamp(player, deathTimes),
             duration,
           });
-          value = Math.max(
-            0,
-            Math.round(originalFinalDeathLoss - finalDeathOpportunityLoss(counterfactual))
-          );
-          valueCache.set(cacheKey, value);
+          counterfactualCache.set(cacheKey, counterfactual);
         }
+        const value = Math.max(
+          0,
+          Math.round(
+            originalDeathLossAtTimestamp -
+            deathOpportunityLossAtOrBefore(counterfactual, safeTimestamp)
+          )
+        );
 
         return {
           label: `${formatTime(start)}-${formatTime(start + bucketSeconds)}`,

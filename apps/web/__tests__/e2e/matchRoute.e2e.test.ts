@@ -17,6 +17,7 @@ import { renderPostMatchHtml } from '@aoe4/analyzer-core/formatters/postMatchHtm
 import {
   addVerboseOpportunityLostBuckets,
   makeMvpModelFixture,
+  makePointInTimeOpportunityLostModel,
   makeSwappedPerspectiveColorModel,
   makeUnderproductionOnlyOpportunityLostModel,
 } from '../helpers/mvpModelFixture';
@@ -429,5 +430,37 @@ describe('matches route e2e', () => {
     expect(body).toContain('data-opportunity-lost-component="underproduction"');
     expect(body).toContain('<span title="Villager underproduction">Under-production</span>');
     expect(body).not.toContain('<th scope="row">Villager underproduction</th>');
+  });
+
+  it('returns selected-time opportunity lost values through the match route', async () => {
+    parseMatchRouteParams.mockReturnValue({ profileSlug: 'my-slug', gameId: 230143339 });
+    buildMatchHtml.mockResolvedValue(renderPostMatchHtml(makePointInTimeOpportunityLostModel()));
+
+    const request = new Request('http://localhost/matches/my-slug/230143339?sig=abc123&t=90');
+    const response = await GET(request, {
+      params: Promise.resolve({
+        profileSlug: 'my-slug',
+        gameId: '230143339',
+      }),
+    });
+    const body = await response.text();
+    const payload = extractHoverPayload(body);
+    const at90 = payload.find((snapshot: { timestamp: number }) => snapshot.timestamp === 90);
+    const at180 = payload.find((snapshot: { timestamp: number }) => snapshot.timestamp === 180);
+
+    expect(response.status).toBe(200);
+    expect(at90.opportunityLostComponents.villagersLost).toEqual(expect.objectContaining({
+      you: 20,
+      opponent: 0,
+      delta: 20,
+    }));
+    expect(at90.bandBreakdown.opportunityLost.you.map((entry: { label: string }) => entry.label))
+      .not.toContain('2:00-2:30');
+    expect(at180.opportunityLostComponents.villagersLost).toEqual(expect.objectContaining({
+      you: 120,
+      opponent: 0,
+      delta: 120,
+    }));
+    expect(body).toContain('resources lost by selected time');
   });
 });

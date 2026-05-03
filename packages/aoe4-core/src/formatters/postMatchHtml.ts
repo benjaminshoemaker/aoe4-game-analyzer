@@ -1178,13 +1178,13 @@ function playerColor(labels: RenderPlayerLabels, player: keyof RenderPlayerLabel
 function buildSignificantEventImpactHtml(event: SignificantTimelineEvent | null): string {
   const hiddenAttr = event ? '' : ' hidden';
   return `
-          <section class="event-impact" data-significant-event${hiddenAttr}>
-            <div class="event-impact-heading">Event impact</div>
+          <details class="event-impact" data-significant-event${hiddenAttr} open>
+            <summary class="event-impact-heading">Event impact</summary>
             ${significantEventTitleHtml(event)}
             ${significantEventPreEncounterArmiesHtml(event)}
             ${significantEventLossesHtml(event)}
             ${significantEventUnderdogDetailsHtml(event)}
-          </section>`;
+          </details>`;
 }
 
 function mobileSummaryDetail(row: AllocationComparisonRow, labels: RenderPlayerLabels): string {
@@ -1455,12 +1455,12 @@ function buildHoverInspectorHtml(
 
   const renderOpportunityLostRow = (): string => {
     const row = allocation.opportunityLost;
-    const tooltip = 'Opportunity lost is split into Villagers lost and Villager underproduction. The bucket list shows actual villager-death windows; underproduction is shown in the summary.';
+    const tooltip = 'Opportunity lost is split into Villagers lost and Villager underproduction. Values show resources lost by selected time. The bucket list shows actual villager-death windows; underproduction is shown in the summary.';
     return `
         <tr class="band-row inspector-opportunity-lost-row" data-inspector-row="opportunityLost">
           <th>
             <button type="button" class="band-toggle" data-band-key="opportunityLost" aria-pressed="false" title="${escapeHtml(tooltip)}">
-              <span class="legend-dot opportunity-lost-dot"></span><span data-opportunity-lost-tooltip title="${escapeHtml(tooltip)}">Opportunity lost</span>
+              <span class="legend-dot opportunity-lost-dot"></span><span data-opportunity-lost-tooltip title="${escapeHtml(tooltip)}">Opportunity lost by selected time</span>
             </button>
           </th>
           <td data-cell-label="${youCellLabel}" data-hover-field="allocation.opportunityLost.you">${formatNumber(row.you)}</td>
@@ -3013,12 +3013,41 @@ export function renderPostMatchHtml(
     }
 
     .event-impact-heading {
-      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin: 0;
       font-size: 11px;
       font-weight: 800;
-      letter-spacing: 0.05em;
+      letter-spacing: 0;
       text-transform: uppercase;
       color: #7b3f32;
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+    }
+
+    .event-impact[open] .event-impact-heading {
+      margin-bottom: 5px;
+    }
+
+    .event-impact-heading::-webkit-details-marker {
+      display: none;
+    }
+
+    .event-impact-heading::before {
+      content: "";
+      width: 0;
+      height: 0;
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+      border-left: 6px solid #7b3f32;
+      transition: transform 140ms ease;
+      flex: none;
+    }
+
+    .event-impact[open] .event-impact-heading::before {
+      transform: rotate(90deg);
     }
 
     .event-impact-title {
@@ -3406,6 +3435,7 @@ export function renderPostMatchHtml(
     .allocation-category-toggle:focus-visible,
     .band-toggle:focus-visible,
     .band-sub-link:focus-visible,
+    .event-impact-heading:focus-visible,
     .event-impact-help-button:focus-visible,
     [data-significant-event-underdog-toggle]:focus-visible {
       outline: 2px solid var(--color-focus);
@@ -4044,9 +4074,9 @@ ${fullSurfaceNarrowStyles}
             <strong>Float lane</strong>
             <span>Float (not deployed) is live stockpile resources not currently committed.</span>
           </div>
-          <div class="allocation-read-guide-item" aria-label="Opportunity lost: villagers lost plus villager underproduction">
+          <div class="allocation-read-guide-item" aria-label="Opportunity lost: villagers lost plus villager underproduction by selected time">
             <strong>Opportunity lost lane</strong>
-            <span>Villagers lost plus villager underproduction.</span>
+            <span>Villagers lost plus villager underproduction by selected time.</span>
           </div>
         </div>
       </details>

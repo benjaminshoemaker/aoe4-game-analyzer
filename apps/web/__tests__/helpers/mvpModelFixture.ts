@@ -1,4 +1,16 @@
-import { PostMatchViewModel } from '@aoe4/analyzer-core/analysis/postMatchViewModel';
+import {
+  buildPostMatchViewModel,
+  PostMatchViewModel,
+} from '@aoe4/analyzer-core/analysis/postMatchViewModel';
+import { GameAnalysis } from '@aoe4/analyzer-core/analysis/types';
+import { PoolSeriesPoint } from '@aoe4/analyzer-core/analysis/resourcePool';
+import {
+  BuildOrderEntry,
+  GameSummary,
+  PlayerSummary,
+  ResourceTotals,
+  TimeSeriesResources,
+} from '@aoe4/analyzer-core/parser/gameSummaryParser';
 
 function formatBucketTime(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
@@ -525,4 +537,187 @@ export function makeSwappedPerspectiveColorModel(): PostMatchViewModel {
   ];
 
   return model;
+}
+
+const opportunityScenarioZeroTotals: ResourceTotals = {
+  food: 0,
+  wood: 0,
+  gold: 0,
+  stone: 0,
+  total: 0,
+};
+
+function opportunityScenarioResources(duration: number): TimeSeriesResources {
+  return {
+    timestamps: [0, duration],
+    food: [0, 0],
+    gold: [0, 0],
+    stone: [0, 0],
+    wood: [0, 0],
+    foodPerMin: [0, 0],
+    goldPerMin: [0, 0],
+    stonePerMin: [0, 0],
+    woodPerMin: [0, 0],
+    total: [0, 0],
+    military: [0, 0],
+    economy: [0, 0],
+    technology: [0, 0],
+    society: [0, 0],
+  };
+}
+
+function opportunityScenarioVillagerEntry(
+  finished: number[],
+  destroyed: number[]
+): BuildOrderEntry {
+  return {
+    id: 'unit_villager',
+    icon: 'villager',
+    pbgid: 1,
+    type: 'Unit',
+    finished,
+    constructed: [],
+    destroyed,
+  };
+}
+
+function opportunityScenarioPlayer(
+  profileId: number,
+  name: string,
+  duration: number,
+  finishedVillagers: number[],
+  destroyedVillagers: number[]
+): PlayerSummary {
+  return {
+    profileId,
+    name,
+    civilization: profileId === 1 ? 'English' : 'French',
+    team: profileId,
+    apm: 0,
+    result: profileId === 1 ? 'win' : 'loss',
+    _stats: {
+      ekills: 0,
+      edeaths: 0,
+      sqprod: 0,
+      sqlost: 0,
+      bprod: 0,
+      upg: 0,
+      totalcmds: 0,
+    },
+    actions: {},
+    scores: { total: 0, military: 0, economy: 0, technology: 0, society: 0 },
+    totalResourcesGathered: opportunityScenarioZeroTotals,
+    totalResourcesSpent: opportunityScenarioZeroTotals,
+    resources: opportunityScenarioResources(duration),
+    buildOrder: [opportunityScenarioVillagerEntry(finishedVillagers, destroyedVillagers)],
+  };
+}
+
+function opportunityScenarioPoolPoint(
+  timestamp: number,
+  economic: number
+): PoolSeriesPoint {
+  return {
+    timestamp,
+    economic,
+    populationCap: 0,
+    militaryCapacity: 0,
+    militaryActive: 0,
+    defensive: 0,
+    research: 0,
+    advancement: 0,
+    total: economic,
+  };
+}
+
+export function makePointInTimeOpportunityLostModel(): PostMatchViewModel {
+  const duration = 180;
+  const summary: GameSummary = {
+    gameId: 123,
+    winReason: 'Surrender',
+    mapName: 'Dry Arabia',
+    mapBiome: 'desert',
+    leaderboard: 'rm_1v1',
+    duration,
+    startedAt: 0,
+    finishedAt: duration,
+    players: [
+      opportunityScenarioPlayer(1, 'You', duration, [0, 20, 40, 60], [60, 120]),
+      opportunityScenarioPlayer(2, 'Opponent', duration, [0], []),
+    ],
+  };
+  const youSeries = [
+    opportunityScenarioPoolPoint(0, 50),
+    opportunityScenarioPoolPoint(duration, 200),
+  ];
+  const opponentSeries = [
+    opportunityScenarioPoolPoint(0, 50),
+    opportunityScenarioPoolPoint(duration, 180),
+  ];
+  const analysis: GameAnalysis = {
+    gameId: 123,
+    mapName: 'Dry Arabia',
+    mapBiome: 'desert',
+    duration,
+    winReason: 'Surrender',
+    player1: {
+      name: 'You',
+      civilization: 'English',
+      result: 'win',
+      apm: 0,
+      scores: { total: 0, military: 0, economy: 0, technology: 0, society: 0 },
+      totalGathered: opportunityScenarioZeroTotals,
+      totalSpent: opportunityScenarioZeroTotals,
+      kills: 0,
+      deaths: 0,
+      unitsProduced: 0,
+    },
+    player2: {
+      name: 'Opponent',
+      civilization: 'French',
+      result: 'loss',
+      apm: 0,
+      scores: { total: 0, military: 0, economy: 0, technology: 0, society: 0 },
+      totalGathered: opportunityScenarioZeroTotals,
+      totalSpent: opportunityScenarioZeroTotals,
+      kills: 0,
+      deaths: 0,
+      unitsProduced: 0,
+    },
+    phases: { unifiedPhases: [], gameDuration: duration },
+    phaseComparisons: [],
+    inflectionPoints: [],
+    finalArmyMatchup: null,
+    combatAdjustedMilitarySeries: [],
+    deployedResourcePools: {
+      player1: {
+        profileId: 1,
+        playerName: 'You',
+        civilization: 'English',
+        deferredNotices: [],
+        gatherRateSeries: [{ timestamp: 0, ratePerMin: 0 }, { timestamp: duration, ratePerMin: 0 }],
+        bandItemDeltas: [],
+        series: youSeries,
+        peakTotal: 200,
+      },
+      player2: {
+        profileId: 2,
+        playerName: 'Opponent',
+        civilization: 'French',
+        deferredNotices: [],
+        gatherRateSeries: [{ timestamp: 0, ratePerMin: 0 }, { timestamp: duration, ratePerMin: 0 }],
+        bandItemDeltas: [],
+        series: opponentSeries,
+        peakTotal: 180,
+      },
+      sharedYAxisMax: 200,
+    },
+    bottomLine: null,
+  };
+
+  return buildPostMatchViewModel({
+    summary,
+    analysis,
+    perspectiveProfileId: 1,
+  });
 }

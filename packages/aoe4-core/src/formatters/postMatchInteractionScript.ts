@@ -456,7 +456,7 @@ ${adjustedHelpers}
         var titleEl = document.querySelector('[data-band-breakdown-title]');
         if (titleEl) {
           titleEl.textContent = selectedBand === 'opportunityLost'
-            ? 'Opportunity lost: components and death windows'
+            ? 'Opportunity lost: resources lost by selected time'
             : bandLabel + ' composition';
         }
         setText('[data-band-summary-label]', bandLabel);

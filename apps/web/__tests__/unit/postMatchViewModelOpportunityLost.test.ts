@@ -216,6 +216,30 @@ describe('buildPostMatchViewModel opportunity lost breakdown', () => {
     ]);
   });
 
+  it('values visible villager-death slots through the selected timestamp', () => {
+    const model = buildPostMatchViewModel({
+      summary: makeSummary(180, [0, 20, 40, 60], [60, 120], [0], []),
+      analysis: makeAnalysis(180),
+      perspectiveProfileId: 1,
+    });
+
+    const at90 = model.trajectory.hoverSnapshots.find(snapshot => snapshot.timestamp === 90);
+    const at180 = model.trajectory.hoverSnapshots.find(snapshot => snapshot.timestamp === 180);
+    const at90Entries = (at90?.bandBreakdown.opportunityLost?.you ?? [])
+      .filter(entry => entry.category === 'villagers-lost');
+    const at180Entries = (at180?.bandBreakdown.opportunityLost?.you ?? [])
+      .filter(entry => entry.category === 'villagers-lost');
+
+    expect(at90Entries).toEqual([
+      expect.objectContaining({ label: '1:00-1:30', value: 20, count: 1 }),
+    ]);
+    expect(at90Entries.map(entry => entry.label)).not.toContain('2:00-2:30');
+    expect(at180Entries).toEqual([
+      expect.objectContaining({ label: '1:00-1:30', value: 80, count: 1 }),
+      expect.objectContaining({ label: '2:00-2:30', value: 40, count: 1 }),
+    ]);
+  });
+
   it('keeps underproduction out of opportunity-lost bucket rows', () => {
     const model = buildPostMatchViewModel({
       summary: makeSummary(120, [0], [], [0], []),
