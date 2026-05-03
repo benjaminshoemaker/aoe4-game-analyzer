@@ -5,6 +5,7 @@ import { makeMalianCattleFixture } from './malianCattleFixture';
 import { makeSengokuYataiFixture } from './sengokuYataiFixture';
 import { makeSplitVillagerDeathsFixture } from './splitVillagerDeathsFixture';
 import { makeUnknownBucketMechanicsFixture } from './unknownBucketMechanicsFixture';
+import { makeUpgradedUnitDeathsFixture } from './upgradedUnitDeathsFixture';
 
 const fixtureData = JSON.parse(
   fs.readFileSync(path.resolve(__dirname, '../fixtures/sampleGameSummary.json'), 'utf-8')
@@ -13,6 +14,7 @@ const malianCattleFixture = makeMalianCattleFixture();
 const sengokuYataiFixture = makeSengokuYataiFixture();
 const splitVillagerDeathsFixture = makeSplitVillagerDeathsFixture();
 const unknownBucketMechanicsFixture = makeUnknownBucketMechanicsFixture();
+const upgradedUnitDeathsFixture = makeUpgradedUnitDeathsFixture();
 
 nock('https://aoe4world.com')
   .persist()
@@ -43,3 +45,9 @@ nock('https://aoe4world.com')
   .get('/players/111/games/876543/summary')
   .query(true)
   .reply(200, unknownBucketMechanicsFixture);
+
+nock('https://aoe4world.com')
+  .persist()
+  .get('/players/111/games/909090/summary')
+  .query(true)
+  .reply(200, upgradedUnitDeathsFixture);

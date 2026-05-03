@@ -461,6 +461,52 @@ function buildLifecycleEvents(item: ResolvedBuildItem, countStartedAdvancement =
   });
 }
 
+interface PoolItemContext {
+  item: ResolvedBuildItem;
+  itemKey: string;
+  itemLabel: string;
+  allocations: BandAllocation[];
+  allocationSignature: string;
+  baseValue: number;
+  lineKey: string;
+  order: number;
+}
+
+interface LifecyclePoolEvent extends LifecycleEvent {
+  context: PoolItemContext;
+}
+
+function normalizeLineToken(value: string): string {
+  return normalizeText(value)
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function stripTierSuffix(value: string): string {
+  return normalizeLineToken(value).replace(/-(?:1|2|3|4|5)$/, '');
+}
+
+function stripTierNamePrefix(value: string): string {
+  return normalizeLineToken(value).replace(/^(?:early|hardened|veteran|elite|imperial)-/, '');
+}
+
+function unitLineKey(item: ResolvedBuildItem): string {
+  if (item.type !== 'unit') return `${item.type}:${stripTierSuffix(item.id)}`;
+  if (item.baseId) return stripTierSuffix(item.baseId);
+
+  const idKey = stripTierSuffix(item.id);
+  if (idKey) return idKey;
+
+  return stripTierNamePrefix(item.name);
+}
+
+function allocationSignature(allocations: BandAllocation[]): string {
+  return [...allocations]
+    .sort((a, b) => a.band.localeCompare(b.band) || a.ratio - b.ratio)
+    .map(allocation => `${allocation.band}:${allocation.ratio}`)
+    .join('|');
+}
+
 function itemMarketValue(item: ResolvedBuildItem): number {
   if (item.type !== 'unit') {
     return item.cost.total;
@@ -473,7 +519,7 @@ function itemMarketValue(item: ResolvedBuildItem): number {
     ? item.cost.total
     : configuredOverride?.value ?? item.cost.total;
 
-  return baseCost * item.tierMultiplier;
+  return baseCost;
 }
 
 function classifyResearchCategory(item: ResolvedBuildItem): string {
@@ -518,6 +564,36 @@ function classifyEconomicRole(item: ResolvedBuildItem): EconomicRole {
 
 function economicRoleForBand(item: ResolvedBuildItem, band: PoolBand): EconomicRole | undefined {
   return band === 'economic' ? classifyEconomicRole(item) : undefined;
+}
+
+function activeCountForContext(activeCounts: Map<string, number>, context: PoolItemContext): number {
+  return activeCounts.get(context.itemKey) ?? 0;
+}
+
+function findFallbackLifecycleContext(
+  eventContext: PoolItemContext,
+  contexts: PoolItemContext[],
+  activeCounts: Map<string, number>
+): PoolItemContext | null {
+  if (eventContext.item.type !== 'unit') return null;
+
+  const eventTier = eventContext.item.tier;
+  const candidates = contexts
+    .filter(context =>
+      context.item.type === 'unit' &&
+      context.itemKey !== eventContext.itemKey &&
+      context.lineKey === eventContext.lineKey &&
+      context.allocationSignature === eventContext.allocationSignature &&
+      activeCountForContext(activeCounts, context) > 0
+    )
+    .sort((a, b) => {
+      const aAboveEventTier = a.item.tier > eventTier ? 1 : 0;
+      const bAboveEventTier = b.item.tier > eventTier ? 1 : 0;
+      if (aAboveEventTier !== bAboveEventTier) return aAboveEventTier - bAboveEventTier;
+      return b.item.tier - a.item.tier || b.order - a.order;
+    });
+
+  return candidates[0] ?? null;
 }
 
 function includesAnyToken(value: string, tokens: string[]): boolean {
@@ -786,66 +862,95 @@ export function buildPlayerDeployedPoolSeries(
     addTimestamp(timestampSet, timestamp);
   }
 
-  for (const item of items) {
+  const lifecycleContexts: PoolItemContext[] = [];
+  const lifecycleEvents: LifecyclePoolEvent[] = [];
+
+  for (const [order, item] of items.entries()) {
     const allocations = resolveBandAllocations(item, context);
     if (allocations.length === 0) continue;
 
     const baseValue = itemMarketValue(item);
     if (!Number.isFinite(baseValue) || baseValue === 0) continue;
     const itemKey = `${item.type}:${item.id}`;
-    const itemLabel = item.name;
+    const itemContext: PoolItemContext = {
+      item,
+      itemKey,
+      itemLabel: item.name,
+      allocations,
+      allocationSignature: allocationSignature(allocations),
+      baseValue,
+      lineKey: unitLineKey(item),
+      order,
+    };
+    lifecycleContexts.push(itemContext);
 
-    let activeCount = 0;
     const countStartedAdvancement = allocations.some(allocation => allocation.band === 'advancement');
-    for (const event of buildLifecycleEvents(item, countStartedAdvancement)) {
-      if (event.kind === 'produced') {
-        activeCount += 1;
-        addTimestamp(timestampSet, event.timestamp);
-        for (const allocation of allocations) {
-          const value = baseValue * allocation.ratio;
-          if (!Number.isFinite(value) || value === 0) continue;
+    lifecycleEvents.push(
+      ...buildLifecycleEvents(item, countStartedAdvancement)
+        .map(event => ({ ...event, context: itemContext }))
+    );
+  }
 
-          applyDelta(deltasByTimestamp, event.timestamp, allocation.band, value);
-          applyBandItemDelta(bandItemDeltasByKey, {
-            timestamp: event.timestamp,
-            band: allocation.band,
-            itemKey,
-            itemLabel,
-            itemCategory: allocation.band === 'research' ? classifyResearchCategory(item) : undefined,
-            itemEconomicRole: economicRoleForBand(item, allocation.band),
-            deltaValue: value,
-            deltaCount: 1,
-          });
-        }
+  lifecycleEvents.sort((a, b) => {
+    if (a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
+    if (a.kind !== b.kind) return a.kind === 'produced' ? -1 : 1;
+    return a.context.order - b.context.order;
+  });
 
-        if (detectFreeProductionAt(player.civilization, item, event.timestamp, militarySchoolConstructedAt)) {
-          const existing = freeValueByTimestamp.get(event.timestamp) ?? 0;
-          freeValueByTimestamp.set(event.timestamp, existing + baseValue);
-        }
-        continue;
-      }
-
-      if (activeCount <= 0) continue;
-      activeCount -= 1;
-
-      for (const allocation of allocations) {
-        if (allocation.band === 'research') continue;
-
-        const value = baseValue * allocation.ratio;
+  const activeCounts = new Map<string, number>();
+  for (const event of lifecycleEvents) {
+    if (event.kind === 'produced') {
+      const { context: eventContext } = event;
+      const item = eventContext.item;
+      activeCounts.set(eventContext.itemKey, activeCountForContext(activeCounts, eventContext) + 1);
+      addTimestamp(timestampSet, event.timestamp);
+      for (const allocation of eventContext.allocations) {
+        const value = eventContext.baseValue * allocation.ratio;
         if (!Number.isFinite(value) || value === 0) continue;
 
-        addTimestamp(timestampSet, event.timestamp);
-        applyDelta(deltasByTimestamp, event.timestamp, allocation.band, -value);
+        applyDelta(deltasByTimestamp, event.timestamp, allocation.band, value);
         applyBandItemDelta(bandItemDeltasByKey, {
           timestamp: event.timestamp,
           band: allocation.band,
-          itemKey,
-          itemLabel,
+          itemKey: eventContext.itemKey,
+          itemLabel: eventContext.itemLabel,
+          itemCategory: allocation.band === 'research' ? classifyResearchCategory(item) : undefined,
           itemEconomicRole: economicRoleForBand(item, allocation.band),
-          deltaValue: -value,
-          deltaCount: -1,
+          deltaValue: value,
+          deltaCount: 1,
         });
       }
+
+      if (detectFreeProductionAt(player.civilization, item, event.timestamp, militarySchoolConstructedAt)) {
+        const existing = freeValueByTimestamp.get(event.timestamp) ?? 0;
+        freeValueByTimestamp.set(event.timestamp, existing + eventContext.baseValue);
+      }
+      continue;
+    }
+
+    const lossContext = activeCountForContext(activeCounts, event.context) > 0
+      ? event.context
+      : findFallbackLifecycleContext(event.context, lifecycleContexts, activeCounts);
+    if (!lossContext) continue;
+    activeCounts.set(lossContext.itemKey, activeCountForContext(activeCounts, lossContext) - 1);
+
+    for (const allocation of lossContext.allocations) {
+      if (allocation.band === 'research') continue;
+
+      const value = lossContext.baseValue * allocation.ratio;
+      if (!Number.isFinite(value) || value === 0) continue;
+
+      addTimestamp(timestampSet, event.timestamp);
+      applyDelta(deltasByTimestamp, event.timestamp, allocation.band, -value);
+      applyBandItemDelta(bandItemDeltasByKey, {
+        timestamp: event.timestamp,
+        band: allocation.band,
+        itemKey: lossContext.itemKey,
+        itemLabel: lossContext.itemLabel,
+        itemEconomicRole: economicRoleForBand(lossContext.item, allocation.band),
+        deltaValue: -value,
+        deltaCount: -1,
+      });
     }
   }
 

@@ -54,6 +54,7 @@ export interface ResolvedBuildItem {
   originalEntry: BuildOrderEntry;
   type: 'unit' | 'building' | 'upgrade' | 'age' | 'animal';
   id: string;
+  baseId?: string;
   name: string;
   cost: ItemCost;
   tier: number;
@@ -211,6 +212,7 @@ function resolveFromManualMapping(entry: BuildOrderEntry): ResolvedBuildItem | n
     originalEntry: entry,
     type: entryType,
     id: mapping.id ?? entry.id,
+    baseId: mapping.baseId,
     name: mapping.name,
     cost: normalizeCost(mapping.cost),
     tier,
@@ -287,6 +289,7 @@ export function resolveBuildOrderItem(
         originalEntry: entry,
         type: 'unit',
         id: unit.id,
+        baseId: unit.baseId,
         name: unit.name,
         cost: normalizeCost(unit.costs),
         tier,
@@ -306,6 +309,7 @@ export function resolveBuildOrderItem(
         originalEntry: entry,
         type: 'building',
         id: building.id,
+        baseId: building.baseId,
         name: building.name,
         cost: normalizeCost(building.costs),
         tier,
@@ -325,6 +329,7 @@ export function resolveBuildOrderItem(
         originalEntry: entry,
         type: 'upgrade',
         id: tech.id,
+        baseId: tech.baseId,
         name: tech.name,
         cost: normalizeCost(tech.costs),
         tier,
@@ -344,6 +349,7 @@ export function resolveBuildOrderItem(
         originalEntry: entry,
         type: 'upgrade',
         id: tech.id,
+        baseId: tech.baseId,
         name: tech.name,
         cost: normalizeCost(tech.costs),
         tier,
@@ -361,6 +367,7 @@ export function resolveBuildOrderItem(
         originalEntry: entry,
         type: 'building',
         id: building.id,
+        baseId: building.baseId,
         name: building.name,
         cost: normalizeCost(building.costs),
         tier,
@@ -378,6 +385,7 @@ export function resolveBuildOrderItem(
         originalEntry: entry,
         type: 'unit',
         id: unit.id,
+        baseId: unit.baseId,
         name: unit.name,
         cost: normalizeCost(unit.costs),
         tier,
@@ -398,6 +406,7 @@ export function resolveBuildOrderItem(
       originalEntry: entry,
       type,
       id: item.id,
+      baseId: item.baseId,
       name: item.name,
       cost: normalizeCost(item.costs),
       tier,
@@ -436,6 +445,7 @@ export function resolveAllBuildOrders(
     const buildOrderTimestamps = result.produced.filter(ts => ts > 0);
     const hasStarting = startingTimestamps.length > 0;
     const hasBuildOrder = buildOrderTimestamps.length > 0;
+    const hasDestroyedOnlyBuildOrder = !hasStarting && !hasBuildOrder && result.destroyed.length > 0;
 
     const firstBuildOrderTimestamp = hasBuildOrder
       ? Math.min(...buildOrderTimestamps)
@@ -447,7 +457,7 @@ export function resolveAllBuildOrders(
         : [];
     const buildOrderDestroyed = hasStarting && hasBuildOrder
       ? result.destroyed.filter(ts => ts >= firstBuildOrderTimestamp)
-      : hasBuildOrder
+      : (hasBuildOrder || hasDestroyedOnlyBuildOrder)
         ? result.destroyed
         : [];
 
@@ -460,8 +470,8 @@ export function resolveAllBuildOrders(
       });
     }
 
-    if (buildOrderTimestamps.length > 0) {
-      // Only include in build order if there are non-zero timestamps
+    if (buildOrderTimestamps.length > 0 || hasDestroyedOnlyBuildOrder) {
+      // Keep destroyed-only upgraded rows so lifecycle accounting can subtract the prior tier.
       resolved.push({
         ...result,
         produced: buildOrderTimestamps,

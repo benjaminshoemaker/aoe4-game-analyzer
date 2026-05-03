@@ -10,6 +10,7 @@ export interface ManualMapping {
   pbgid: number;
   name: string;
   id?: string;
+  baseId?: string;
   cost?: {
     food?: number;
     wood?: number;

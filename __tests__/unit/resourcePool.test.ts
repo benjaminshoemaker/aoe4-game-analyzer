@@ -348,7 +348,7 @@ describe('resource pool band classifier', () => {
     expect(classifyResolvedItemBand(monastery, { hasNavalMilitaryProduction: false })).toBe('economic');
   });
 
-  it('classifies monks and imams as economic units', () => {
+  it('classifies religious units as military army value', () => {
     const monk = makeItem({
       type: 'unit',
       id: 'monk-3',
@@ -362,8 +362,8 @@ describe('resource pool band classifier', () => {
       classes: ['imam', 'land_military', 'military']
     });
 
-    expect(classifyResolvedItemBand(monk, { hasNavalMilitaryProduction: false })).toBe('economic');
-    expect(classifyResolvedItemBand(imam, { hasNavalMilitaryProduction: false })).toBe('economic');
+    expect(classifyResolvedItemBand(monk, { hasNavalMilitaryProduction: false })).toBe('militaryActive');
+    expect(classifyResolvedItemBand(imam, { hasNavalMilitaryProduction: false })).toBe('militaryActive');
   });
 
   it('classifies Malian cattle as economic units', () => {
@@ -585,6 +585,51 @@ describe('buildPlayerDeployedPoolSeries', () => {
     expect(at240).toBeDefined();
     expect(at240?.advancement).toBe(600);
     expect(at240?.total).toBe(600);
+  });
+
+  it('uses base army value and applies upgraded-unit deaths to older active tiers', () => {
+    const player = makePlayer('English');
+    player.resources.timestamps = [0, 10, 20, 30, 90, 100, 110, 120];
+
+    const result = buildPlayerDeployedPoolSeries(
+      player,
+      makeBuildOrder([
+        makeItem({
+          type: 'unit',
+          id: 'spearman-2',
+          name: 'Hardened Spearman',
+          classes: ['military', 'infantry', 'spearman'],
+          cost: { food: 60, wood: 20, gold: 0, stone: 0, total: 80 },
+          tier: 2,
+          tierMultiplier: 1.2,
+          produced: [10, 20, 30],
+          destroyed: []
+        }),
+        makeItem({
+          type: 'unit',
+          id: 'spearman-3',
+          name: 'Veteran Spearman',
+          classes: ['military', 'infantry', 'spearman'],
+          cost: { food: 60, wood: 20, gold: 0, stone: 0, total: 80 },
+          tier: 3,
+          tierMultiplier: 1.35,
+          produced: [100],
+          destroyed: [90, 110, 120]
+        })
+      ]),
+      120
+    );
+
+    expect(result.series.find(point => point.timestamp === 30)?.militaryActive).toBe(240);
+    expect(result.series.find(point => point.timestamp === 90)?.militaryActive).toBe(160);
+    expect(result.series.find(point => point.timestamp === 120)?.militaryActive).toBe(80);
+    expect(result.bandItemSnapshots?.find(point => point.timestamp === 120)?.bands.militaryActive).toEqual([
+      expect.objectContaining({
+        itemLabel: 'Hardened Spearman',
+        value: 80,
+        count: 1,
+      }),
+    ]);
   });
 
   it('ignores destroyed events that arrive before an item is produced', () => {

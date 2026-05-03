@@ -270,6 +270,74 @@ describe('buildOrderResolver', () => {
     expect(villagerSnapshot?.count).toBe(9);
   });
 
+  it('keeps destroyed-only upgraded unit rows for cross-tier lifecycle accounting', () => {
+    const fixture = makeSplitVillagerDeathsFixture();
+    fixture.players[1].civilization = 'english';
+    fixture.players[1].buildOrder = [
+      {
+        id: 'hardened-spearman',
+        icon: 'icons/races/common/units/spearman_2',
+        pbgid: 700002,
+        type: 'Unit',
+        finished: [30],
+        constructed: [],
+        destroyed: [],
+      },
+      {
+        id: 'veteran-spearman',
+        icon: 'icons/races/common/units/spearman_3',
+        pbgid: 700003,
+        type: 'Unit',
+        finished: [],
+        constructed: [],
+        destroyed: [90],
+      },
+    ];
+
+    const summary = parseGameSummary(fixture);
+    const player = summary.players[1];
+    const resolved = resolveAllBuildOrders(player, {
+      fetchedAt: new Date().toISOString(),
+      units: [
+        {
+          id: 'spearman-2',
+          name: 'Hardened Spearman',
+          baseId: 'spearman',
+          pbgid: 700002,
+          civs: ['en'],
+          costs: { food: 60, wood: 20 },
+          classes: ['infantry', 'spearman', 'military'],
+          displayClasses: ['Spear Infantry'],
+          age: 2,
+          icon: 'icons/races/common/units/spearman_2',
+        },
+        {
+          id: 'spearman-3',
+          name: 'Veteran Spearman',
+          baseId: 'spearman',
+          pbgid: 700003,
+          civs: ['en'],
+          costs: { food: 60, wood: 20 },
+          classes: ['infantry', 'spearman', 'military'],
+          displayClasses: ['Spear Infantry'],
+          age: 3,
+          icon: 'icons/races/common/units/spearman_3',
+        },
+      ],
+      buildings: [],
+      technologies: [],
+    });
+
+    expect(resolved.unresolved).toEqual([]);
+    expect(resolved.resolved).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        name: 'Veteran Spearman',
+        produced: [],
+        destroyed: [90],
+      }),
+    ]));
+  });
+
   it('preserves early destruction on starting assets when later production exists', () => {
     const fixture = makeSplitVillagerDeathsFixture();
     fixture.players[1].buildOrder[0] = {

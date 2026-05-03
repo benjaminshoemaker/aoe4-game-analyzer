@@ -3,6 +3,7 @@ import path from 'path';
 import { spawnSync, SpawnSyncReturns } from 'child_process';
 import { makeSplitVillagerStaticDataCache } from '../helpers/splitVillagerDeathsFixture';
 import { makeUnknownBucketStaticDataCache } from '../helpers/unknownBucketMechanicsFixture';
+import { makeUpgradedUnitDeathsStaticDataCache } from '../helpers/upgradedUnitDeathsFixture';
 
 const projectRoot = path.resolve(__dirname, '..', '..');
 const cliEntry = path.resolve(projectRoot, 'src/index.ts');
@@ -11,6 +12,7 @@ const tsNodeRegister = require.resolve('ts-node/register');
 const setupNock = path.resolve(projectRoot, '__tests__/helpers/setupNock.ts');
 const fixtureSetup = path.resolve(projectRoot, '__tests__/helpers/setupAnalyzeNock.ts');
 const outputPath = path.resolve(projectRoot, 'tmp', 'e2e-post-match.html');
+const upgradedOutputPath = path.resolve(projectRoot, 'tmp', 'e2e-post-match-upgraded-deaths.html');
 
 function runCli(args: string[]): SpawnSyncReturns<string> {
   return spawnSync(
@@ -40,6 +42,9 @@ describe('post-match render CLI end-to-end', () => {
   beforeEach(() => {
     if (fs.existsSync(outputPath)) {
       fs.unlinkSync(outputPath);
+    }
+    if (fs.existsSync(upgradedOutputPath)) {
+      fs.unlinkSync(upgradedOutputPath);
     }
   });
 
@@ -293,5 +298,28 @@ describe('post-match render CLI end-to-end', () => {
     expect(html).toContain('data-significant-event-loss-summary="player2"');
     expect(html).toContain('data-significant-event-loss-share-label="player2">Share of Player 2 deployed</dt>');
     expect(html).not.toContain('<dt>Share of deployed</dt>');
+  });
+
+  it('renders corrected hover military value after upgraded-unit deaths', () => {
+    fs.writeFileSync(cachePath, JSON.stringify(makeUpgradedUnitDeathsStaticDataCache()), 'utf-8');
+
+    const result = runCli(['render-post-match', '111', '909090', '--out', upgradedOutputPath]);
+
+    expect(result.status).toBe(0);
+    expect(fs.existsSync(upgradedOutputPath)).toBe(true);
+
+    const html = fs.readFileSync(upgradedOutputPath, 'utf-8');
+    const hoverData = extractHoverData(html);
+    const point = hoverData.find(snapshot => snapshot.timestamp === 120);
+
+    expect(point?.you.militaryActive).toBe(80);
+    expect(point?.allocation.military.you).toBe(80);
+    expect(point?.bandBreakdown?.militaryActive?.you).toEqual([
+      expect.objectContaining({
+        label: 'Hardened Spearman',
+        value: 80,
+        count: 1,
+      }),
+    ]);
   });
 });

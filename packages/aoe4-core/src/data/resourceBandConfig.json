@@ -13,12 +13,7 @@
       "atabeg",
       "cattle",
       "yatai",
-      "pilgrim",
-      "monk",
-      "imam",
-      "scholar",
-      "prelate",
-      "priest"
+      "pilgrim"
     ],
     "economicNameTokens": [
       "villager",
@@ -30,12 +25,7 @@
       "atabeg",
       "cattle",
       "yatai",
-      "pilgrim",
-      "monk",
-      "imam",
-      "scholar",
-      "prelate",
-      "priest"
+      "pilgrim"
     ],
     "economicClassTokens": [
       "villager",
@@ -47,13 +37,7 @@
       "official",
       "cattle",
       "yatai",
-      "pilgrim",
-      "monk",
-      "imam",
-      "scholar",
-      "prelate",
-      "priest",
-      "religious_unit"
+      "pilgrim"
     ],
     "marketValueByIdTokens": [
       {

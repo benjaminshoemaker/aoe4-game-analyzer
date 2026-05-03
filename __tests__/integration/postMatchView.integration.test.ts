@@ -16,6 +16,10 @@ import {
   makeUnknownBucketMechanicsFixture,
   makeUnknownBucketStaticDataCache
 } from '../helpers/unknownBucketMechanicsFixture';
+import {
+  makeUpgradedUnitDeathsFixture,
+  makeUpgradedUnitDeathsStaticDataCache
+} from '../helpers/upgradedUnitDeathsFixture';
 
 const fixtureData = JSON.parse(
   fs.readFileSync(path.resolve(__dirname, '../fixtures/sampleGameSummary.json'), 'utf-8')
@@ -521,6 +525,36 @@ describe('post-match view integration', () => {
     }));
     expect(html).toContain('data-significant-event-marker');
     expect(html).toContain('Event impact');
+  });
+
+  it('keeps post-match hover military value aligned with upgraded-unit deaths', async () => {
+    const staticData = makeUpgradedUnitDeathsStaticDataCache();
+    const summary = parseGameSummary(makeUpgradedUnitDeathsFixture());
+    const analysis = await analyzeGame('111', 909090, {
+      skipNarrative: true,
+      summary,
+      staticData,
+    });
+
+    const model = buildPostMatchViewModel({
+      summary,
+      analysis,
+      perspectiveProfileId: '111',
+      summarySig: 'abc123sig',
+    });
+    const html = renderPostMatchHtml(model, { surface: 'full' });
+    const hoverData = extractHoverData(html);
+    const point = hoverData.find(snapshot => snapshot.timestamp === 120);
+
+    expect(point?.you.militaryActive).toBe(80);
+    expect(point?.allocation.military.you).toBe(80);
+    expect(point?.bandBreakdown?.militaryActive?.you).toEqual([
+      expect.objectContaining({
+        label: 'Hardened Spearman',
+        value: 80,
+        count: 1,
+      }),
+    ]);
   });
 
   it('normalizes rm_solo leaderboard alias to Ranked 1v1 in recap header', async () => {
