@@ -1555,6 +1555,18 @@ function buildMobileTimelineControlHtml(hoverSnapshots: HoverSnapshot[], default
           </div>`;
 }
 
+function buildMobileSnapshotControlsHtml(
+  hoverSnapshots: HoverSnapshot[],
+  defaultHover: HoverSnapshot,
+  labels: RenderPlayerLabels
+): string {
+  return `
+      <div class="mobile-snapshot-controls" data-mobile-snapshot-controls aria-label="Selected timestamp controls">
+        ${buildMobileTimelineControlHtml(hoverSnapshots, defaultHover)}
+        ${buildMobileSelectedSummaryHtml(defaultHover, labels)}
+      </div>`;
+}
+
 function buildHoverInspectorHtml(
   snapshot: HoverSnapshot,
   labels: RenderPlayerLabels,
@@ -1810,7 +1822,6 @@ function buildHoverInspectorHtml(
       <div class="inspector-eyebrow">Selected time</div>
       <div class="inspector-time" data-hover-field="timeLabel">${escapeHtml(snapshot.timeLabel)}</div>
       <div class="inspector-context" data-hover-context>${escapeHtml(inspectorContext)}</div>
-      ${buildMobileSelectedSummaryHtml(snapshot, labels)}
       <details class="mobile-detail-panel" data-mobile-details open>
         <summary class="mobile-detail-summary">Allocation details</summary>
         <div class="mobile-detail-content">
@@ -4163,7 +4174,7 @@ ${adjustedUpdate}
       });
 
       function syncMobileDetailsForViewport() {
-        var isMobile = window.matchMedia && window.matchMedia('(max-width: 520px)').matches;
+        var isMobile = window.matchMedia && window.matchMedia('(max-width: 760px), (pointer: coarse)').matches;
         document.querySelectorAll('[data-mobile-details]').forEach(function (details) {
           if (isMobile) {
             if (!details.hasAttribute('data-mobile-user-toggled')) details.removeAttribute('open');
@@ -4858,6 +4869,16 @@ export function renderPostMatchHtml(
       -webkit-overflow-scrolling: touch;
     }
 
+    .mobile-snapshot-controls {
+      display: none;
+      gap: 10px;
+      margin: 10px 0 12px;
+    }
+
+    .mobile-snapshot-controls .mobile-timeline-control {
+      margin-top: 0;
+    }
+
     .mobile-timeline-control {
       display: none;
       gap: 10px;
@@ -5334,6 +5355,20 @@ export function renderPostMatchHtml(
       text-align: left;
       text-decoration: underline;
       cursor: pointer;
+    }
+
+    .recap-link:focus-visible,
+    .allocation-read-guide-summary:focus-visible,
+    .mobile-timeline-button:focus-visible,
+    .mobile-timeline-slider:focus-visible,
+    .mobile-detail-summary:focus-visible,
+    .allocation-category-toggle:focus-visible,
+    .band-toggle:focus-visible,
+    .band-sub-link:focus-visible,
+    .event-impact-help-button:focus-visible,
+    [data-significant-event-underdog-toggle]:focus-visible {
+      outline: 2px solid #1f6fb7;
+      outline-offset: 2px;
     }
 
     .inspector-table th:first-child .legend-dot {
@@ -5872,6 +5907,22 @@ ${fullSurfaceNarrowStyles}
       }
     }
 
+    @media (max-width: 760px), (pointer: coarse) {
+      .mobile-snapshot-controls { display: grid; }
+      .chart-stack { overflow-x: hidden; }
+      .chart-stack .leader-strip,
+      .chart-stack .strategy-chart { min-width: 0; }
+      .hover-target { pointer-events: none; }
+      .significant-event-marker.hover-target { pointer-events: all; }
+      .mobile-timeline-control { display: grid; }
+      .mobile-selected-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .hover-inspector > .inspector-eyebrow,
+      .hover-inspector > .inspector-time,
+      .hover-inspector > .inspector-context { display: none; }
+      .mobile-detail-summary { display: flex; }
+      .mobile-detail-content { margin-top: 8px; }
+    }
+
     @media (max-width: 520px) {
       body { padding: 12px; }
       .wrap { width: calc(100vw - 24px); max-width: calc(100vw - 24px); }
@@ -5893,6 +5944,10 @@ ${fullSurfaceNarrowStyles}
       .mobile-selected-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .mobile-detail-summary { display: flex; }
       .mobile-detail-content { margin-top: 8px; }
+    }
+
+    @media (max-width: 340px) {
+      .mobile-selected-summary { grid-template-columns: 1fr; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -5963,6 +6018,7 @@ ${fullSurfaceNarrowStyles}
         <span class="age-key"><span class="age-line" style="border-color:${escapeHtml(playerLabels.you.color)}"></span>${escapeHtml(playerLabels.you.ageLabel)} age-up</span>
         <span class="age-key"><span class="age-line dashed" style="border-color:${escapeHtml(playerLabels.opponent.color)}"></span>${escapeHtml(playerLabels.opponent.ageLabel)} age-up</span>
       </div>
+      ${buildMobileSnapshotControlsHtml(hoverSnapshots, defaultHoverSnapshot, playerLabels)}
       <div class="trajectory-grid">
         <div class="chart-stack">
           ${buildAllocationLeaderStripSvg(hoverSnapshots, model.trajectory.durationSeconds, playerLabels)}
@@ -5972,7 +6028,6 @@ ${fullSurfaceNarrowStyles}
             model.trajectory.ageMarkers,
             playerLabels
           )}
-          ${buildMobileTimelineControlHtml(hoverSnapshots, defaultHoverSnapshot)}
         </div>
         ${buildHoverInspectorHtml(defaultHoverSnapshot, playerLabels, { includeAdjustedMilitary })}
       </div>
