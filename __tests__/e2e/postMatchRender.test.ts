@@ -300,6 +300,8 @@ describe('post-match render CLI end-to-end', () => {
       villagerDeaths: 1,
     }));
     expect(html).toContain('data-significant-event-marker');
+    expect(html).toMatch(/<details class="event-impact" data-significant-event(?: hidden)? open>/);
+    expect(html).toContain('<summary class="event-impact-heading">Event impact</summary>');
     expect(html).toContain('Event impact');
     expect(html).toContain('data-significant-event-loss-summary="player2"');
     expect(html).toContain('data-significant-event-loss-share-label="player2">Share of Player 2 deployed</dt>');

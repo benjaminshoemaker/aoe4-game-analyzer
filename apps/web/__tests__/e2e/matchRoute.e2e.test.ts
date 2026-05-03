@@ -226,6 +226,8 @@ describe('matches route e2e', () => {
     expect(body).toContain('Total net pool');
     expect(body).toContain('data-hover-field="allocation.opportunityLost.delta"');
     expect(body).toContain('data-significant-event-marker');
+    expect(body).toMatch(/<details class="event-impact" data-significant-event(?: hidden)? open>/);
+    expect(body).toContain('<summary class="event-impact-heading">Event impact</summary>');
     expect(body).toContain('Event impact');
     expect(body).toContain('French took a favorable fight against English, despite significantly fewer deployed military resources.');
     expect(body).not.toContain('data-significant-event-underdog-note');

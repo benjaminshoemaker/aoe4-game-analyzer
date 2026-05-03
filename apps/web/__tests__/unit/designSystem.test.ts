@@ -51,6 +51,8 @@ describe('design system documentation and tokens', () => {
     expect(staticPreviewHtml).toContain('--color-background: var(--aoe-color-report-bg);');
     expect(staticPreviewHtml).toContain('font-family: var(--aoe-font-report);');
     expect(staticPreviewHtml).toContain('<link rel="icon" href="data:image/svg+xml');
+    expect(staticPreviewHtml).toContain('<details class="event-impact" data-significant-event hidden open>');
+    expect(staticPreviewHtml).toContain('<summary class="event-impact-heading">Event impact</summary>');
     expect(staticPreviewHtml).not.toContain('payloadSourceUrl');
     expect(staticPreviewHtml).not.toContain('/favicon.ico');
     expect(staticPreviewHtml).not.toContain('--color-background: #f2f4ee;');

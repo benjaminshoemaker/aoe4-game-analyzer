@@ -282,6 +282,8 @@ describe('renderPostMatchHtml (web mvp)', () => {
     const allocationIndex = html.indexOf('data-inspector-section="allocation"');
 
     expect(html).toContain('data-significant-event-marker');
+    expect(html).toMatch(/<details class="event-impact" data-significant-event(?: hidden)? open>/);
+    expect(html).toContain('<summary class="event-impact-heading">Event impact</summary>');
     expect(html).toContain('aria-label="Fight at 0:00: French took a favorable fight against English, despite significantly fewer deployed military resources."');
     expect(html).toContain(visibleHeadline);
     expect(html).toContain('data-significant-event-armies');

@@ -539,12 +539,41 @@
     }
 
     .event-impact-heading {
-      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin: 0;
       font-size: 11px;
       font-weight: 800;
-      letter-spacing: 0.05em;
+      letter-spacing: 0;
       text-transform: uppercase;
       color: #7b3f32;
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+    }
+
+    .event-impact[open] .event-impact-heading {
+      margin-bottom: 5px;
+    }
+
+    .event-impact-heading::-webkit-details-marker {
+      display: none;
+    }
+
+    .event-impact-heading::before {
+      content: "";
+      width: 0;
+      height: 0;
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+      border-left: 6px solid #7b3f32;
+      transition: transform 140ms ease;
+      flex: none;
+    }
+
+    .event-impact[open] .event-impact-heading::before {
+      transform: rotate(90deg);
     }
 
     .event-impact-title {
@@ -932,6 +961,7 @@
     .allocation-category-toggle:focus-visible,
     .band-toggle:focus-visible,
     .band-sub-link:focus-visible,
+    .event-impact-heading:focus-visible,
     .event-impact-help-button:focus-visible,
     [data-significant-event-underdog-toggle]:focus-visible {
       outline: 2px solid var(--color-focus);
@@ -1819,8 +1849,8 @@
         <summary class="mobile-detail-summary">Allocation details</summary>
         <div class="mobile-detail-content">
 
-          <section class="event-impact" data-significant-event hidden>
-            <div class="event-impact-heading">Event impact</div>
+          <details class="event-impact" data-significant-event hidden open>
+            <summary class="event-impact-heading">Event impact</summary>
 
             <div class="event-impact-title">
               <span data-hover-field="significantEvent.label"></span>
@@ -1879,7 +1909,7 @@
               <summary>Why this fight is notable</summary>
               <p data-significant-event-underdog-details-text></p>
             </details>
-          </section>
+          </details>
           <div class="inspector-section-label" data-inspector-section="allocation">Allocation</div>
           <div class="inspector-table-wrap" tabindex="0" role="region" aria-label="Selected timestamp values table">
             <table class="inspector-table">

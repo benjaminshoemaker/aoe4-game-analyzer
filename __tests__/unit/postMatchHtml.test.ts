@@ -743,6 +743,8 @@ describe('renderPostMatchHtml', () => {
     expect(html).toContain('data-inspector-row="float"');
     expect(html).toContain('data-band-key="float"');
     expect(html).toContain('data-band-key="float" aria-pressed="false"');
+    expect(html).toMatch(/<details class="event-impact" data-significant-event(?: hidden)? open>/);
+    expect(html).toContain('<summary class="event-impact-heading">Event impact</summary>');
     expect(html).toContain('data-significant-event-armies');
     expect(html).not.toContain('data-significant-event-underdog-note');
     expect(html).toContain('data-significant-event-underdog-toggle');
