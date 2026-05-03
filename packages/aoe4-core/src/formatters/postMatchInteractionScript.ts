@@ -613,6 +613,27 @@ ${adjustedHelpers}
         });
       }
 
+      function setDestroyedTooltipOpen(button, isOpen) {
+        button.setAttribute('data-tooltip-open', isOpen ? 'true' : 'false');
+        button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        var tooltipId = button.getAttribute('aria-controls') || '';
+        var tooltip = tooltipId ? document.getElementById(tooltipId) : null;
+        if (tooltip) tooltip.hidden = !isOpen;
+      }
+
+      function closeDestroyedTooltips(exceptButton) {
+        document.querySelectorAll('[data-destroyed-help-button]').forEach(function (button) {
+          if (button === exceptButton) return;
+          setDestroyedTooltipOpen(button, false);
+        });
+      }
+
+      function toggleDestroyedTooltip(button) {
+        var shouldOpen = button.getAttribute('data-tooltip-open') !== 'true';
+        closeDestroyedTooltips(button);
+        setDestroyedTooltipOpen(button, shouldOpen);
+      }
+
       function isCategoryCollapsed(category) {
         var button = document.querySelector('[data-allocation-category-toggle="' + category + '"]');
         return !!button && button.getAttribute('aria-expanded') === 'false';
@@ -914,6 +935,7 @@ ${adjustedUpdate}
         button.addEventListener('click', function () {
           var key = button.getAttribute('data-band-key');
           if (!key) return;
+          closeDestroyedTooltips();
           selectedBand = key;
           selectedInvestmentCategory = button.getAttribute('data-allocation-investment-category') || '';
           selectedEconomicRoleFilter = key === 'economic'
@@ -927,13 +949,32 @@ ${adjustedUpdate}
         });
       });
 
+      document.querySelectorAll('[data-destroyed-help-button]').forEach(function (button) {
+        button.addEventListener('click', function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          toggleDestroyedTooltip(button);
+        });
+      });
+
       document.querySelectorAll('[data-allocation-category-toggle]').forEach(function (button) {
         button.addEventListener('click', function () {
+          closeDestroyedTooltips();
           var key = button.getAttribute('data-allocation-category-toggle');
           if (!key) return;
           var collapsed = button.getAttribute('aria-expanded') !== 'false';
           setCategoryCollapsed(key, collapsed);
         });
+      });
+
+      document.addEventListener('click', function (event) {
+        var target = event.target;
+        if (target && target.closest && target.closest('[data-destroyed-help-button]')) return;
+        closeDestroyedTooltips();
+      });
+
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') closeDestroyedTooltips();
       });
 
       document.querySelectorAll('.inspector-table-wrap').forEach(function (wrap) {

@@ -161,6 +161,8 @@ const MATRIX_STRONG_THRESHOLD = 1.2;
 const MATRIX_WEAK_THRESHOLD = 0.85;
 const significantVillagerOpportunityTooltip =
   'Scale-adjusted future missed gathering from killed villagers in this event window. The model removes those deaths, measures the future villager death-loss avoided, then discounts each future increment by event-time deployed resources divided by deployed resources at that later time.';
+const destroyedRowTooltip =
+  'Destroyed rows show value destroyed for the team in that column, not by that team. The opponent destroyed that value.';
 const MAX_CLIENT_BAND_BREAKDOWN_ENTRIES = 8;
 const OPPORTUNITY_LOST_VILLAGERS_LOST_CATEGORY = 'villagers-lost';
 const OPPORTUNITY_LOST_UNDERPRODUCTION_CATEGORY = 'villager-underproduction';
@@ -1418,9 +1420,13 @@ function buildHoverInspectorHtml(
     return `
         <tr class="band-row allocation-category-accounting-row allocation-category-destroyed-row" data-allocation-category-child="${category.key}" data-allocation-category-accounting="${category.key}-destroyed" data-destroyed-row-category="${category.key}" data-destroyed-row-empty="${rowEmpty ? 'true' : 'false'}"${rowHidden ? ' hidden' : ''}>
           <th>
-            <button type="button" class="band-toggle" data-band-key="${destroyedBandKey}" aria-pressed="false">
-              <span class="legend-dot destroyed-dot"></span>${escapeHtml(label)}
-            </button>
+            <div class="destroyed-row-label">
+              <button type="button" class="band-toggle" data-band-key="${destroyedBandKey}" aria-pressed="false">
+                <span class="legend-dot destroyed-dot"></span><span data-destroyed-row-label>${escapeHtml(label)}</span>
+              </button>
+              <button type="button" class="event-impact-help-button destroyed-row-help-button" data-destroyed-help-button data-destroyed-tooltip-copy="${escapeHtml(destroyedRowTooltip)}" data-tooltip-open="false" aria-expanded="false" aria-controls="destroyed-row-tooltip-${category.key}" aria-label="What does ${escapeHtml(label)} mean?" title="What does ${escapeHtml(label)} mean?">?</button>
+              <span id="destroyed-row-tooltip-${category.key}" class="destroyed-row-tooltip" role="tooltip" hidden>${escapeHtml(destroyedRowTooltip)}</span>
+            </div>
           </th>
           <td data-cell-label="${youCellLabel}" data-hover-field="allocationCategory.${category.key}.destroyed.you">${formatNumber(row.you)}</td>
           <td data-cell-label="${opponentCellLabel}" data-hover-field="allocationCategory.${category.key}.destroyed.opponent">${formatNumber(row.opponent)}</td>
@@ -3368,6 +3374,53 @@ export function renderPostMatchHtml(
       font: inherit;
       cursor: pointer;
       text-align: left;
+    }
+
+    .destroyed-row-label {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .destroyed-row-label .band-toggle {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .destroyed-row-help-button {
+      margin-left: 2px;
+    }
+
+    .destroyed-row-tooltip {
+      position: absolute;
+      left: 0;
+      top: calc(100% + 6px);
+      z-index: 80;
+      width: min(300px, calc(100vw - 48px));
+      padding: 8px 10px;
+      border: 1px solid rgba(255, 249, 245, 0.22);
+      border-radius: var(--aoe-radius-sm);
+      background: #1f2a1f;
+      box-shadow: 0 10px 26px rgba(31, 42, 31, 0.28);
+      color: #fffdf9;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.35;
+      opacity: 0;
+      pointer-events: none;
+      text-align: left;
+      transform: translateY(-2px);
+      transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
+      visibility: hidden;
+      white-space: normal;
+    }
+
+    .destroyed-row-help-button[data-tooltip-open="true"] + .destroyed-row-tooltip {
+      opacity: 1;
+      transform: translateY(0);
+      visibility: visible;
     }
 
     .band-row.is-selected th,

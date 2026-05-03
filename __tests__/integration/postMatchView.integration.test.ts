@@ -195,6 +195,17 @@ describe('post-match view integration', () => {
     expect(html).toContain('function syncDestroyedRowVisibility(point)');
     expect(html).toContain('data-destroyed-row-category="economic" data-destroyed-row-empty="true" hidden');
     expect(html).toContain('Advancement destroyed');
+    const destroyedRowTooltip = 'Destroyed rows show value destroyed for the team in that column, not by that team. The opponent destroyed that value.';
+    expect(html.split(`data-destroyed-tooltip-copy="${destroyedRowTooltip}"`).length - 1).toBe(4);
+    expect(html.split(`class="destroyed-row-label"`).length - 1).toBe(4);
+    expect(html.split(`class="event-impact-help-button destroyed-row-help-button"`).length - 1).toBe(4);
+    expect(html.split(`data-tooltip-open="false"`).length - 1).toBe(4);
+    expect(html.split(`aria-expanded="false" aria-controls="destroyed-row-tooltip-`).length - 1).toBe(4);
+    expect(html.split(`class="destroyed-row-tooltip" role="tooltip" hidden`).length - 1).toBe(4);
+    expect(html).toContain('.destroyed-row-help-button[data-tooltip-open="true"] + .destroyed-row-tooltip');
+    expect(html).toContain('background: #1f2a1f;');
+    expect(html).not.toContain('class="band-toggle destroyed-row-help-toggle"');
+    expect(html).not.toContain('.band-toggle:hover .destroyed-row-tooltip');
     expect(html).not.toContain('Technology destroyed');
     expect(html).not.toContain('data-inspector-row="destroyed"');
     expect(html).not.toContain('data-band-key="destroyed"');

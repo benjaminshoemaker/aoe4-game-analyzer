@@ -117,6 +117,47 @@ const snapshot: ClientHoverSnapshot = {
   },
 };
 
+function runTooltipScriptInDom(script: string): {
+  window: any;
+  bandButton: HTMLElement;
+  helpButton: HTMLElement;
+  tooltip: HTMLElement;
+} {
+  const { JSDOM } = require('jsdom') as typeof import('jsdom');
+  const html = `<!doctype html><html><body>
+    <aside id="hover-inspector" class="hover-inspector">
+      <div data-hover-field="timeLabel">0:00</div>
+      <div data-hover-context></div>
+      <div class="destroyed-row-label">
+        <button type="button" class="band-toggle" data-band-key="militaryDestroyed" aria-pressed="false">
+          <span class="legend-dot destroyed-dot"></span><span data-destroyed-row-label>Military destroyed</span>
+        </button>
+        <button
+          type="button"
+          class="event-impact-help-button destroyed-row-help-button"
+          data-destroyed-help-button
+          data-tooltip-open="false"
+          aria-expanded="false"
+          aria-controls="destroyed-row-tooltip-military"
+        >?</button>
+        <span id="destroyed-row-tooltip-military" class="destroyed-row-tooltip" role="tooltip" hidden>Destroyed rows help.</span>
+      </div>
+    </aside>
+    <script id="post-match-hover-data" type="application/json">${JSON.stringify([snapshot])}</script>
+  </body></html>`;
+  const dom = new JSDOM(html, { runScripts: 'outside-only' });
+  const win = dom.window;
+  const scriptMatch = script.match(/<script>([\s\S]*?)<\/script>\s*$/);
+  if (!scriptMatch) throw new Error('script body not found');
+  win.eval(scriptMatch[1]);
+  return {
+    window: win,
+    bandButton: win.document.querySelector('.band-toggle[data-band-key="militaryDestroyed"]')! as HTMLElement,
+    helpButton: win.document.querySelector('[data-destroyed-help-button]')! as HTMLElement,
+    tooltip: win.document.getElementById('destroyed-row-tooltip-military')! as HTMLElement,
+  };
+}
+
 describe('post-match interaction script formatter', () => {
   it('renders the inline payload and URL-state interaction code without external hover fetches', () => {
     const script = buildHoverInteractionScript([snapshot], labels);
@@ -127,5 +168,34 @@ describe('post-match interaction script formatter', () => {
     expect(script).toContain('data-opportunity-lost-component-low-underproduction-you');
     expect(script).not.toContain('payloadSourceUrl');
     expect(script).not.toContain('fetch(payloadSourceUrl');
+  });
+
+  it('opens destroyed-row help only after the help icon is clicked', () => {
+    const script = buildHoverInteractionScript([snapshot], labels);
+    const dom = runTooltipScriptInDom(script);
+
+    expect(dom.helpButton.hasAttribute('data-band-key')).toBe(false);
+    expect(dom.helpButton.getAttribute('data-tooltip-open')).toBe('false');
+    expect(dom.helpButton.getAttribute('aria-expanded')).toBe('false');
+    expect(dom.tooltip.hidden).toBe(true);
+
+    dom.helpButton.dispatchEvent(new dom.window.MouseEvent('mouseenter', { bubbles: true }));
+    expect(dom.helpButton.getAttribute('data-tooltip-open')).toBe('false');
+    expect(dom.tooltip.hidden).toBe(true);
+
+    dom.bandButton.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    expect(dom.bandButton.getAttribute('aria-pressed')).toBe('true');
+    expect(dom.helpButton.getAttribute('data-tooltip-open')).toBe('false');
+    expect(dom.tooltip.hidden).toBe(true);
+
+    dom.helpButton.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    expect(dom.helpButton.getAttribute('data-tooltip-open')).toBe('true');
+    expect(dom.helpButton.getAttribute('aria-expanded')).toBe('true');
+    expect(dom.tooltip.hidden).toBe(false);
+
+    dom.helpButton.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    expect(dom.helpButton.getAttribute('data-tooltip-open')).toBe('false');
+    expect(dom.helpButton.getAttribute('aria-expanded')).toBe('false');
+    expect(dom.tooltip.hidden).toBe(true);
   });
 });
