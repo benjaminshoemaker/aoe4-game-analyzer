@@ -9,10 +9,18 @@ describe('home route e2e', () => {
     expect(response.headers.get('cache-control')).toBe('no-store');
     expect(body).toContain('Invalid AoE4World URL');
     expect(body).toContain('AoE4World match URL');
+    expect(body).toContain('See where the game turned.');
+    expect(body).toContain('Post-match allocation analysis from <a href="https://aoe4world.com" target="_blank" rel="noopener noreferrer">AoE4World links</a>');
+    expect(body).toContain('View sample report');
+    expect(body).toContain('Match recap');
+    expect(body).toContain('Allocation timeline');
+    expect(body).toContain('Selected time');
     expect(body).toContain('--aoe-color-bg: #f7f2e8;');
     expect(body).toContain('--background: var(--aoe-color-bg);');
     expect(body).toContain('--surface: var(--aoe-color-surface);');
+    expect(body).toContain('--surface-alt: var(--aoe-color-report-surface);');
     expect(body).toContain('--border: var(--aoe-color-border);');
+    expect(body).toContain('--report-border: var(--aoe-color-report-border);');
     expect(body).toContain('--text: var(--aoe-color-text);');
     expect(body).toContain('--muted: var(--aoe-color-muted);');
     expect(body).toContain('font-family: var(--aoe-font-display);');
