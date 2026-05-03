@@ -101,6 +101,17 @@ describe('analyzeGame integration', () => {
     expect(analysis.bottomLine).toBeNull();
   });
 
+  it('can skip combat-adjusted military series for web MVP callers', async () => {
+    const analysis = await analyzeGame('111', 123456, {
+      skipNarrative: true,
+      includeCombatAdjustedMilitary: false,
+    });
+
+    expect(analysis.deployedResourcePools.player1.series.length).toBeGreaterThan(0);
+    expect(analysis.deployedResourcePools.player2.series.length).toBeGreaterThan(0);
+    expect(analysis.combatAdjustedMilitarySeries).toEqual([]);
+  });
+
   it('handles games where both players have age-ups in actions', async () => {
     const analysis = await analyzeGame('111', 123456, { skipNarrative: true });
 

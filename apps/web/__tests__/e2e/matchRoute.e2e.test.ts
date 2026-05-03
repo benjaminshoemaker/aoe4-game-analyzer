@@ -1,3 +1,17 @@
+const mockUnstableCache = jest.fn((
+  callback: () => Promise<string>,
+  _keyParts?: string[],
+  _options?: { revalidate?: number | false; tags?: string[] }
+) => callback);
+
+jest.mock('next/cache', () => ({
+  unstable_cache: (
+    callback: () => Promise<string>,
+    keyParts?: string[],
+    options?: { revalidate?: number | false; tags?: string[] }
+  ) => mockUnstableCache(callback, keyParts, options),
+}));
+
 import { GET, clearMatchRouteCacheForTests } from '../../src/app/matches/[profileSlug]/[gameId]/route';
 import { renderPostMatchHtml } from '@aoe4/analyzer-core/formatters/postMatchHtml';
 import {
@@ -36,6 +50,11 @@ jest.mock('../../src/lib/matchPage', () => ({
 describe('matches route e2e', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUnstableCache.mockImplementation((
+      callback: () => Promise<string>,
+      _keyParts?: string[],
+      _options?: { revalidate?: number | false; tags?: string[] }
+    ) => callback);
     clearMatchRouteCacheForTests();
   });
 
@@ -255,6 +274,19 @@ describe('matches route e2e', () => {
     await expect(first.text()).resolves.toContain('cached match');
     await expect(second.text()).resolves.toContain('cached match');
     expect(buildMatchHtml).toHaveBeenCalledTimes(1);
+    expect(mockUnstableCache).toHaveBeenCalledTimes(1);
+    expect(mockUnstableCache.mock.calls[0][1]).toEqual([
+      'aoe4-rendered-report-html',
+      'v1',
+      'my-slug',
+      '230143339',
+      expect.stringMatching(/^sig-sha256:[a-f0-9]{64}$/),
+    ]);
+    expect(String(mockUnstableCache.mock.calls[0][1])).not.toContain('abc123');
+    expect(mockUnstableCache.mock.calls[0][2]).toEqual(expect.objectContaining({
+      revalidate: 86400,
+      tags: ['aoe4-rendered-report:my-slug:230143339'],
+    }));
     expect(second.headers.get('cache-control')).toBe('private, max-age=300, stale-while-revalidate=3600');
   });
 

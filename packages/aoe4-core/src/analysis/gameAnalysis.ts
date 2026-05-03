@@ -16,6 +16,7 @@ import { StaticDataCache } from '../types';
 export interface AnalyzeOptions {
   sig?: string;
   skipNarrative?: boolean;
+  includeCombatAdjustedMilitary?: boolean;
   summary?: GameSummary;
   staticData?: StaticDataCache;
 }
@@ -87,25 +88,27 @@ export async function analyzeGame(
     player1Build: p1Resolved,
     player2Build: p2Resolved,
   });
-  const combatAdjustedMilitarySeries = buildCombatAdjustedSeries({
-    player1Build: p1Resolved,
-    player2Build: p2Resolved,
-    player1Civilization: player1.civilization,
-    player2Civilization: player2.civilization,
-    player1MilitaryActiveSeries: deployedResourcePools.player1.series,
-    player2MilitaryActiveSeries: deployedResourcePools.player2.series,
-    player1MilitaryActiveBandItemDeltas: deployedResourcePools.player1.bandItemDeltas,
-    player2MilitaryActiveBandItemDeltas: deployedResourcePools.player2.bandItemDeltas,
-    unitCatalog: staticData.units,
-    technologyCatalog: staticData.technologies,
-    duration: summary.duration,
-    timelineTimestamps: [
-      ...deployedResourcePools.player1.series.map(point => point.timestamp),
-      ...deployedResourcePools.player2.series.map(point => point.timestamp),
-      ...deployedResourcePools.player1.gatherRateSeries.map(point => point.timestamp),
-      ...deployedResourcePools.player2.gatherRateSeries.map(point => point.timestamp),
-    ],
-  });
+  const combatAdjustedMilitarySeries = options.includeCombatAdjustedMilitary === false
+    ? []
+    : buildCombatAdjustedSeries({
+      player1Build: p1Resolved,
+      player2Build: p2Resolved,
+      player1Civilization: player1.civilization,
+      player2Civilization: player2.civilization,
+      player1MilitaryActiveSeries: deployedResourcePools.player1.series,
+      player2MilitaryActiveSeries: deployedResourcePools.player2.series,
+      player1MilitaryActiveBandItemDeltas: deployedResourcePools.player1.bandItemDeltas,
+      player2MilitaryActiveBandItemDeltas: deployedResourcePools.player2.bandItemDeltas,
+      unitCatalog: staticData.units,
+      technologyCatalog: staticData.technologies,
+      duration: summary.duration,
+      timelineTimestamps: [
+        ...deployedResourcePools.player1.series.map(point => point.timestamp),
+        ...deployedResourcePools.player2.series.map(point => point.timestamp),
+        ...deployedResourcePools.player1.gatherRateSeries.map(point => point.timestamp),
+        ...deployedResourcePools.player2.gatherRateSeries.map(point => point.timestamp),
+      ],
+    });
 
   const finalArmyMatchup = (p1FinalArmy.length > 0 && p2FinalArmy.length > 0)
     ? calculateValueAdjustedMatchup(p1FinalArmy, p2FinalArmy, {

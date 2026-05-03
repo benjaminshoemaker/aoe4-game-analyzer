@@ -1,6 +1,6 @@
 # Next Steps (Prioritized)
 
-Last updated: 2026-05-01 (America/Los_Angeles)
+Last updated: 2026-05-03 (America/Los_Angeles)
 
 This is the consolidated backlog for follow-up work after the current v1 post-match implementation.
 It centralizes deferred/open items from:
@@ -98,6 +98,12 @@ Priority levels:
   - Use unit weapon damage/speed/modifiers and armor data.
   - Why: current limitation called out; important for adjusted military confidence.
   - Source: `NOTES.md` (Current limitations + Suggested slices).
+
+- [ ] `P1` Reintroduce web adjusted-military series behind an explicit need
+  - Current web MVP report generation intentionally passes `includeCombatAdjustedMilitary: false` because the shipped front-end does not render adjusted-military fields.
+  - If adjusted military returns to the web UI, add a narrower route/surface contract first, then downsample or lazy-load the expensive series instead of rebuilding it for every MVP report request.
+  - Why: deployed measurements on 2026-05-03 showed `buildCombatAdjustedSeries()` as the largest report-generation bottleneck.
+  - Source: web performance pass on `aoe4-game-analyzer-web.vercel.app`.
 
 - [ ] `P1` Add stronger upgrade/age timing windows in clash interpretation
   - Explicitly model pre-upgrade vs upgraded fight windows.

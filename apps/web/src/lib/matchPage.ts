@@ -115,6 +115,7 @@ async function buildMatchContext(params: MatchPageParams) {
   const analysis = await analyzeGame(params.profileSlug, params.gameId, {
     sig: params.sig,
     skipNarrative: true,
+    includeCombatAdjustedMilitary: false,
     summary: cloneSummaryForAnalysis(summary),
   });
 

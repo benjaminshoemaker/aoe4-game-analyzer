@@ -85,6 +85,7 @@ describe('buildMatchHtml integration', () => {
     expect(analyzeGame).toHaveBeenCalledWith('my-slug', 230143339, {
       sig: 'abc123',
       skipNarrative: true,
+      includeCombatAdjustedMilitary: false,
       summary,
     });
     expect(buildPostMatchViewModel).toHaveBeenCalledWith({
