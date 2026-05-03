@@ -7,7 +7,9 @@ export function GET(request: Request): Response {
 
   try {
     const canonical = canonicalMatchHref(rawMatchUrl);
-    return NextResponse.redirect(new URL(canonical.href, request.url), { status: 303 });
+    const loadingUrl = new URL('/matches/loading', request.url);
+    loadingUrl.searchParams.set('to', canonical.href);
+    return NextResponse.redirect(loadingUrl, { status: 303 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Invalid AoE4World URL';
     const homeUrl = new URL('/', request.url);

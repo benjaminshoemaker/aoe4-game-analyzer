@@ -1,12 +1,12 @@
 import { GET } from '../../src/app/matches/open/route';
 
 describe('open match route e2e', () => {
-  it('redirects valid AoE4World URLs to the canonical match route without client-side form JavaScript', () => {
+  it('redirects valid AoE4World URLs to the loading interstitial before the canonical match route', () => {
     const request = new Request('http://localhost/matches/open?url=https%3A%2F%2Faoe4world.com%2Fplayers%2Fmy-slug%2Fgames%2F230143339%3Fsig%3Dabc123');
     const response = GET(request);
 
     expect(response.status).toBe(303);
-    expect(response.headers.get('location')).toBe('http://localhost/matches/my-slug/230143339?sig=abc123');
+    expect(response.headers.get('location')).toBe('http://localhost/matches/loading?to=%2Fmatches%2Fmy-slug%2F230143339%3Fsig%3Dabc123');
   });
 
   it('redirects invalid input back to the home page with an error', () => {
