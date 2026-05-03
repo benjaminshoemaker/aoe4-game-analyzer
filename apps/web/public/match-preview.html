@@ -6,12 +6,63 @@
   <title>AoE4 Post-Match Analysis</title>
   <style>
     :root {
-      --color-background: #f2f4ee;
-      --color-background-secondary: #eef2e7;
-      --color-card: #fbfcf9;
-      --color-text: #1f2a1f;
-      --color-muted: #5b6257;
-      --color-border: #d6ddd1;
+      --aoe-color-bg: #f7f2e8;
+      --aoe-color-bg-accent: #efe1cb;
+      --aoe-color-surface: #fffdf9;
+      --aoe-color-report-bg: #f2f4ee;
+      --aoe-color-report-bg-secondary: #eef2e7;
+      --aoe-color-report-surface: #fbfcf9;
+      --aoe-color-text: #1f1a14;
+      --aoe-color-report-text: #1f2a1f;
+      --aoe-color-report-strong: #253226;
+      --aoe-color-muted: #5f5345;
+      --aoe-color-report-muted: #5b6257;
+      --aoe-color-border: #d9c9ad;
+      --aoe-color-report-border: #d6ddd1;
+      --aoe-color-report-border-subtle: #edf1ea;
+      --aoe-color-report-border-strong: #cad2c7;
+      --aoe-color-report-chart-bg: #f7faf8;
+      --aoe-color-report-control-bg: #ffffff;
+      --aoe-color-report-control-hover: #f1f6fb;
+      --aoe-color-report-control-selected: #f5f8f2;
+      --aoe-color-report-link: #1f3551;
+      --aoe-color-report-focus: #1f6fb7;
+      --aoe-color-primary: #9d2f1b;
+      --aoe-color-primary-border: #7f2014;
+      --aoe-color-primary-contrast: #fff9f5;
+      --aoe-color-field-bg: #ffffff;
+      --aoe-color-error: #8f2714;
+      --aoe-color-home-glow-primary: rgba(157, 47, 27, 0.08);
+      --aoe-color-home-glow-secondary: rgba(39, 107, 80, 0.07);
+      --aoe-color-you: #378add;
+      --aoe-color-opponent: #d85a30;
+      --aoe-radius-sm: 4px;
+      --aoe-radius-md: 8px;
+      --aoe-radius-lg: 10px;
+      --aoe-space-1: 4px;
+      --aoe-space-2: 8px;
+      --aoe-space-3: 12px;
+      --aoe-space-4: 16px;
+      --aoe-space-6: 24px;
+      --aoe-shadow-panel: 0 1px 3px rgba(32, 43, 32, 0.08);
+      --aoe-shadow-home-panel: 0 10px 30px rgba(62, 45, 22, 0.08);
+      --aoe-font-display: "Trebuchet MS", "Avenir Next", "Gill Sans", sans-serif;
+      --aoe-font-report: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --color-background: var(--aoe-color-report-bg);
+      --color-background-secondary: var(--aoe-color-report-bg-secondary);
+      --color-card: var(--aoe-color-report-surface);
+      --color-text: var(--aoe-color-report-text);
+      --color-strong: var(--aoe-color-report-strong);
+      --color-muted: var(--aoe-color-report-muted);
+      --color-border: var(--aoe-color-report-border);
+      --color-border-subtle: var(--aoe-color-report-border-subtle);
+      --color-border-strong: var(--aoe-color-report-border-strong);
+      --color-chart-bg: var(--aoe-color-report-chart-bg);
+      --color-control-bg: var(--aoe-color-report-control-bg);
+      --color-control-hover: var(--aoe-color-report-control-hover);
+      --color-control-selected: var(--aoe-color-report-control-selected);
+      --color-link: var(--aoe-color-report-link);
+      --color-focus: var(--aoe-color-report-focus);
       --you: #378ADD;
       --opponent: #D85A30;
       --report-max-width: 1440px;
@@ -24,11 +75,11 @@
     body {
       margin: 0;
       color: var(--color-text);
-      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: var(--aoe-font-report);
       font-size: 14px;
       line-height: 1.45;
-      background: radial-gradient(circle at 8% -12%, #d8e6d6, transparent 34%),
-        radial-gradient(circle at 92% -8%, #f0ddd0, transparent 32%),
+      background: radial-gradient(circle at 8% -12%, var(--color-background-secondary), transparent 34%),
+        radial-gradient(circle at 92% -8%, var(--aoe-color-bg-accent), transparent 32%),
         var(--color-background);
       padding: 22px;
     }
@@ -46,9 +97,9 @@
       min-width: 0;
       background: var(--color-card);
       border: 1px solid var(--color-border);
-      border-radius: 10px;
+      border-radius: var(--aoe-radius-lg);
       padding: 14px 16px;
-      box-shadow: 0 1px 3px rgba(32, 43, 32, 0.08);
+      box-shadow: var(--aoe-shadow-panel);
     }
 
     .header-row {
@@ -115,7 +166,7 @@
       border: 1px solid var(--color-border);
       border-radius: 999px;
       padding: 6px 10px;
-      background: #fff;
+      background: var(--color-control-bg);
       max-width: 100%;
       overflow-wrap: anywhere;
       white-space: normal;
@@ -130,7 +181,7 @@
     .outcome {
       font-size: 18px;
       font-weight: 700;
-      color: #253226;
+      color: var(--color-strong);
       text-align: right;
     }
 
@@ -138,76 +189,9 @@
       background: #fff7dc;
       border: 1px solid #f1d57d;
       color: #6d4a00;
-      border-radius: 10px;
+      border-radius: var(--aoe-radius-lg);
       padding: 10px 12px;
       font-size: 13px;
-    }
-
-    .metrics {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    .metric-card {
-      min-width: 0;
-      border: 1px solid var(--color-border);
-      background: #fff;
-      border-radius: 8px;
-      padding: 12px;
-    }
-
-    .metric-card-final {
-      grid-column: -2 / -1;
-    }
-
-    .metric-title {
-      font-size: 13px;
-      color: var(--color-muted);
-      margin-bottom: 8px;
-      overflow-wrap: anywhere;
-    }
-
-    .metric-value {
-      font-size: 24px;
-      font-weight: 700;
-      line-height: 1;
-    }
-
-    .metric-range {
-      font-size: 18px;
-      font-weight: 700;
-      line-height: 1.1;
-      overflow-wrap: anywhere;
-    }
-
-    .metric-analysis {
-      margin-top: 8px;
-      color: #253226;
-      font-size: 12px;
-      line-height: 1.35;
-      overflow-wrap: anywhere;
-    }
-
-    .metric-analysis-lines {
-      margin-top: 8px;
-      display: grid;
-      gap: 5px;
-    }
-
-    .metric-analysis-lines .metric-analysis {
-      margin-top: 0;
-    }
-
-    .metric-analysis-gap {
-      font-weight: 700;
-    }
-
-    .metric-sub {
-      margin-top: 6px;
-      font-size: 12px;
-      color: var(--color-muted);
-      overflow-wrap: anywhere;
     }
 
     .section-title {
@@ -226,8 +210,8 @@
     .allocation-read-guide {
       margin: 8px 0 10px;
       border: 1px solid #dde6da;
-      border-radius: 8px;
-      background: #fff;
+      border-radius: var(--aoe-radius-md);
+      background: var(--color-control-bg);
       color: var(--color-muted);
       font-size: 13px;
       line-height: 1.4;
@@ -239,7 +223,7 @@
       gap: 8px;
       min-height: 44px;
       padding: 8px 10px;
-      color: #253226;
+      color: var(--color-strong);
       font-weight: 800;
       cursor: pointer;
       user-select: none;
@@ -261,7 +245,7 @@
     }
 
     .allocation-read-guide[open] .allocation-read-guide-summary {
-      border-bottom: 1px solid #edf1ea;
+      border-bottom: 1px solid var(--color-border-subtle);
     }
 
     .allocation-read-guide[open] .allocation-read-guide-summary::before {
@@ -277,7 +261,7 @@
 
     .allocation-read-guide-title {
       grid-column: 1 / -1;
-      color: #253226;
+      color: var(--color-strong);
       font-weight: 800;
     }
 
@@ -287,7 +271,7 @@
 
     .allocation-read-guide-item strong {
       display: block;
-      color: #253226;
+      color: var(--color-strong);
       font-size: 13px;
       margin-bottom: 1px;
     }
@@ -310,7 +294,7 @@
       gap: 7px;
       border: 1px solid var(--color-border);
       border-radius: 999px;
-      background: #fff;
+      background: var(--color-control-bg);
       padding: 4px 9px;
       font-size: 12px;
     }
@@ -330,10 +314,14 @@
       background: #C56C52;
     }
 
+    .float-dot {
+      background: #9C7A35;
+    }
+
     .chart-head {
       font-size: 12px;
       margin: 10px 0 5px;
-      color: #253226;
+      color: var(--color-strong);
     }
 
     .age-legend {
@@ -352,7 +340,7 @@
       gap: 7px;
       border: 1px solid var(--color-border);
       border-radius: 999px;
-      background: #fff;
+      background: var(--color-control-bg);
       padding: 4px 9px;
     }
 
@@ -373,7 +361,7 @@
       gap: 7px;
       border-radius: 999px;
       padding: 4px 8px;
-      background: #fff;
+      background: var(--color-control-bg);
       border: 1px solid var(--color-border);
       font-size: 12px;
     }
@@ -401,7 +389,7 @@
       font-weight: 700;
       fill: #4f5a50;
       paint-order: stroke;
-      stroke: #fff;
+      stroke: var(--color-control-bg);
       stroke-width: 3px;
       stroke-linejoin: round;
       font-variant-numeric: tabular-nums;
@@ -430,13 +418,23 @@
       -webkit-overflow-scrolling: touch;
     }
 
+    .mobile-snapshot-controls {
+      display: none;
+      gap: 10px;
+      margin: 10px 0 12px;
+    }
+
+    .mobile-snapshot-controls .mobile-timeline-control {
+      margin-top: 0;
+    }
+
     .mobile-timeline-control {
       display: none;
       gap: 10px;
       margin-top: 10px;
       border: 1px solid #dfe6dc;
-      border-radius: 8px;
-      background: #fff;
+      border-radius: var(--aoe-radius-md);
+      background: var(--color-control-bg);
       padding: 10px;
     }
 
@@ -451,7 +449,7 @@
     }
 
     .mobile-timeline-meta strong {
-      color: #253226;
+      color: var(--color-strong);
       font-size: 18px;
       font-variant-numeric: tabular-nums;
     }
@@ -467,9 +465,9 @@
       min-width: 56px;
       min-height: 44px;
       border: 1px solid var(--color-border);
-      border-radius: 8px;
+      border-radius: var(--aoe-radius-md);
       background: #f8faf6;
-      color: #253226;
+      color: var(--color-strong);
       font: inherit;
       font-weight: 800;
       cursor: pointer;
@@ -499,11 +497,11 @@
       position: sticky;
       top: 12px;
       border: 1px solid var(--color-border);
-      border-radius: 8px;
-      background: #fff;
+      border-radius: var(--aoe-radius-md);
+      background: var(--color-control-bg);
       max-height: calc(100vh - 24px);
       padding: 12px 14px;
-      box-shadow: 0 1px 3px rgba(32, 43, 32, 0.08);
+      box-shadow: var(--aoe-shadow-panel);
       font-variant-numeric: tabular-nums;
       overflow: auto;
     }
@@ -520,7 +518,7 @@
       margin-top: 3px;
       font-size: 22px;
       font-weight: 700;
-      color: #253226;
+      color: var(--color-strong);
     }
 
     .inspector-context {
@@ -535,7 +533,7 @@
       margin: 8px 0 12px;
       padding: 9px 10px;
       border: 1px solid #ecd2c7;
-      border-radius: 8px;
+      border-radius: var(--aoe-radius-md);
       background: #fff8f5;
     }
 
@@ -549,16 +547,46 @@
     }
 
     .event-impact-title {
+      display: flex;
+      gap: 6px;
+      align-items: center;
       font-size: 13px;
       font-weight: 800;
-      color: #253226;
+      color: var(--color-strong);
     }
 
-    .event-impact-description {
-      margin: 4px 0 8px;
+    .event-impact-help-button {
+      flex: none;
+      width: 18px;
+      height: 18px;
+      border: 1px solid #d8bdae;
+      border-radius: 999px;
+      background: var(--color-control-bg);
+      color: #7b3f32;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .event-impact-underdog-details {
+      margin-top: 8px;
+      padding-top: 7px;
+      border-top: 1px solid #eadbd4;
       color: #465447;
       font-size: 12px;
       line-height: 1.35;
+    }
+
+    .event-impact-underdog-details summary {
+      color: #7b3f32;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .event-impact-underdog-details p {
+      margin: 6px 0 0;
     }
 
     .event-impact-loss-detail {
@@ -621,7 +649,7 @@
 
     .event-impact-loss-summary dd {
       margin: 0;
-      color: #253226;
+      color: var(--color-strong);
       font-size: 12px;
       font-weight: 800;
     }
@@ -639,7 +667,7 @@
       grid-template-columns: minmax(0, 1fr) auto;
       gap: 8px;
       align-items: baseline;
-      color: #253226;
+      color: var(--color-strong);
       font-size: 12px;
     }
 
@@ -665,39 +693,6 @@
       }
     }
 
-    .event-impact-metrics {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 6px 10px;
-      margin: 0;
-    }
-
-    .event-impact-metrics div {
-      min-width: 0;
-    }
-
-    .event-impact-metrics dt {
-      color: var(--color-muted);
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-
-    .event-impact-metrics dd {
-      margin: 1px 0 0;
-      color: #253226;
-      font-size: 13px;
-      font-weight: 800;
-    }
-
-    .event-impact-losses {
-      margin-top: 7px;
-      color: var(--color-muted);
-      font-size: 12px;
-      line-height: 1.35;
-      overflow-wrap: anywhere;
-    }
-
     .mobile-selected-summary {
       display: none;
       gap: 8px;
@@ -707,7 +702,7 @@
     .mobile-summary-card {
       min-width: 0;
       border: 1px solid #e5ebe1;
-      border-radius: 8px;
+      border-radius: var(--aoe-radius-md);
       background: #f8faf6;
       padding: 9px;
       font-variant-numeric: tabular-nums;
@@ -723,7 +718,7 @@
 
     .mobile-summary-card strong {
       display: block;
-      color: #253226;
+      color: var(--color-strong);
       font-size: 18px;
       line-height: 1.15;
       margin: 3px 0;
@@ -737,7 +732,7 @@
       display: none;
       align-items: center;
       min-height: 44px;
-      color: #253226;
+      color: var(--color-strong);
       font-weight: 800;
       cursor: pointer;
       user-select: none;
@@ -794,7 +789,7 @@
     .inspector-table th,
     .inspector-table td {
       padding: 6px 0;
-      border-top: 1px solid #edf1ea;
+      border-top: 1px solid var(--color-border-subtle);
       text-align: right;
       white-space: nowrap;
     }
@@ -811,13 +806,37 @@
       width: 18%;
     }
 
+    .inspector-table thead th {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      line-height: 1.15;
+      vertical-align: bottom;
+    }
+
+    .inspector-table tbody th:first-child {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    .inspector-table tbody td {
+      white-space: nowrap;
+    }
+
+    .band-toggle,
+    .allocation-category-toggle,
+    .band-sub-link {
+      min-height: 36px;
+      border-radius: var(--aoe-radius-sm);
+      transition: background-color 160ms ease, color 160ms ease;
+    }
+
     .band-toggle {
       display: inline-flex;
       align-items: center;
       gap: 6px;
       width: 100%;
-      margin: -2px 0;
-      padding: 2px 0;
+      margin: -6px 0;
+      padding: 6px 4px;
       border: 0;
       background: transparent;
       color: inherit;
@@ -828,18 +847,18 @@
 
     .band-row.is-selected th,
     .band-row.is-selected td {
-      background: #f1f6fb;
+      background: var(--color-control-hover);
     }
 
     .band-row.is-selected th {
       box-shadow: inset 3px 0 0 var(--you);
-      color: #1f3551;
+      color: var(--color-link);
     }
 
     .allocation-category-row th,
     .allocation-category-row td {
-      background: #f5f8f2;
-      color: #253226;
+      background: var(--color-control-selected);
+      color: var(--color-strong);
       font-weight: 800;
     }
 
@@ -848,8 +867,8 @@
       align-items: center;
       gap: 5px;
       width: 100%;
-      margin: -2px 0;
-      padding: 2px 0;
+      margin: -6px 0;
+      padding: 6px 4px;
       border: 0;
       background: transparent;
       color: inherit;
@@ -882,17 +901,40 @@
     }
 
     .band-sub-link {
-      display: inline-block;
-      margin: 0;
-      padding: 0 0 0 18px;
+      display: inline-flex;
+      align-items: center;
+      width: 100%;
+      margin: -6px 0;
+      padding: 6px 4px 6px 18px;
       border: 0;
       background: transparent;
-      color: #1f3551;
+      color: var(--color-link);
       font: inherit;
       font-size: 11px;
       text-align: left;
       text-decoration: underline;
       cursor: pointer;
+    }
+
+    .band-toggle:hover,
+    .allocation-category-toggle:hover,
+    .band-sub-link:hover {
+      background: var(--color-control-hover);
+      color: var(--color-link);
+    }
+
+    .recap-link:focus-visible,
+    .allocation-read-guide-summary:focus-visible,
+    .mobile-timeline-button:focus-visible,
+    .mobile-timeline-slider:focus-visible,
+    .mobile-detail-summary:focus-visible,
+    .allocation-category-toggle:focus-visible,
+    .band-toggle:focus-visible,
+    .band-sub-link:focus-visible,
+    .event-impact-help-button:focus-visible,
+    [data-significant-event-underdog-toggle]:focus-visible {
+      outline: 2px solid var(--color-focus);
+      outline-offset: 2px;
     }
 
     .inspector-table th:first-child .legend-dot {
@@ -902,23 +944,58 @@
 
     .inspector-total-row th,
     .inspector-total-row td {
-      color: #253226;
+      color: var(--color-strong);
       font-weight: 800;
-      border-top-color: #d6ddd1;
+      border-top-color: var(--color-border);
     }
 
-    .inspector-destroyed-row th,
-    .inspector-destroyed-row td {
+    .allocation-category-destroyed-row th,
+    .allocation-category-destroyed-row td {
       color: #5e2f22;
       font-weight: 800;
-      border-top-color: #d6ddd1;
+      border-top-color: var(--color-border);
+    }
+
+    .allocation-category-investment-row th,
+    .allocation-category-investment-row td {
+      color: var(--color-strong);
+      font-weight: 800;
+      background: #fafbf8;
+    }
+
+    .inspector-adjusted-row th,
+    .inspector-adjusted-row td {
+      color: var(--color-link);
+      font-weight: 700;
+      border-top-color: var(--color-border);
+      white-space: normal;
+      line-height: 1.2;
+    }
+
+    .inspector-adjusted-value-main {
+      display: block;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .inspector-adjusted-value-pct {
+      display: block;
+      font-size: 10px;
+      color: #5f6f82;
+      overflow-wrap: anywhere;
+    }
+
+    .inspector-float-row th,
+    .inspector-float-row td {
+      color: #5c4720;
+      font-weight: 800;
+      border-top-color: var(--color-border);
     }
 
     .inspector-opportunity-lost-row th,
     .inspector-opportunity-lost-row td {
       color: #7b3f32;
       font-weight: 800;
-      border-top-color: #d6ddd1;
+      border-top-color: var(--color-border);
     }
 
     .band-breakdown {
@@ -930,13 +1007,13 @@
     .band-breakdown-head {
       font-size: 13px;
       font-weight: 700;
-      color: #253226;
+      color: var(--color-strong);
       margin-bottom: 6px;
     }
 
     .band-breakdown-summary {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) repeat(3, auto);
+      grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
       gap: 6px 10px;
       align-items: baseline;
       margin-bottom: 10px;
@@ -948,16 +1025,89 @@
       font-size: 12px;
     }
 
+    .band-breakdown-summary > span:not(.band-summary-label) {
+      min-width: 0;
+      overflow-wrap: break-word;
+    }
+
     .band-breakdown-summary strong {
-      color: #253226;
+      color: var(--color-strong);
       font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
 
     .band-summary-label {
+      grid-column: 1 / -1;
       min-width: 0;
-      color: #253226;
+      color: var(--color-strong);
       font-weight: 800;
-      overflow-wrap: anywhere;
+      overflow-wrap: normal;
+      word-break: normal;
+    }
+
+    .opportunity-lost-components {
+      grid-column: 1 / -1;
+      width: 100%;
+      margin-top: 2px;
+      border-top: 1px solid #e0e7dc;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 11px;
+    }
+
+    .opportunity-lost-component-col {
+      width: 32%;
+    }
+
+    .opportunity-lost-value-col {
+      width: 25%;
+    }
+
+    .opportunity-lost-gap-col {
+      width: 18%;
+    }
+
+    .opportunity-lost-components[hidden] {
+      display: none;
+    }
+
+    .opportunity-lost-components th,
+    .opportunity-lost-components td {
+      min-width: 0;
+      padding: 5px 6px 0 0;
+      text-align: right;
+      vertical-align: baseline;
+      overflow-wrap: break-word;
+    }
+
+    .opportunity-lost-components th:first-child {
+      text-align: left;
+    }
+
+    .opportunity-lost-components thead th {
+      color: #5f6b5b;
+      font-weight: 700;
+    }
+
+    .opportunity-lost-components thead th:nth-child(2) {
+      color: var(--opportunity-you-color, var(--you));
+    }
+
+    .opportunity-lost-components thead th:nth-child(3) {
+      color: var(--opportunity-opponent-color, var(--opponent));
+    }
+
+    .opportunity-lost-components tbody th {
+      color: var(--color-strong);
+      font-weight: 800;
+    }
+
+    .opportunity-lost-components tbody tr[data-opportunity-lost-component="total"] th,
+    .opportunity-lost-components tbody tr[data-opportunity-lost-component="total"] td {
+      padding-bottom: 5px;
+      border-bottom: 1px solid #dfe6dc;
+      color: var(--color-strong);
+      font-weight: 900;
     }
 
     .band-breakdown-cols {
@@ -990,7 +1140,7 @@
       justify-content: space-between;
       gap: 8px;
       align-items: flex-start;
-      border-bottom: 1px dashed #edf1ea;
+      border-bottom: 1px dashed var(--color-border-subtle);
       padding-bottom: 2px;
       min-width: 0;
     }
@@ -1006,7 +1156,7 @@
     }
 
     .band-item-label {
-      color: #253226;
+      color: var(--color-strong);
       flex: 1;
       min-width: 0;
     }
@@ -1028,7 +1178,7 @@
       text-overflow: clip;
       outline: 1px solid #c8d6c3;
       outline-offset: 1px;
-      background: #fff;
+      background: var(--color-control-bg);
       padding: 1px 2px;
     }
 
@@ -1076,13 +1226,13 @@
     }
 
     .significant-event-dot {
-      stroke: #fff;
+      stroke: var(--color-control-bg);
       stroke-width: 2;
       filter: drop-shadow(0 1px 2px rgba(32, 43, 32, 0.24));
     }
 
     .significant-event-glyph {
-      fill: #fff;
+      fill: var(--color-control-bg);
       font-size: 10px;
       font-weight: 900;
       pointer-events: none;
@@ -1106,7 +1256,7 @@
       font-size: 11px;
       font-weight: 800;
       paint-order: stroke;
-      stroke: #F7FAF8;
+      stroke: var(--color-chart-bg);
       stroke-width: 3px;
       stroke-linejoin: round;
       font-variant-numeric: tabular-nums;
@@ -1136,12 +1286,12 @@
     }
 
     .allocation-lane-overall .delta-label {
-      fill: #1f3551;
+      fill: var(--color-link);
     }
 
     .you-label { fill: var(--you); }
     .opponent-label { fill: var(--opponent); }
-    .delta-label { fill: #253226; }
+    .delta-label { fill: var(--color-strong); }
 
     body[data-hover-pinned="true"] .hover-inspector {
       border-color: #9bbce0;
@@ -1157,8 +1307,8 @@
 
     .strategy-readout-card {
       border: 1px solid var(--color-border);
-      border-radius: 8px;
-      background: #fff;
+      border-radius: var(--aoe-radius-md);
+      background: var(--color-control-bg);
       padding: 10px;
       font-size: 12px;
       font-variant-numeric: tabular-nums;
@@ -1167,21 +1317,21 @@
     .strategy-readout-card h3 {
       margin: 0 0 8px;
       font-size: 13px;
-      color: #253226;
+      color: var(--color-strong);
     }
 
     .strategy-readout-row {
       display: flex;
       justify-content: space-between;
       gap: 10px;
-      border-top: 1px solid #edf1ea;
+      border-top: 1px solid var(--color-border-subtle);
       padding-top: 4px;
       margin-top: 4px;
       color: var(--color-muted);
     }
 
     .strategy-readout-row strong {
-      color: #253226;
+      color: var(--color-strong);
     }
 
     .strategy-state-strip {
@@ -1193,8 +1343,8 @@
 
     .strategy-state-card {
       border: 1px solid var(--color-border);
-      border-radius: 8px;
-      background: #fff;
+      border-radius: var(--aoe-radius-md);
+      background: var(--color-control-bg);
       padding: 9px;
       font-size: 12px;
     }
@@ -1212,7 +1362,7 @@
     }
 
     .strategy-state-title {
-      color: #253226;
+      color: var(--color-strong);
       font-weight: 800;
       margin-bottom: 4px;
     }
@@ -1227,26 +1377,7 @@
       font-variant-numeric: tabular-nums;
     }
 
-    .line-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      border: 1px solid var(--color-border);
-      border-radius: 999px;
-      background: #fff;
-      padding: 4px 10px;
-    }
 
-    .line-swatch {
-      width: 16px;
-      height: 0;
-      border-top: 2px solid;
-      display: inline-block;
-    }
-
-    .line-swatch.dashed {
-      border-top-style: dashed;
-    }
 
     @media (max-width: 1160px) {
       .trajectory-grid { grid-template-columns: 1fr; }
@@ -1255,14 +1386,13 @@
 
     @media (max-width: 980px) {
       body { padding: 16px; }
-      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .metric-card-final { grid-column: -2 / -1; }
       .header-row { grid-template-columns: 1fr; }
       .outcome { text-align: left; }
       .band-breakdown-cols { grid-template-columns: 1fr; }
       .allocation-read-guide-grid { grid-template-columns: 1fr; }
       .strategy-readout-grid { grid-template-columns: 1fr; }
       .strategy-state-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
     }
 
     @media (max-width: 760px) {
@@ -1298,7 +1428,7 @@
       }
 
       .inspector-table tr {
-        border-top: 1px solid #edf1ea;
+        border-top: 1px solid var(--color-border-subtle);
         padding: 6px 0;
       }
 
@@ -1311,7 +1441,7 @@
 
       .inspector-table th:first-child {
         width: 100%;
-        color: #253226;
+        color: var(--color-strong);
         font-weight: 700;
         margin-bottom: 2px;
       }
@@ -1337,8 +1467,24 @@
       }
 
       .inspector-total-row {
-        border-top-color: #d6ddd1;
+        border-top-color: var(--color-border);
       }
+    }
+
+    @media (max-width: 760px), (pointer: coarse) {
+      .mobile-snapshot-controls { display: grid; }
+      .chart-stack { overflow-x: hidden; }
+      .chart-stack .leader-strip,
+      .chart-stack .strategy-chart { min-width: 0; }
+      .hover-target { pointer-events: none; }
+      .significant-event-marker.hover-target { pointer-events: all; }
+      .mobile-timeline-control { display: grid; }
+      .mobile-selected-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .hover-inspector > .inspector-eyebrow,
+      .hover-inspector > .inspector-time,
+      .hover-inspector > .inspector-context { display: none; }
+      .mobile-detail-summary { display: flex; }
+      .mobile-detail-content { margin-top: 8px; }
     }
 
     @media (max-width: 520px) {
@@ -1347,18 +1493,23 @@
       .panel { padding: 12px; }
       .chips { flex-direction: column; align-items: stretch; }
       .civ-chip { width: 100%; }
-      .metrics { grid-template-columns: 1fr; }
-      .metric-card-final { grid-column: auto; }
       .section-title { font-size: 19px; }
       .chart-stack { overflow-x: hidden; }
       .chart-stack .leader-strip,
       .chart-stack .strategy-chart { min-width: 0; }
+      .opportunity-lost-components { font-size: 10px; }
+      .opportunity-lost-components th,
+      .opportunity-lost-components td { padding-right: 4px; }
       .mobile-timeline-control { display: grid; }
       .hover-target { pointer-events: none; }
       .significant-event-marker.hover-target { pointer-events: all; }
       .mobile-selected-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .mobile-detail-summary { display: flex; }
       .mobile-detail-content { margin-top: 8px; }
+    }
+
+    @media (max-width: 340px) {
+      .mobile-selected-summary { grid-template-columns: 1fr; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -1383,229 +1534,55 @@
           </div>
           <div class="meta-line">Ranked 1v1 · 10:00 · Dry Arabia</div>
           <div class="chips">
-            <span class="civ-chip"><span class="swatch" style="background:#378ADD"></span>You · English</span>
-            <span class="civ-chip"><span class="swatch" style="background:#D85A30"></span>Opponent · French</span>
+            <span class="civ-chip"><span class="swatch" style="background:#378ADD"></span>RepleteCactus · English</span>
+            <span class="civ-chip"><span class="swatch" style="background:#D85A30"></span>Mista · French</span>
           </div>
         </div>
         <div class="outcome">Defeated 10:00</div>
       </div>
-      
+
     </section>
 
     <section class="panel">
       <h2 class="section-title">Allocation lead and mix over time</h2>
-      <p class="section-note">Bands are remapped into Economic, Technology, Military, and Other. The first three charts show share of strategic allocation; Overall is absolute deployed resource value after subtracting Destroyed.</p>
+      <p class="section-note">Bands are remapped into Economic, Technology, Military, and Other. The first three charts show share of current tracked pool; Overall is absolute current tracked pool value.</p>
       <details class="allocation-read-guide" aria-label="Allocation chart legend">
         <summary class="allocation-read-guide-summary">How to read this chart</summary>
         <div class="allocation-read-guide-grid">
-          <div class="allocation-read-guide-item" aria-label="Leader strip: absolute deployed-value leader by 30-second block">
+          <div class="allocation-read-guide-item" aria-label="Leader strip: current tracked-value leader by 30-second block">
             <strong>Leader strip</strong>
-            <span>Absolute deployed-value leader by 30-second block.</span>
+            <span>Current tracked-value leader by 30-second block.</span>
           </div>
-          <div class="allocation-read-guide-item" aria-label="Economic, Technology, and Military: percentage share of strategic allocation">
+          <div class="allocation-read-guide-item" aria-label="Economic, Technology, and Military: percentage share of current tracked pool">
             <strong>Category lanes</strong>
-            <span>Economic, Technology, and Military show percentage share.</span>
+            <span>Economic, Technology, and Military show percentage share of current tracked pool.</span>
           </div>
-          <div class="allocation-read-guide-item" aria-label="Destroyed: cumulative value assumed destroyed by opponent">
+          <div class="allocation-read-guide-item" aria-label="Destroyed: cumulative value removed from the tracked deployed pool">
             <strong>Destroyed lane</strong>
-            <span>Destroyed is cumulative value assumed destroyed by opponent.</span>
+            <span>Destroyed: cumulative value removed from the tracked deployed pool.</span>
           </div>
-          <div class="allocation-read-guide-item" aria-label="Overall: absolute deployed resource value, including Other">
+          <div class="allocation-read-guide-item" aria-label="Overall: absolute current tracked pool value">
             <strong>Overall lane</strong>
-            <span>Overall: absolute deployed resource value after subtracting Destroyed.</span>
+            <span>Overall: absolute current tracked pool value.</span>
           </div>
-          <div class="allocation-read-guide-item" aria-label="Float (not deployed): gathered resources not currently committed">
+          <div class="allocation-read-guide-item" aria-label="Float (not deployed): live stockpile resources not currently committed">
             <strong>Float lane</strong>
-            <span>Float (not deployed) is gathered resources not currently committed.</span>
+            <span>Float (not deployed) is live stockpile resources not currently committed.</span>
           </div>
-          <div class="allocation-read-guide-item" aria-label="Opportunity lost: total villager opportunity cost">
+          <div class="allocation-read-guide-item" aria-label="Opportunity lost: villagers lost plus villager underproduction">
             <strong>Opportunity lost lane</strong>
-            <span>Total villager opportunity cost.</span>
+            <span>Villagers lost plus villager underproduction.</span>
           </div>
         </div>
       </details>
       <div class="age-legend">
         <strong>Age timings</strong>
-        <span class="age-key"><span class="age-line" style="border-color:#378ADD"></span>You age-up</span>
-        <span class="age-key"><span class="age-line dashed" style="border-color:#D85A30"></span>Opponent age-up</span>
+        <span class="age-key"><span class="age-line" style="border-color:#378ADD"></span>RepleteCactus · English age-up</span>
+        <span class="age-key"><span class="age-line dashed" style="border-color:#D85A30"></span>Mista · French age-up</span>
       </div>
-      <div class="trajectory-grid">
-        <div class="chart-stack">
-          
-<svg id="allocation-leader-strip" class="leader-strip" viewBox="0 0 980 126" role="img" aria-label="Thirty-second leader strip by allocation category">
-  <rect x="0" y="0" width="980" height="126" fill="#F7FAF8" rx="8" />
-  <line x1="96.00" y1="12" x2="96.00" y2="88.00" stroke="#E4E8E1" stroke-width="1" /><line x1="314.00" y1="12" x2="314.00" y2="88.00" stroke="#E4E8E1" stroke-width="1" /><line x1="532.00" y1="12" x2="532.00" y2="88.00" stroke="#E4E8E1" stroke-width="1" /><line x1="750.00" y1="12" x2="750.00" y2="88.00" stroke="#E4E8E1" stroke-width="1" /><line x1="968.00" y1="12" x2="968.00" y2="88.00" stroke="#E4E8E1" stroke-width="1" />
-  
-        <g>
-          <text x="12" y="31.00" font-size="12" font-weight="700" fill="#253226">Economic</text>
-          <rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="96.00" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 0:00-0:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="139.60" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 0:30-1:00: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="183.20" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 1:00-1:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="226.80" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 1:30-2:00: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="270.40" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 2:00-2:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="314.00" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 2:30-3:00: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="357.60" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 3:00-3:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="401.20" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 3:30-4:00: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="444.80" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 4:00-4:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="488.40" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 4:30-5:00: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="532.00" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 5:00-5:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="575.60" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 5:30-6:00: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="619.20" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 6:00-6:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="662.80" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 6:30-7:00: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="706.40" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 7:00-7:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="750.00" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 7:30-8:00: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="793.60" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 8:00-8:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="837.20" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 8:30-9:00: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="880.80" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 9:00-9:30: You 50, Opp 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="924.40" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 9:30-10:00: You 50, Opp 50</title></rect>
-        </g>
-      
-        <g>
-          <text x="12" y="57.00" font-size="12" font-weight="700" fill="#253226">Technology</text>
-          <rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="96.00" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 0:00-0:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="139.60" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 0:30-1:00: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="183.20" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 1:00-1:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="226.80" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 1:30-2:00: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="270.40" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 2:00-2:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="314.00" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 2:30-3:00: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="357.60" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 3:00-3:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="401.20" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 3:30-4:00: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="444.80" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 4:00-4:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="488.40" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 4:30-5:00: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="532.00" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 5:00-5:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="575.60" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 5:30-6:00: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="619.20" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 6:00-6:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="662.80" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 6:30-7:00: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="706.40" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 7:00-7:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="750.00" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 7:30-8:00: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="793.60" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 8:00-8:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="837.20" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 8:30-9:00: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="880.80" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 9:00-9:30: You 600, Opp 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="924.40" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 9:30-10:00: You 600, Opp 500</title></rect>
-        </g>
-      
-        <g>
-          <text x="12" y="83.00" font-size="12" font-weight="700" fill="#253226">Military</text>
-          <rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="96.00" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 0:00-0:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="139.60" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 0:30-1:00: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="183.20" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 1:00-1:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="226.80" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 1:30-2:00: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="270.40" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 2:00-2:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="314.00" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 2:30-3:00: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="357.60" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 3:00-3:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="401.20" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 3:30-4:00: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="444.80" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 4:00-4:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="488.40" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 4:30-5:00: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="532.00" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 5:00-5:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="575.60" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 5:30-6:00: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="619.20" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 6:00-6:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="662.80" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 6:30-7:00: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="706.40" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 7:00-7:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="750.00" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 7:30-8:00: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="793.60" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 8:00-8:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="837.20" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 8:30-9:00: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="880.80" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 9:00-9:30: You 168, Opp 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="924.40" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 9:30-10:00: You 168, Opp 120</title></rect>
-        </g>
-      
-  <g data-time-axis="allocation-leader">
-    <rect class="leader-strip-axis-bg" x="96" y="94.00" width="872.00" height="28.00" rx="6" />
-    <line x1="96" y1="96.00" x2="968.00" y2="96.00" stroke="#CAD2C7" stroke-width="1" />
-    
-        <line x1="96.00" y1="99.00" x2="96.00" y2="105.00" stroke="#A8AEA5" stroke-width="1" />
-        <text class="leader-strip-time-label" x="96.00" y="118.00" text-anchor="middle">0:00</text>
-      
-        <line x1="314.00" y1="99.00" x2="314.00" y2="105.00" stroke="#A8AEA5" stroke-width="1" />
-        <text class="leader-strip-time-label" x="314.00" y="118.00" text-anchor="middle">2:30</text>
-      
-        <line x1="532.00" y1="99.00" x2="532.00" y2="105.00" stroke="#A8AEA5" stroke-width="1" />
-        <text class="leader-strip-time-label" x="532.00" y="118.00" text-anchor="middle">5:00</text>
-      
-        <line x1="750.00" y1="99.00" x2="750.00" y2="105.00" stroke="#A8AEA5" stroke-width="1" />
-        <text class="leader-strip-time-label" x="750.00" y="118.00" text-anchor="middle">7:30</text>
-      
-        <line x1="968.00" y1="99.00" x2="968.00" y2="105.00" stroke="#A8AEA5" stroke-width="1" />
-        <text class="leader-strip-time-label" x="968.00" y="118.00" text-anchor="middle">10:00</text>
-      
-  </g>
-</svg>
-          
-<svg id="allocation-comparison" class="strategy-chart allocation-chart" viewBox="0 0 980 812" role="img" aria-label="Allocation comparison chart">
-  <rect x="0" y="0" width="980" height="812" fill="#F7FAF8" rx="10" />
-  
-        <line x1="96.00" y1="42.00" x2="96.00" y2="774.00" stroke="#E2E5DF" stroke-width="1" />
-        <text x="96.00" y="805.00" text-anchor="middle" font-size="11" fill="#5B6257">0:00</text>
-      
-        <line x1="314.00" y1="42.00" x2="314.00" y2="774.00" stroke="#E2E5DF" stroke-width="1" />
-        <text x="314.00" y="805.00" text-anchor="middle" font-size="11" fill="#5B6257">2:30</text>
-      
-        <line x1="532.00" y1="42.00" x2="532.00" y2="774.00" stroke="#E2E5DF" stroke-width="1" />
-        <text x="532.00" y="805.00" text-anchor="middle" font-size="11" fill="#5B6257">5:00</text>
-      
-        <line x1="750.00" y1="42.00" x2="750.00" y2="774.00" stroke="#E2E5DF" stroke-width="1" />
-        <text x="750.00" y="805.00" text-anchor="middle" font-size="11" fill="#5B6257">7:30</text>
-      
-        <line x1="968.00" y1="42.00" x2="968.00" y2="774.00" stroke="#E2E5DF" stroke-width="1" />
-        <text x="968.00" y="805.00" text-anchor="middle" font-size="11" fill="#5B6257">10:00</text>
-      
-  
-  
-        <g class="allocation-lane allocation-lane-economic">
-          
-          
-          <text x="12" y="61.00" font-size="13" font-weight="800" fill="#253226">Economic</text>
-          <text x="88.00" y="46.00" text-anchor="end" font-size="11" fill="#5B6257">10.0%</text>
-          <text x="88.00" y="88.00" text-anchor="end" font-size="11" fill="#5B6257">5.0%</text>
-          <text x="88.00" y="130.00" text-anchor="end" font-size="11" fill="#5B6257">0%</text>
-          <line x1="96" y1="42.00" x2="968.00" y2="42.00" stroke="#D9DDD8" stroke-width="1" />
-          <line x1="96" y1="84.00" x2="968.00" y2="84.00" stroke="#D9DDD8" stroke-width="1" />
-          <line x1="96" y1="126.00" x2="968.00" y2="126.00" stroke="#5B6257" stroke-width="1.1" />
-          <path d="M 96.00 74.76" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
-          <path d="M 96.00 63.00" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
-          <text data-hover-label-strategy-economic data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="60.00" text-anchor="end">Economic Δ -1.4pp</text>
-        </g>
-      
-        <g class="allocation-lane allocation-lane-technology">
-          
-          
-          <text x="12" y="169.00" font-size="13" font-weight="800" fill="#253226">Technology</text>
-          <text x="88.00" y="154.00" text-anchor="end" font-size="11" fill="#5B6257">75.0%</text>
-          <text x="88.00" y="196.00" text-anchor="end" font-size="11" fill="#5B6257">37.5%</text>
-          <text x="88.00" y="238.00" text-anchor="end" font-size="11" fill="#5B6257">0%</text>
-          <line x1="96" y1="150.00" x2="968.00" y2="150.00" stroke="#D9DDD8" stroke-width="1" />
-          <line x1="96" y1="192.00" x2="968.00" y2="192.00" stroke="#D9DDD8" stroke-width="1" />
-          <line x1="96" y1="234.00" x2="968.00" y2="234.00" stroke="#5B6257" stroke-width="1.1" />
-          <path d="M 96.00 151.90" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
-          <path d="M 96.00 150.45" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
-          <text data-hover-label-strategy-technology data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="168.00" text-anchor="end">Technology Δ -1.3pp</text>
-        </g>
-      
-        <g class="allocation-lane allocation-lane-military">
-          
-          
-          <text x="12" y="277.00" font-size="13" font-weight="800" fill="#253226">Military</text>
-          <text x="88.00" y="262.00" text-anchor="end" font-size="11" fill="#5B6257">25.0%</text>
-          <text x="88.00" y="304.00" text-anchor="end" font-size="11" fill="#5B6257">12.5%</text>
-          <text x="88.00" y="346.00" text-anchor="end" font-size="11" fill="#5B6257">0%</text>
-          <line x1="96" y1="258.00" x2="968.00" y2="258.00" stroke="#D9DDD8" stroke-width="1" />
-          <line x1="96" y1="300.00" x2="968.00" y2="300.00" stroke="#D9DDD8" stroke-width="1" />
-          <line x1="96" y1="342.00" x2="968.00" y2="342.00" stroke="#5B6257" stroke-width="1.1" />
-          <path d="M 96.00 273.12" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
-          <path d="M 96.00 281.86" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
-          <text data-hover-label-strategy-military data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="276.00" text-anchor="end">Military Δ +2.6pp</text>
-        </g>
-      
-        <g class="allocation-lane allocation-lane-destroyed">
-          <line class="allocation-lane-divider" x1="0" y1="352.00" x2="980" y2="352.00" />
-          <rect class="allocation-lane-bg" x="96" y="358.00" width="872.00" height="100.00" rx="6" />
-          <text x="12" y="385.00" font-size="13" font-weight="800" fill="#253226">Destroyed</text>
-          <text x="88.00" y="370.00" text-anchor="end" font-size="11" fill="#5B6257">1</text>
-          <text x="88.00" y="412.00" text-anchor="end" font-size="11" fill="#5B6257">1</text>
-          <text x="88.00" y="454.00" text-anchor="end" font-size="11" fill="#5B6257">0</text>
-          <line x1="96" y1="366.00" x2="968.00" y2="366.00" stroke="#D9DDD8" stroke-width="1" />
-          <line x1="96" y1="408.00" x2="968.00" y2="408.00" stroke="#D9DDD8" stroke-width="1" />
-          <line x1="96" y1="450.00" x2="968.00" y2="450.00" stroke="#5B6257" stroke-width="1.1" />
-          <path d="M 96.00 450.00" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
-          <path d="M 96.00 450.00" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
-          <text data-hover-label-strategy-destroyed data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="384.00" text-anchor="end">Destroyed Δ 0</text>
-        </g>
-      
-        <g class="allocation-lane allocation-lane-overall">
-          <line class="allocation-lane-divider" x1="0" y1="460.00" x2="980" y2="460.00" />
-          <rect class="allocation-lane-bg" x="96" y="466.00" width="872.00" height="100.00" rx="6" />
-          <text x="12" y="493.00" font-size="13" font-weight="800" fill="#253226">Overall</text>
-          <text x="88.00" y="478.00" text-anchor="end" font-size="11" fill="#5B6257">820</text>
-          <text x="88.00" y="520.00" text-anchor="end" font-size="11" fill="#5B6257">410</text>
-          <text x="88.00" y="562.00" text-anchor="end" font-size="11" fill="#5B6257">0</text>
-          <line x1="96" y1="474.00" x2="968.00" y2="474.00" stroke="#D9DDD8" stroke-width="1" />
-          <line x1="96" y1="516.00" x2="968.00" y2="516.00" stroke="#D9DDD8" stroke-width="1" />
-          <line x1="96" y1="558.00" x2="968.00" y2="558.00" stroke="#5B6257" stroke-width="1.1" />
-          <path d="M 96.00 474.20" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
-          <path d="M 96.00 489.37" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
-          <text data-hover-label-strategy-overall data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="492.00" text-anchor="end">Overall Δ +148</text>
-        </g>
-      
-        <g class="allocation-lane allocation-lane-float">
-          <line class="allocation-lane-divider" x1="0" y1="568.00" x2="980" y2="568.00" />
-          <rect class="allocation-lane-bg" x="96" y="574.00" width="872.00" height="100.00" rx="6" />
-          <text x="12" y="601.00" font-size="13" font-weight="800" fill="#253226">Float</text>
-          <text x="88.00" y="586.00" text-anchor="end" font-size="11" fill="#5B6257">1,000</text>
-          <text x="88.00" y="628.00" text-anchor="end" font-size="11" fill="#5B6257">500</text>
-          <text x="88.00" y="670.00" text-anchor="end" font-size="11" fill="#5B6257">0</text>
-          <line x1="96" y1="582.00" x2="968.00" y2="582.00" stroke="#D9DDD8" stroke-width="1" />
-          <line x1="96" y1="624.00" x2="968.00" y2="624.00" stroke="#D9DDD8" stroke-width="1" />
-          <line x1="96" y1="666.00" x2="968.00" y2="666.00" stroke="#5B6257" stroke-width="1.1" />
-          <path d="M 96.00 624.00" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
-          <path d="M 96.00 582.00" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
-          <text data-hover-label-strategy-float data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="600.00" text-anchor="end">Float Δ -500</text>
-        </g>
-      
-        <g class="allocation-lane allocation-lane-opportunityLost">
-          <line class="allocation-lane-divider" x1="0" y1="676.00" x2="980" y2="676.00" />
-          <rect class="allocation-lane-bg" x="96" y="682.00" width="872.00" height="100.00" rx="6" />
-          <text x="12" y="709.00" font-size="13" font-weight="800" fill="#253226">Opportunity lost</text>
-          <text x="88.00" y="694.00" text-anchor="end" font-size="11" fill="#5B6257">140</text>
-          <text x="88.00" y="736.00" text-anchor="end" font-size="11" fill="#5B6257">70</text>
-          <text x="88.00" y="778.00" text-anchor="end" font-size="11" fill="#5B6257">0</text>
-          <line x1="96" y1="690.00" x2="968.00" y2="690.00" stroke="#D9DDD8" stroke-width="1" />
-          <line x1="96" y1="732.00" x2="968.00" y2="732.00" stroke="#D9DDD8" stroke-width="1" />
-          <line x1="96" y1="774.00" x2="968.00" y2="774.00" stroke="#5B6257" stroke-width="1.1" />
-          <path d="M 96.00 720.00" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
-          <path d="M 96.00 690.00" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
-          <text data-hover-label-strategy-opportunityLost data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="708.00" text-anchor="end">Opportunity lost Δ -50</text>
-        </g>
-      
-  <g class="hover-readouts" aria-hidden="true">
-    <line data-hover-line-strategy class="hover-active-line" x1="96.00" y1="42.00" x2="96.00" y2="774.00" />
-    <text data-hover-label-strategy-time class="hover-value-label" x="104.00" y="38" text-anchor="start">0:00</text>
-  </g>
-  <rect class="hover-target strategy-hover-target" data-hover-timestamp="0" x="96.00" y="42.00" width="872.00" height="732.00" fill="transparent" pointer-events="all"><title>0:00 - Economic: You 6.1%, Opp 7.5%, Delta -1.4pp | Technology: You 73.3%, Opp 74.6%, Delta -1.3pp | Military: You 20.5%, Opp 17.9%, Delta +2.6pp | Destroyed: You 0, Opp 0, Delta 0 | Overall: You 818, Opp 670, Delta +148 | Float: You 500, Opp 1,000, Delta -500 | Opportunity lost: You 90, Opp 140, Delta -50</title></rect>
-  
-</svg>
-          
+
+      <div class="mobile-snapshot-controls" data-mobile-snapshot-controls aria-label="Selected timestamp controls">
+
           <div class="mobile-timeline-control" aria-label="Match timeline controls">
             <div class="mobile-timeline-meta">
               <span>Selected time</span>
@@ -1627,53 +1604,254 @@
             </div>
             <div class="mobile-timeline-context" data-mobile-current-context>Use the slider or step buttons to inspect a timestamp.</div>
           </div>
+
+      <div class="mobile-selected-summary" aria-label="Selected timestamp summary">
+
+        <article class="mobile-summary-card" data-mobile-summary="overall">
+          <span class="mobile-summary-label">Total pool</span>
+          <strong data-mobile-summary-value="overall">+148</strong>
+          <small data-mobile-summary-detail="overall">English 818 · French 670</small>
+        </article>
+
+        <article class="mobile-summary-card" data-mobile-summary="technology">
+          <span class="mobile-summary-label">Technology</span>
+          <strong data-mobile-summary-value="technology">+100</strong>
+          <small data-mobile-summary-detail="technology">English 600 · French 500</small>
+        </article>
+
+        <article class="mobile-summary-card" data-mobile-summary="military">
+          <span class="mobile-summary-label">Military</span>
+          <strong data-mobile-summary-value="military">+48</strong>
+          <small data-mobile-summary-detail="military">English 168 · French 120</small>
+        </article>
+
+        <article class="mobile-summary-card" data-mobile-summary="destroyed">
+          <span class="mobile-summary-label">Destroyed</span>
+          <strong data-mobile-summary-value="destroyed">0</strong>
+          <small data-mobile-summary-detail="destroyed">English 0 · French 0</small>
+        </article>
+      </div>
+      </div>
+      <div class="trajectory-grid">
+        <div class="chart-stack">
+
+<svg id="allocation-leader-strip" class="leader-strip" viewBox="0 0 980 126" role="img" aria-label="Thirty-second leader strip by allocation category">
+  <rect x="0" y="0" width="980" height="126" fill="var(--color-chart-bg)" rx="8" />
+  <line x1="96.00" y1="12" x2="96.00" y2="88.00" stroke="#E4E8E1" stroke-width="1" /><line x1="314.00" y1="12" x2="314.00" y2="88.00" stroke="#E4E8E1" stroke-width="1" /><line x1="532.00" y1="12" x2="532.00" y2="88.00" stroke="#E4E8E1" stroke-width="1" /><line x1="750.00" y1="12" x2="750.00" y2="88.00" stroke="#E4E8E1" stroke-width="1" /><line x1="968.00" y1="12" x2="968.00" y2="88.00" stroke="#E4E8E1" stroke-width="1" />
+
+        <g>
+          <text x="12" y="31.00" font-size="12" font-weight="700" fill="var(--color-strong)">Economic</text>
+          <rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="96.00" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 0:00-0:30: English 50, French 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="139.60" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 0:30-1:00: English 50, French 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="183.20" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 1:00-1:30: English 50, French 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="226.80" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 1:30-2:00: English 50, French 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="270.40" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 2:00-2:30: English 50, French 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="314.00" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 2:30-3:00: English 50, French 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="357.60" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 3:00-3:30: English 50, French 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="401.20" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 3:30-4:00: English 50, French 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="444.80" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 4:00-4:30: English 50, French 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="488.40" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 4:30-5:00: English 50, French 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="532.00" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 5:00-5:30: English 50, French 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="575.60" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 5:30-6:00: English 50, French 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="619.20" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 6:00-6:30: English 50, French 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="662.80" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 6:30-7:00: English 50, French 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="706.40" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 7:00-7:30: English 50, French 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="750.00" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 7:30-8:00: English 50, French 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="793.60" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 8:00-8:30: English 50, French 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="837.20" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 8:30-9:00: English 50, French 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="880.80" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 9:00-9:30: English 50, French 50</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="economic" data-leader="tie" data-hover-timestamp="0" x="924.40" y="18.00" width="43.60" height="18" fill="#A8AEA5" pointer-events="all"><title>Economic 9:30-10:00: English 50, French 50</title></rect>
+        </g>
+
+        <g>
+          <text x="12" y="57.00" font-size="12" font-weight="700" fill="var(--color-strong)">Technology</text>
+          <rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="96.00" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 0:00-0:30: English 600, French 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="139.60" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 0:30-1:00: English 600, French 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="183.20" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 1:00-1:30: English 600, French 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="226.80" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 1:30-2:00: English 600, French 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="270.40" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 2:00-2:30: English 600, French 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="314.00" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 2:30-3:00: English 600, French 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="357.60" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 3:00-3:30: English 600, French 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="401.20" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 3:30-4:00: English 600, French 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="444.80" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 4:00-4:30: English 600, French 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="488.40" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 4:30-5:00: English 600, French 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="532.00" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 5:00-5:30: English 600, French 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="575.60" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 5:30-6:00: English 600, French 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="619.20" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 6:00-6:30: English 600, French 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="662.80" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 6:30-7:00: English 600, French 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="706.40" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 7:00-7:30: English 600, French 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="750.00" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 7:30-8:00: English 600, French 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="793.60" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 8:00-8:30: English 600, French 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="837.20" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 8:30-9:00: English 600, French 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="880.80" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 9:00-9:30: English 600, French 500</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="technology" data-leader="you" data-hover-timestamp="0" x="924.40" y="44.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Technology 9:30-10:00: English 600, French 500</title></rect>
+        </g>
+
+        <g>
+          <text x="12" y="83.00" font-size="12" font-weight="700" fill="var(--color-strong)">Military</text>
+          <rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="96.00" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 0:00-0:30: English 168, French 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="139.60" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 0:30-1:00: English 168, French 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="183.20" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 1:00-1:30: English 168, French 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="226.80" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 1:30-2:00: English 168, French 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="270.40" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 2:00-2:30: English 168, French 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="314.00" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 2:30-3:00: English 168, French 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="357.60" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 3:00-3:30: English 168, French 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="401.20" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 3:30-4:00: English 168, French 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="444.80" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 4:00-4:30: English 168, French 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="488.40" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 4:30-5:00: English 168, French 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="532.00" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 5:00-5:30: English 168, French 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="575.60" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 5:30-6:00: English 168, French 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="619.20" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 6:00-6:30: English 168, French 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="662.80" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 6:30-7:00: English 168, French 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="706.40" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 7:00-7:30: English 168, French 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="750.00" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 7:30-8:00: English 168, French 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="793.60" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 8:00-8:30: English 168, French 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="837.20" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 8:30-9:00: English 168, French 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="880.80" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 9:00-9:30: English 168, French 120</title></rect><rect class="allocation-leader-segment hover-target" data-allocation-leader-segment data-category-key="military" data-leader="you" data-hover-timestamp="0" x="924.40" y="70.00" width="43.60" height="18" fill="#378ADD" pointer-events="all"><title>Military 9:30-10:00: English 168, French 120</title></rect>
+        </g>
+
+  <g data-time-axis="allocation-leader">
+    <rect class="leader-strip-axis-bg" x="96" y="94.00" width="872.00" height="28.00" rx="6" />
+    <line x1="96" y1="96.00" x2="968.00" y2="96.00" stroke="#CAD2C7" stroke-width="1" />
+
+        <line x1="96.00" y1="99.00" x2="96.00" y2="105.00" stroke="#A8AEA5" stroke-width="1" />
+        <text class="leader-strip-time-label" x="96.00" y="118.00" text-anchor="middle">0:00</text>
+
+        <line x1="314.00" y1="99.00" x2="314.00" y2="105.00" stroke="#A8AEA5" stroke-width="1" />
+        <text class="leader-strip-time-label" x="314.00" y="118.00" text-anchor="middle">2:30</text>
+
+        <line x1="532.00" y1="99.00" x2="532.00" y2="105.00" stroke="#A8AEA5" stroke-width="1" />
+        <text class="leader-strip-time-label" x="532.00" y="118.00" text-anchor="middle">5:00</text>
+
+        <line x1="750.00" y1="99.00" x2="750.00" y2="105.00" stroke="#A8AEA5" stroke-width="1" />
+        <text class="leader-strip-time-label" x="750.00" y="118.00" text-anchor="middle">7:30</text>
+
+        <line x1="968.00" y1="99.00" x2="968.00" y2="105.00" stroke="#A8AEA5" stroke-width="1" />
+        <text class="leader-strip-time-label" x="968.00" y="118.00" text-anchor="middle">10:00</text>
+
+  </g>
+</svg>
+
+<svg id="allocation-comparison" class="strategy-chart allocation-chart" viewBox="0 0 980 812" role="img" aria-label="Allocation comparison chart">
+  <rect x="0" y="0" width="980" height="812" fill="var(--color-chart-bg)" rx="10" />
+
+        <line x1="96.00" y1="42.00" x2="96.00" y2="774.00" stroke="#E2E5DF" stroke-width="1" />
+        <text x="96.00" y="805.00" text-anchor="middle" font-size="11" fill="#5B6257">0:00</text>
+
+        <line x1="314.00" y1="42.00" x2="314.00" y2="774.00" stroke="#E2E5DF" stroke-width="1" />
+        <text x="314.00" y="805.00" text-anchor="middle" font-size="11" fill="#5B6257">2:30</text>
+
+        <line x1="532.00" y1="42.00" x2="532.00" y2="774.00" stroke="#E2E5DF" stroke-width="1" />
+        <text x="532.00" y="805.00" text-anchor="middle" font-size="11" fill="#5B6257">5:00</text>
+
+        <line x1="750.00" y1="42.00" x2="750.00" y2="774.00" stroke="#E2E5DF" stroke-width="1" />
+        <text x="750.00" y="805.00" text-anchor="middle" font-size="11" fill="#5B6257">7:30</text>
+
+        <line x1="968.00" y1="42.00" x2="968.00" y2="774.00" stroke="#E2E5DF" stroke-width="1" />
+        <text x="968.00" y="805.00" text-anchor="middle" font-size="11" fill="#5B6257">10:00</text>
+
+
+
+        <g class="allocation-lane allocation-lane-economic">
+
+
+          <text x="12" y="61.00" font-size="13" font-weight="800" fill="var(--color-strong)">Economic</text>
+          <text x="88.00" y="46.00" text-anchor="end" font-size="11" fill="#5B6257">10.0%</text>
+          <text x="88.00" y="88.00" text-anchor="end" font-size="11" fill="#5B6257">5.0%</text>
+          <text x="88.00" y="130.00" text-anchor="end" font-size="11" fill="#5B6257">0%</text>
+          <line x1="96" y1="42.00" x2="968.00" y2="42.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="84.00" x2="968.00" y2="84.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="126.00" x2="968.00" y2="126.00" stroke="#5B6257" stroke-width="1.1" />
+          <path d="M 96.00 74.76" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+          <path d="M 96.00 63.00" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
+          <text data-hover-label-strategy-economic data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="60.00" text-anchor="end">Economic Δ -1.4pp</text>
+        </g>
+
+        <g class="allocation-lane allocation-lane-technology">
+
+
+          <text x="12" y="169.00" font-size="13" font-weight="800" fill="var(--color-strong)">Technology</text>
+          <text x="88.00" y="154.00" text-anchor="end" font-size="11" fill="#5B6257">75.0%</text>
+          <text x="88.00" y="196.00" text-anchor="end" font-size="11" fill="#5B6257">37.5%</text>
+          <text x="88.00" y="238.00" text-anchor="end" font-size="11" fill="#5B6257">0%</text>
+          <line x1="96" y1="150.00" x2="968.00" y2="150.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="192.00" x2="968.00" y2="192.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="234.00" x2="968.00" y2="234.00" stroke="#5B6257" stroke-width="1.1" />
+          <path d="M 96.00 151.90" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+          <path d="M 96.00 150.45" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
+          <text data-hover-label-strategy-technology data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="168.00" text-anchor="end">Technology Δ -1.3pp</text>
+        </g>
+
+        <g class="allocation-lane allocation-lane-military">
+
+
+          <text x="12" y="277.00" font-size="13" font-weight="800" fill="var(--color-strong)">Military</text>
+          <text x="88.00" y="262.00" text-anchor="end" font-size="11" fill="#5B6257">25.0%</text>
+          <text x="88.00" y="304.00" text-anchor="end" font-size="11" fill="#5B6257">12.5%</text>
+          <text x="88.00" y="346.00" text-anchor="end" font-size="11" fill="#5B6257">0%</text>
+          <line x1="96" y1="258.00" x2="968.00" y2="258.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="300.00" x2="968.00" y2="300.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="342.00" x2="968.00" y2="342.00" stroke="#5B6257" stroke-width="1.1" />
+          <path d="M 96.00 273.12" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+          <path d="M 96.00 281.86" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
+          <text data-hover-label-strategy-military data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="276.00" text-anchor="end">Military Δ +2.6pp</text>
+        </g>
+
+        <g class="allocation-lane allocation-lane-destroyed">
+          <line class="allocation-lane-divider" x1="0" y1="352.00" x2="980" y2="352.00" />
+          <rect class="allocation-lane-bg" x="96" y="358.00" width="872.00" height="100.00" rx="6" />
+          <text x="12" y="385.00" font-size="13" font-weight="800" fill="var(--color-strong)">Destroyed</text>
+          <text x="88.00" y="370.00" text-anchor="end" font-size="11" fill="#5B6257">1</text>
+          <text x="88.00" y="412.00" text-anchor="end" font-size="11" fill="#5B6257">1</text>
+          <text x="88.00" y="454.00" text-anchor="end" font-size="11" fill="#5B6257">0</text>
+          <line x1="96" y1="366.00" x2="968.00" y2="366.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="408.00" x2="968.00" y2="408.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="450.00" x2="968.00" y2="450.00" stroke="#5B6257" stroke-width="1.1" />
+          <path d="M 96.00 450.00" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+          <path d="M 96.00 450.00" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
+          <text data-hover-label-strategy-destroyed data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="384.00" text-anchor="end">Destroyed Δ 0</text>
+        </g>
+
+        <g class="allocation-lane allocation-lane-overall">
+          <line class="allocation-lane-divider" x1="0" y1="460.00" x2="980" y2="460.00" />
+          <rect class="allocation-lane-bg" x="96" y="466.00" width="872.00" height="100.00" rx="6" />
+          <text x="12" y="493.00" font-size="13" font-weight="800" fill="var(--color-strong)">Overall</text>
+          <text x="88.00" y="478.00" text-anchor="end" font-size="11" fill="#5B6257">820</text>
+          <text x="88.00" y="520.00" text-anchor="end" font-size="11" fill="#5B6257">410</text>
+          <text x="88.00" y="562.00" text-anchor="end" font-size="11" fill="#5B6257">0</text>
+          <line x1="96" y1="474.00" x2="968.00" y2="474.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="516.00" x2="968.00" y2="516.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="558.00" x2="968.00" y2="558.00" stroke="#5B6257" stroke-width="1.1" />
+          <path d="M 96.00 474.20" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+          <path d="M 96.00 489.37" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
+          <text data-hover-label-strategy-overall data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="492.00" text-anchor="end">Overall Δ +148</text>
+        </g>
+
+        <g class="allocation-lane allocation-lane-float">
+          <line class="allocation-lane-divider" x1="0" y1="568.00" x2="980" y2="568.00" />
+          <rect class="allocation-lane-bg" x="96" y="574.00" width="872.00" height="100.00" rx="6" />
+          <text x="12" y="601.00" font-size="13" font-weight="800" fill="var(--color-strong)">Float</text>
+          <text x="88.00" y="586.00" text-anchor="end" font-size="11" fill="#5B6257">1,000</text>
+          <text x="88.00" y="628.00" text-anchor="end" font-size="11" fill="#5B6257">500</text>
+          <text x="88.00" y="670.00" text-anchor="end" font-size="11" fill="#5B6257">0</text>
+          <line x1="96" y1="582.00" x2="968.00" y2="582.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="624.00" x2="968.00" y2="624.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="666.00" x2="968.00" y2="666.00" stroke="#5B6257" stroke-width="1.1" />
+          <path d="M 96.00 624.00" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+          <path d="M 96.00 582.00" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
+          <text data-hover-label-strategy-float data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="600.00" text-anchor="end">Float Δ -500</text>
+        </g>
+
+        <g class="allocation-lane allocation-lane-opportunityLost">
+          <line class="allocation-lane-divider" x1="0" y1="676.00" x2="980" y2="676.00" />
+          <rect class="allocation-lane-bg" x="96" y="682.00" width="872.00" height="100.00" rx="6" />
+          <text x="12" y="709.00" font-size="13" font-weight="800" fill="var(--color-strong)">Opportunity lost</text>
+          <text x="88.00" y="694.00" text-anchor="end" font-size="11" fill="#5B6257">140</text>
+          <text x="88.00" y="736.00" text-anchor="end" font-size="11" fill="#5B6257">70</text>
+          <text x="88.00" y="778.00" text-anchor="end" font-size="11" fill="#5B6257">0</text>
+          <line x1="96" y1="690.00" x2="968.00" y2="690.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="732.00" x2="968.00" y2="732.00" stroke="#D9DDD8" stroke-width="1" />
+          <line x1="96" y1="774.00" x2="968.00" y2="774.00" stroke="#5B6257" stroke-width="1.1" />
+          <path d="M 96.00 720.00" fill="none" stroke="#378ADD" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+          <path d="M 96.00 690.00" fill="none" stroke="#D85A30" stroke-width="2.4" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round" />
+          <text data-hover-label-strategy-opportunityLost data-fixed-label="true" class="hover-value-label delta-label" x="960.00" y="708.00" text-anchor="end">Opportunity lost Δ -50</text>
+        </g>
+
+  <g class="hover-readouts" aria-hidden="true">
+    <line data-hover-line-strategy class="hover-active-line" x1="96.00" y1="42.00" x2="96.00" y2="774.00" />
+    <text data-hover-label-strategy-time class="hover-value-label" x="104.00" y="38" text-anchor="start">0:00</text>
+  </g>
+  <rect class="hover-target strategy-hover-target" data-hover-timestamp="0" x="96.00" y="42.00" width="872.00" height="732.00" fill="transparent" pointer-events="all"><title>0:00 - Economic: English 6.1%, French 7.5%, Delta -1.4pp | Technology: English 73.3%, French 74.6%, Delta -1.3pp | Military: English 20.5%, French 17.9%, Delta +2.6pp | Destroyed: English 0, French 0, Delta 0 | Overall: English 818, French 670, Delta +148 | Float: English 500, French 1,000, Delta -500 | Opportunity lost: English 90, French 140, Delta -50</title></rect>
+
+</svg>
         </div>
-        
+
     <aside id="hover-inspector" class="hover-inspector" aria-live="polite">
       <div class="inspector-eyebrow">Selected time</div>
       <div class="inspector-time" data-hover-field="timeLabel">0:00</div>
       <div class="inspector-context" data-hover-context>Select a timestamp to inspect allocation values.</div>
-      
-      <div class="mobile-selected-summary" aria-label="Selected timestamp summary">
-        
-        <article class="mobile-summary-card" data-mobile-summary="overall">
-          <span class="mobile-summary-label">Total pool</span>
-          <strong data-mobile-summary-value="overall">+148</strong>
-          <small data-mobile-summary-detail="overall">You 818 · Opp 670</small>
-        </article>
-        
-        <article class="mobile-summary-card" data-mobile-summary="technology">
-          <span class="mobile-summary-label">Technology</span>
-          <strong data-mobile-summary-value="technology">+100</strong>
-          <small data-mobile-summary-detail="technology">You 600 · Opp 500</small>
-        </article>
-        
-        <article class="mobile-summary-card" data-mobile-summary="military">
-          <span class="mobile-summary-label">Military</span>
-          <strong data-mobile-summary-value="military">+48</strong>
-          <small data-mobile-summary-detail="military">You 168 · Opp 120</small>
-        </article>
-        
-        <article class="mobile-summary-card" data-mobile-summary="destroyed">
-          <span class="mobile-summary-label">Destroyed</span>
-          <strong data-mobile-summary-value="destroyed">0</strong>
-          <small data-mobile-summary-detail="destroyed">You 0 · Opp 0</small>
-        </article>
-      </div>
       <details class="mobile-detail-panel" data-mobile-details open>
         <summary class="mobile-detail-summary">Allocation details</summary>
         <div class="mobile-detail-content">
-          
+
           <section class="event-impact" data-significant-event hidden>
             <div class="event-impact-heading">Event impact</div>
-            <div class="event-impact-title" data-hover-field="significantEvent.label"></div>
-            
+
+            <div class="event-impact-title">
+              <span data-hover-field="significantEvent.label"></span>
+              <button type="button" class="event-impact-help-button" data-significant-event-underdog-toggle hidden aria-controls="event-impact-underdog-details" aria-label="Why did the smaller army win this fight?" title="Why did the smaller army win this fight?">?</button>
+            </div>
+
+            <div class="event-impact-loss-detail event-impact-army-detail" data-significant-event-armies hidden>
+              <div class="event-impact-loss-detail-title">Pre-encounter armies</div>
+              <div class="event-impact-loss-columns">
+                <div class="event-impact-loss-column">
+                  <div class="event-impact-loss-column-heading" data-significant-event-army-heading="player1">Player 1 army before fight</div>
+                  <dl class="event-impact-loss-summary">
+                    <div><dt>Active military</dt><dd data-significant-event-army-total="player1"></dd></div>
+                  </dl>
+                  <ul class="event-impact-loss-list" data-significant-event-army-list="player1"><li class="event-impact-loss-row event-impact-loss-row-empty">No active military</li></ul>
+                </div>
+                <div class="event-impact-loss-column">
+                  <div class="event-impact-loss-column-heading" data-significant-event-army-heading="player2">Player 2 army before fight</div>
+                  <dl class="event-impact-loss-summary">
+                    <div><dt>Active military</dt><dd data-significant-event-army-total="player2"></dd></div>
+                  </dl>
+                  <ul class="event-impact-loss-list" data-significant-event-army-list="player2"><li class="event-impact-loss-row event-impact-loss-row-empty">No active military</li></ul>
+                </div>
+              </div>
+            </div>
+
             <div class="event-impact-loss-detail" data-significant-event-losses>
               <div class="event-impact-loss-detail-title">Encounter losses</div>
               <div class="event-impact-loss-columns">
                 <div class="event-impact-loss-column">
                   <div class="event-impact-loss-column-heading" data-significant-event-loss-heading="player1">Player 1 losses</div>
-                  
+
                   <dl class="event-impact-loss-summary" data-significant-event-loss-summary="player1">
                     <div><dt>Total loss</dt><dd data-significant-event-loss-total="player1"></dd></div>
                     <div><dt>Immediate loss</dt><dd data-significant-event-loss-immediate="player1"></dd></div>
@@ -1684,7 +1862,7 @@
                 </div>
                 <div class="event-impact-loss-column">
                   <div class="event-impact-loss-column-heading" data-significant-event-loss-heading="player2">Player 2 losses</div>
-                  
+
                   <dl class="event-impact-loss-summary" data-significant-event-loss-summary="player2">
                     <div><dt>Total loss</dt><dd data-significant-event-loss-total="player2"></dd></div>
                     <div><dt>Immediate loss</dt><dd data-significant-event-loss-immediate="player2"></dd></div>
@@ -1695,11 +1873,11 @@
                 </div>
               </div>
             </div>
-            <p class="event-impact-description" data-hover-field="significantEvent.description"></p>
-            <dl class="event-impact-metrics">
-              <div><dt>Gross impact</dt><dd data-hover-field="significantEvent.grossLoss"></dd></div>
-            </dl>
-            <div class="event-impact-losses" data-hover-field="significantEvent.topLosses">No itemized losses</div>
+
+            <details id="event-impact-underdog-details" class="event-impact-underdog-details" data-significant-event-underdog-details hidden>
+              <summary>Why this fight is notable</summary>
+              <p data-significant-event-underdog-details-text></p>
+            </details>
           </section>
           <div class="inspector-section-label" data-inspector-section="allocation">Allocation</div>
           <div class="inspector-table-wrap" tabindex="0" role="region" aria-label="Selected timestamp values table">
@@ -1707,185 +1885,275 @@
               <thead>
                 <tr>
                   <th>Category / band</th>
-                  <th>You</th>
-                  <th>Opp</th>
+                  <th>English</th>
+                  <th>French</th>
                   <th>Delta</th>
                 </tr>
               </thead>
               <tbody>
-                
+
         <tr class="allocation-category-row" data-allocation-category-row="economic">
           <th>
             <button type="button" class="allocation-category-toggle" data-allocation-category-toggle="economic" aria-expanded="true">
-              <span class="category-caret" aria-hidden="true"></span>Economic
+              <span class="category-caret" aria-hidden="true"></span>Economic net
             </button>
           </th>
-          <td data-cell-label="You" data-hover-field="allocation.economic.you">50</td>
-          <td data-cell-label="Opp" data-hover-field="allocation.economic.opponent">50</td>
-          <td data-cell-label="Delta" data-hover-field="allocation.economic.delta">0</td>
+          <td data-cell-label="English" data-hover-field="allocationCategory.economic.net.you">50</td>
+          <td data-cell-label="French" data-hover-field="allocationCategory.economic.net.opponent">50</td>
+          <td data-cell-label="Delta" data-hover-field="allocationCategory.economic.net.delta">0</td>
         </tr>
-        
-        <tr class="band-row is-selected" data-allocation-category-child="economic">
+
+        <tr class="band-row allocation-category-accounting-row allocation-category-investment-row" data-allocation-category-child="economic" data-allocation-category-accounting="economic-resource-generation">
           <th>
-            <button type="button" class="band-toggle" data-band-key="economic" aria-pressed="true">
-              <span class="legend-dot" style="background:#5DCAA5"></span>Economic
+            <button type="button" class="band-toggle" data-band-key="economic" data-economic-role-filter="resourceGenerator" aria-pressed="false">
+              <span class="legend-dot" style="background:#5DCAA5"></span>Resource generation
             </button>
           </th>
-          <td data-cell-label="You" data-hover-field="you.economic">50</td>
-          <td data-cell-label="Opp" data-hover-field="opponent.economic">50</td>
-          <td data-cell-label="Delta" data-hover-field="delta.economic">0</td>
+          <td data-cell-label="English" data-hover-field="allocationCategory.economic.resourceGeneration.you">30</td>
+          <td data-cell-label="French" data-hover-field="allocationCategory.economic.resourceGeneration.opponent">35</td>
+          <td data-cell-label="Delta" data-hover-field="allocationCategory.economic.resourceGeneration.delta">-5</td>
         </tr>
-        
-      
-      
+
+        <tr class="band-row allocation-category-accounting-row allocation-category-investment-row" data-allocation-category-child="economic" data-allocation-category-accounting="economic-resource-infrastructure">
+          <th>
+            <button type="button" class="band-toggle" data-band-key="economic" data-economic-role-filter="resourceInfrastructure" aria-pressed="false">
+              <span class="legend-dot" style="background:#5DCAA5"></span>Resource infrastructure
+            </button>
+          </th>
+          <td data-cell-label="English" data-hover-field="allocationCategory.economic.resourceInfrastructure.you">20</td>
+          <td data-cell-label="French" data-hover-field="allocationCategory.economic.resourceInfrastructure.opponent">15</td>
+          <td data-cell-label="Delta" data-hover-field="allocationCategory.economic.resourceInfrastructure.delta">+5</td>
+        </tr>
+
+        <tr class="band-row allocation-category-accounting-row allocation-category-destroyed-row" data-allocation-category-child="economic" data-allocation-category-accounting="economic-destroyed" data-destroyed-row-category="economic" data-destroyed-row-empty="true" hidden>
+          <th>
+            <button type="button" class="band-toggle" data-band-key="economicDestroyed" aria-pressed="false">
+              <span class="legend-dot destroyed-dot"></span>Economic destroyed
+            </button>
+          </th>
+          <td data-cell-label="English" data-hover-field="allocationCategory.economic.destroyed.you">0</td>
+          <td data-cell-label="French" data-hover-field="allocationCategory.economic.destroyed.opponent">0</td>
+          <td data-cell-label="Delta" data-hover-field="allocationCategory.economic.destroyed.delta">0</td>
+        </tr>
+
+        <tr class="band-row allocation-category-accounting-row allocation-category-investment-row" data-allocation-category-child="economic" data-allocation-category-accounting="economic-investment">
+          <th>
+            <button type="button" class="band-toggle" data-band-key="economicInvestment" data-allocation-investment-category="economic" aria-pressed="false">
+              <span class="legend-dot" style="background:#5DCAA5"></span>Total Economic Investment
+            </button>
+          </th>
+          <td data-cell-label="English" data-hover-field="allocationCategory.economic.investment.you">50</td>
+          <td data-cell-label="French" data-hover-field="allocationCategory.economic.investment.opponent">50</td>
+          <td data-cell-label="Delta" data-hover-field="allocationCategory.economic.investment.delta">0</td>
+        </tr>
+
+
         <tr class="allocation-category-row" data-allocation-category-row="technology">
           <th>
             <button type="button" class="allocation-category-toggle" data-allocation-category-toggle="technology" aria-expanded="false">
-              <span class="category-caret" aria-hidden="true"></span>Technology
+              <span class="category-caret" aria-hidden="true"></span>Technology net
             </button>
           </th>
-          <td data-cell-label="You" data-hover-field="allocation.technology.you">600</td>
-          <td data-cell-label="Opp" data-hover-field="allocation.technology.opponent">500</td>
-          <td data-cell-label="Delta" data-hover-field="allocation.technology.delta">+100</td>
+          <td data-cell-label="English" data-hover-field="allocationCategory.technology.net.you">600</td>
+          <td data-cell-label="French" data-hover-field="allocationCategory.technology.net.opponent">500</td>
+          <td data-cell-label="Delta" data-hover-field="allocationCategory.technology.net.delta">+100</td>
         </tr>
-        
+
         <tr class="band-row" data-allocation-category-child="technology" hidden>
           <th>
             <button type="button" class="band-toggle" data-band-key="research" aria-pressed="false">
               <span class="legend-dot" style="background:#AFA9EC"></span>Research
             </button>
           </th>
-          <td data-cell-label="You" data-hover-field="you.research">100</td>
-          <td data-cell-label="Opp" data-hover-field="opponent.research">100</td>
+          <td data-cell-label="English" data-hover-field="you.research">100</td>
+          <td data-cell-label="French" data-hover-field="opponent.research">100</td>
           <td data-cell-label="Delta" data-hover-field="delta.research">0</td>
         </tr>
-        
-      
+
+
         <tr class="band-row" data-allocation-category-child="technology" hidden>
           <th>
             <button type="button" class="band-toggle" data-band-key="advancement" aria-pressed="false">
               <span class="legend-dot" style="background:#88AD6A"></span>Advancement
             </button>
           </th>
-          <td data-cell-label="You" data-hover-field="you.advancement">500</td>
-          <td data-cell-label="Opp" data-hover-field="opponent.advancement">400</td>
+          <td data-cell-label="English" data-hover-field="you.advancement">500</td>
+          <td data-cell-label="French" data-hover-field="opponent.advancement">400</td>
           <td data-cell-label="Delta" data-hover-field="delta.advancement">+100</td>
         </tr>
-        
-      
-      
+
+
+        <tr class="band-row allocation-category-accounting-row allocation-category-destroyed-row" data-allocation-category-child="technology" data-allocation-category-accounting="technology-destroyed" data-destroyed-row-category="technology" data-destroyed-row-empty="true" hidden>
+          <th>
+            <button type="button" class="band-toggle" data-band-key="technologyDestroyed" aria-pressed="false">
+              <span class="legend-dot destroyed-dot"></span>Advancement destroyed
+            </button>
+          </th>
+          <td data-cell-label="English" data-hover-field="allocationCategory.technology.destroyed.you">0</td>
+          <td data-cell-label="French" data-hover-field="allocationCategory.technology.destroyed.opponent">0</td>
+          <td data-cell-label="Delta" data-hover-field="allocationCategory.technology.destroyed.delta">0</td>
+        </tr>
+
+        <tr class="band-row allocation-category-accounting-row allocation-category-investment-row" data-allocation-category-child="technology" data-allocation-category-accounting="technology-investment" hidden>
+          <th>
+            <button type="button" class="band-toggle" data-band-key="technologyInvestment" data-allocation-investment-category="technology" aria-pressed="false">
+              <span class="legend-dot" style="background:#AFA9EC"></span>Total Technology Investment
+            </button>
+          </th>
+          <td data-cell-label="English" data-hover-field="allocationCategory.technology.investment.you">600</td>
+          <td data-cell-label="French" data-hover-field="allocationCategory.technology.investment.opponent">500</td>
+          <td data-cell-label="Delta" data-hover-field="allocationCategory.technology.investment.delta">+100</td>
+        </tr>
+
+
         <tr class="allocation-category-row" data-allocation-category-row="military">
           <th>
             <button type="button" class="allocation-category-toggle" data-allocation-category-toggle="military" aria-expanded="false">
-              <span class="category-caret" aria-hidden="true"></span>Military
+              <span class="category-caret" aria-hidden="true"></span>Military net
             </button>
           </th>
-          <td data-cell-label="You" data-hover-field="allocation.military.you">168</td>
-          <td data-cell-label="Opp" data-hover-field="allocation.military.opponent">120</td>
-          <td data-cell-label="Delta" data-hover-field="allocation.military.delta">+48</td>
+          <td data-cell-label="English" data-hover-field="allocationCategory.military.net.you">168</td>
+          <td data-cell-label="French" data-hover-field="allocationCategory.military.net.opponent">120</td>
+          <td data-cell-label="Delta" data-hover-field="allocationCategory.military.net.delta">+48</td>
         </tr>
-        
+
         <tr class="band-row" data-allocation-category-child="military" hidden>
           <th>
             <button type="button" class="band-toggle" data-band-key="militaryCapacity" aria-pressed="false">
               <span class="legend-dot" style="background:#EF9F27"></span>Military buildings
             </button>
           </th>
-          <td data-cell-label="You" data-hover-field="you.militaryCapacity">0</td>
-          <td data-cell-label="Opp" data-hover-field="opponent.militaryCapacity">0</td>
+          <td data-cell-label="English" data-hover-field="you.militaryCapacity">0</td>
+          <td data-cell-label="French" data-hover-field="opponent.militaryCapacity">0</td>
           <td data-cell-label="Delta" data-hover-field="delta.militaryCapacity">0</td>
         </tr>
-        
-      
+
+
         <tr class="band-row" data-allocation-category-child="military" hidden>
           <th>
             <button type="button" class="band-toggle" data-band-key="militaryActive" aria-pressed="false">
               <span class="legend-dot" style="background:#F0997B"></span>Mil active
             </button>
           </th>
-          <td data-cell-label="You" data-hover-field="you.militaryActive">168</td>
-          <td data-cell-label="Opp" data-hover-field="opponent.militaryActive">120</td>
+          <td data-cell-label="English" data-hover-field="you.militaryActive">168</td>
+          <td data-cell-label="French" data-hover-field="opponent.militaryActive">120</td>
           <td data-cell-label="Delta" data-hover-field="delta.militaryActive">+48</td>
         </tr>
-        
-      
+
+
         <tr class="band-row" data-allocation-category-child="military" hidden>
           <th>
             <button type="button" class="band-toggle" data-band-key="defensive" aria-pressed="false">
               <span class="legend-dot" style="background:#B4B2A9"></span>Defensive
             </button>
           </th>
-          <td data-cell-label="You" data-hover-field="you.defensive">0</td>
-          <td data-cell-label="Opp" data-hover-field="opponent.defensive">0</td>
+          <td data-cell-label="English" data-hover-field="you.defensive">0</td>
+          <td data-cell-label="French" data-hover-field="opponent.defensive">0</td>
           <td data-cell-label="Delta" data-hover-field="delta.defensive">0</td>
         </tr>
-        
-      
-      
+
+
+        <tr class="band-row allocation-category-accounting-row allocation-category-destroyed-row" data-allocation-category-child="military" data-allocation-category-accounting="military-destroyed" data-destroyed-row-category="military" data-destroyed-row-empty="true" hidden>
+          <th>
+            <button type="button" class="band-toggle" data-band-key="militaryDestroyed" aria-pressed="false">
+              <span class="legend-dot destroyed-dot"></span>Military destroyed
+            </button>
+          </th>
+          <td data-cell-label="English" data-hover-field="allocationCategory.military.destroyed.you">0</td>
+          <td data-cell-label="French" data-hover-field="allocationCategory.military.destroyed.opponent">0</td>
+          <td data-cell-label="Delta" data-hover-field="allocationCategory.military.destroyed.delta">0</td>
+        </tr>
+
+        <tr class="band-row allocation-category-accounting-row allocation-category-investment-row" data-allocation-category-child="military" data-allocation-category-accounting="military-investment" hidden>
+          <th>
+            <button type="button" class="band-toggle" data-band-key="militaryInvestment" data-allocation-investment-category="military" aria-pressed="false">
+              <span class="legend-dot" style="background:#EF9F27"></span>Total Military Investment
+            </button>
+          </th>
+          <td data-cell-label="English" data-hover-field="allocationCategory.military.investment.you">168</td>
+          <td data-cell-label="French" data-hover-field="allocationCategory.military.investment.opponent">120</td>
+          <td data-cell-label="Delta" data-hover-field="allocationCategory.military.investment.delta">+48</td>
+        </tr>
+
+
         <tr class="allocation-category-row" data-allocation-category-row="other">
           <th>
             <button type="button" class="allocation-category-toggle" data-allocation-category-toggle="other" aria-expanded="false">
-              <span class="category-caret" aria-hidden="true"></span>Other
+              <span class="category-caret" aria-hidden="true"></span>Other net
             </button>
           </th>
-          <td data-cell-label="You" data-hover-field="allocation.other.you">0</td>
-          <td data-cell-label="Opp" data-hover-field="allocation.other.opponent">0</td>
-          <td data-cell-label="Delta" data-hover-field="allocation.other.delta">0</td>
+          <td data-cell-label="English" data-hover-field="allocationCategory.other.net.you">0</td>
+          <td data-cell-label="French" data-hover-field="allocationCategory.other.net.opponent">0</td>
+          <td data-cell-label="Delta" data-hover-field="allocationCategory.other.net.delta">0</td>
         </tr>
-        
+
         <tr class="band-row" data-allocation-category-child="other" hidden>
           <th>
             <button type="button" class="band-toggle" data-band-key="populationCap" aria-pressed="false">
               <span class="legend-dot" style="background:#7AB8E6"></span>Population cap
             </button>
           </th>
-          <td data-cell-label="You" data-hover-field="you.populationCap">0</td>
-          <td data-cell-label="Opp" data-hover-field="opponent.populationCap">0</td>
+          <td data-cell-label="English" data-hover-field="you.populationCap">0</td>
+          <td data-cell-label="French" data-hover-field="opponent.populationCap">0</td>
           <td data-cell-label="Delta" data-hover-field="delta.populationCap">0</td>
         </tr>
-        
-      
-      
-                
-        <tr class="band-row inspector-destroyed-row" data-inspector-row="destroyed">
+
+
+        <tr class="band-row allocation-category-accounting-row allocation-category-destroyed-row" data-allocation-category-child="other" data-allocation-category-accounting="other-destroyed" data-destroyed-row-category="other" data-destroyed-row-empty="true" hidden>
           <th>
-            <button type="button" class="band-toggle" data-band-key="destroyed" aria-pressed="false">
-              <span class="legend-dot destroyed-dot"></span>Destroyed
+            <button type="button" class="band-toggle" data-band-key="otherDestroyed" aria-pressed="false">
+              <span class="legend-dot destroyed-dot"></span>Other destroyed
             </button>
           </th>
-          <td data-cell-label="You" data-hover-field="allocation.destroyed.you">0</td>
-          <td data-cell-label="Opp" data-hover-field="allocation.destroyed.opponent">0</td>
-          <td data-cell-label="Delta" data-hover-field="allocation.destroyed.delta">0</td>
+          <td data-cell-label="English" data-hover-field="allocationCategory.other.destroyed.you">0</td>
+          <td data-cell-label="French" data-hover-field="allocationCategory.other.destroyed.opponent">0</td>
+          <td data-cell-label="Delta" data-hover-field="allocationCategory.other.destroyed.delta">0</td>
         </tr>
-      
+
+        <tr class="band-row allocation-category-accounting-row allocation-category-investment-row" data-allocation-category-child="other" data-allocation-category-accounting="other-investment" hidden>
+          <th>
+            <button type="button" class="band-toggle" data-band-key="otherInvestment" data-allocation-investment-category="other" aria-pressed="false">
+              <span class="legend-dot" style="background:#7AB8E6"></span>Total Other Investment
+            </button>
+          </th>
+          <td data-cell-label="English" data-hover-field="allocationCategory.other.investment.you">0</td>
+          <td data-cell-label="French" data-hover-field="allocationCategory.other.investment.opponent">0</td>
+          <td data-cell-label="Delta" data-hover-field="allocationCategory.other.investment.delta">0</td>
+        </tr>
+
+
                 <tr class="inspector-total-row">
-                  <th><span data-total-pool-tooltip title="Economic + Technology + Military + Other - Destroyed = Total pool | You: 50 + 600 + 168 + 0 - 0 = 818 | Opp: 50 + 500 + 120 + 0 - 0 = 670">Total Pool</span></th>
-                  <td data-cell-label="You" data-hover-field="allocation.overall.you">818</td>
-                  <td data-cell-label="Opp" data-hover-field="allocation.overall.opponent">670</td>
+                  <th><span data-total-pool-tooltip title="Economic net + Technology net + Military net + Other net = Total pool | Investment rows reconcile net + destroyed inside each category. | English: 50 + 600 + 168 + 0 = 818 | French: 50 + 500 + 120 + 0 = 670">Total net pool</span></th>
+                  <td data-cell-label="English" data-hover-field="allocation.overall.you">818</td>
+                  <td data-cell-label="French" data-hover-field="allocation.overall.opponent">670</td>
                   <td data-cell-label="Delta" data-hover-field="allocation.overall.delta">+148</td>
                 </tr>
-                <tr class="inspector-float-row">
-                  <th>Float (not deployed)</th>
-                  <td data-cell-label="You" data-hover-field="allocation.float.you">500</td>
-                  <td data-cell-label="Opp" data-hover-field="allocation.float.opponent">1,000</td>
+                <tr class="band-row inspector-float-row" data-inspector-row="float">
+                  <th>
+                    <button type="button" class="band-toggle" data-band-key="float" aria-pressed="false">
+                      <span class="legend-dot float-dot"></span>Float (not deployed)
+                    </button>
+                  </th>
+                  <td data-cell-label="English" data-hover-field="allocation.float.you">500</td>
+                  <td data-cell-label="French" data-hover-field="allocation.float.opponent">1,000</td>
                   <td data-cell-label="Delta" data-hover-field="allocation.float.delta">-500</td>
                 </tr>
-                
+
         <tr class="band-row inspector-opportunity-lost-row" data-inspector-row="opportunityLost">
           <th>
-            <button type="button" class="band-toggle" data-band-key="opportunityLost" aria-pressed="false" title="Total villager opportunity cost: resources missing villagers would have gathered by this timestamp. Event scores scale-adjust future gathering lost from killed villagers by the deployed-resource size at the event time; direct villager death value is shown in Destroyed.">
-              <span class="legend-dot opportunity-lost-dot"></span><span data-opportunity-lost-tooltip title="Total villager opportunity cost: resources missing villagers would have gathered by this timestamp. Event scores scale-adjust future gathering lost from killed villagers by the deployed-resource size at the event time; direct villager death value is shown in Destroyed.">Opportunity lost</span>
+            <button type="button" class="band-toggle" data-band-key="opportunityLost" aria-pressed="false" title="Opportunity lost is split into Villagers lost and Villager underproduction. The bucket list shows actual villager-death windows; underproduction is shown in the summary.">
+              <span class="legend-dot opportunity-lost-dot"></span><span data-opportunity-lost-tooltip title="Opportunity lost is split into Villagers lost and Villager underproduction. The bucket list shows actual villager-death windows; underproduction is shown in the summary.">Opportunity lost</span>
             </button>
           </th>
-          <td data-cell-label="You" data-hover-field="allocation.opportunityLost.you">90</td>
-          <td data-cell-label="Opp" data-hover-field="allocation.opportunityLost.opponent">140</td>
+          <td data-cell-label="English" data-hover-field="allocation.opportunityLost.you">90</td>
+          <td data-cell-label="French" data-hover-field="allocation.opportunityLost.opponent">140</td>
           <td data-cell-label="Delta" data-hover-field="allocation.opportunityLost.delta">-50</td>
         </tr>
-      
+
                 <tr>
                   <th>Gather/min</th>
-                  <td data-cell-label="You" data-hover-field="gather.you">500</td>
-                  <td data-cell-label="Opp" data-hover-field="gather.opponent">480</td>
+                  <td data-cell-label="English" data-hover-field="gather.you">500</td>
+                  <td data-cell-label="French" data-hover-field="gather.opponent">480</td>
                   <td data-cell-label="Delta" data-hover-field="gather.delta">+20</td>
                 </tr>
               </tbody>
@@ -1895,23 +2163,74 @@
             <div class="band-breakdown-head" data-band-breakdown-title>Economic composition</div>
             <div class="band-breakdown-summary" data-band-breakdown-summary>
               <span class="band-summary-label" data-band-summary-label>Economic</span>
-              <span>You <strong data-band-summary-you>50</strong></span>
-              <span>Opp <strong data-band-summary-opponent>50</strong></span>
-              <span>Delta <strong data-band-summary-delta>0</strong></span>
+              <span data-band-summary-value>English <strong data-band-summary-you>50</strong></span>
+              <span data-band-summary-value>French <strong data-band-summary-opponent>50</strong></span>
+              <span data-band-summary-value>Delta <strong data-band-summary-delta>0</strong></span>
+              <table class="opportunity-lost-components" data-opportunity-lost-components aria-label="Opportunity lost components by civilization" style="--opportunity-you-color:#378ADD;--opportunity-opponent-color:#D85A30" hidden>
+                <colgroup>
+                  <col class="opportunity-lost-component-col">
+                  <col class="opportunity-lost-value-col">
+                  <col class="opportunity-lost-value-col">
+                  <col class="opportunity-lost-gap-col">
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th scope="col">Component</th>
+                    <th scope="col">English</th>
+                    <th scope="col">French</th>
+                    <th scope="col">Gap</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr data-opportunity-lost-component="total">
+                    <th scope="row">Total</th>
+                    <td><strong data-opportunity-lost-component-total-you>90</strong></td>
+                    <td><strong data-opportunity-lost-component-total-opponent>140</strong></td>
+                    <td><strong data-opportunity-lost-component-total-delta>-50</strong></td>
+                  </tr>
+                  <tr data-opportunity-lost-component="villagersLost">
+                    <th scope="row">Villagers lost</th>
+                    <td><strong data-opportunity-lost-component-villagers-lost-you>90</strong></td>
+                    <td><strong data-opportunity-lost-component-villagers-lost-opponent>140</strong></td>
+                    <td><strong data-opportunity-lost-component-villagers-lost-delta>-50</strong></td>
+                  </tr>
+                  <tr data-opportunity-lost-component="underproduction">
+                    <th scope="row"><span title="Villager underproduction">Under-production</span></th>
+                    <td><strong data-opportunity-lost-component-underproduction-you>0</strong></td>
+                    <td><strong data-opportunity-lost-component-underproduction-opponent>0</strong></td>
+                    <td><strong data-opportunity-lost-component-underproduction-delta>0</strong></td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
             <div class="band-breakdown-cols">
               <section>
-                <h4>You</h4>
+                <h4>English</h4>
                 <ul class="band-breakdown-list" data-band-breakdown-list="you">
         <li>
-          <span class="band-item-label band-item-label-truncated" title="Villager" tabindex="0">Villager</span>
-          <span class="band-item-metric">50 <small>(100.0%)</small></span>
+          <span class="band-item-label band-item-label-truncated" title="Villager (1)" tabindex="0">Villager (1)</span>
+          <span class="band-item-metric">30</span>
+        </li>
+
+        <li>
+          <span class="band-item-label band-item-label-truncated" title="Farm (1)" tabindex="0">Farm (1)</span>
+          <span class="band-item-metric">20</span>
         </li>
       </ul>
               </section>
               <section>
-                <h4>Opponent</h4>
-                <ul class="band-breakdown-list" data-band-breakdown-list="opponent"><li class="band-breakdown-empty">No active items</li></ul>
+                <h4>French</h4>
+                <ul class="band-breakdown-list" data-band-breakdown-list="opponent">
+        <li>
+          <span class="band-item-label band-item-label-truncated" title="Villager (1)" tabindex="0">Villager (1)</span>
+          <span class="band-item-metric">35</span>
+        </li>
+
+        <li>
+          <span class="band-item-label band-item-label-truncated" title="Farm (1)" tabindex="0">Farm (1)</span>
+          <span class="band-item-metric">15</span>
+        </li>
+      </ul>
               </section>
             </div>
           </div>
@@ -1921,59 +2240,11 @@
       </div>
     </section>
 
-    <section class="panel metrics">
-      
-      <article class="metric-card metric-card-age">
-        <div class="metric-title">Dark age</div>
-        <div class="metric-range">0:00-2:00</div>
-        <div class="metric-analysis-lines">
-          <div class="metric-analysis metric-analysis-gap">Gap widened: Tied -&gt; You +148.</div>
-          <div class="metric-analysis">Allocation: your edge was Technology +100; Military was similar.</div>
-          <div class="metric-analysis">Destruction: neither player destroyed measurable value.</div>
-          <div class="metric-analysis">Meaning: No major conversion signal inside this shared window.</div>
-        </div>
-      </article>
-      <article class="metric-card metric-card-age">
-        <div class="metric-title">Feudal age</div>
-        <div class="metric-range">2:00-7:00</div>
-        <div class="metric-analysis-lines">
-          <div class="metric-analysis metric-analysis-gap">Gap held: You +148 -&gt; You +148.</div>
-          <div class="metric-analysis">Allocation: no major allocation difference.</div>
-          <div class="metric-analysis">Destruction: neither player destroyed measurable value.</div>
-          <div class="metric-analysis">Meaning: No major conversion signal inside this shared window.</div>
-        </div>
-      </article>
-      <article class="metric-card metric-card-age">
-        <div class="metric-title">Castle age</div>
-        <div class="metric-range">7:00-10:00</div>
-        <div class="metric-analysis-lines">
-          <div class="metric-analysis metric-analysis-gap">Gap held: You +148 -&gt; You +148.</div>
-          <div class="metric-analysis">Allocation: no major allocation difference.</div>
-          <div class="metric-analysis">Destruction: neither player destroyed measurable value.</div>
-          <div class="metric-analysis">Meaning: No major conversion signal inside this shared window.</div>
-        </div>
-      </article>
-      <article class="metric-card metric-card-age">
-        <div class="metric-title">Imperial age</div>
-        <div class="metric-range">No shared window</div>
-        <div class="metric-analysis-lines">
-          <div class="metric-analysis metric-analysis-gap">Only you reached Imperial, so there was no shared Imperial window to compare.</div>
-          <div class="metric-analysis">You reached Imperial; opponent did not.</div>
-          <div class="metric-analysis">No shared window to evaluate destruction.</div>
-          <div class="metric-analysis">No shared window to evaluate conversion.</div>
-        </div>
-      </article>
-      <article class="metric-card metric-card-final">
-        <div class="metric-title">Final pool delta</div>
-        <div class="metric-value">+148</div>
-        <div class="metric-sub">at surrender/end</div>
-      </article>
-    </section>
+
 
   </main>
-  
-  <script id="post-match-hover-data" type="application/json">[{"timestamp":0,"timeLabel":"0:00","strategyX":96,"markers":[],"you":{"economic":50,"populationCap":0,"militaryCapacity":0,"militaryActive":168,"defensive":0,"research":100,"advancement":500,"total":818},"opponent":{"economic":50,"populationCap":0,"militaryCapacity":0,"militaryActive":120,"defensive":0,"research":100,"advancement":400,"total":670},"delta":{"economic":0,"populationCap":0,"militaryCapacity":0,"militaryActive":48,"defensive":0,"research":0,"advancement":100,"total":148},"allocation":{"economic":{"you":50,"opponent":50,"delta":0,"youShare":6.1,"opponentShare":7.5,"shareDelta":-1.4},"technology":{"you":600,"opponent":500,"delta":100,"youShare":73.3,"opponentShare":74.6,"shareDelta":-1.3},"military":{"you":168,"opponent":120,"delta":48,"youShare":20.5,"opponentShare":17.9,"shareDelta":2.6},"other":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"destroyed":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"overall":{"you":818,"opponent":670,"delta":148,"youShare":0,"opponentShare":0,"shareDelta":0},"float":{"you":500,"opponent":1000,"delta":-500,"youShare":0,"opponentShare":0,"shareDelta":0},"opportunityLost":{"you":90,"opponent":140,"delta":-50,"youShare":0,"opponentShare":0,"shareDelta":0}},"totalPoolTooltip":"Economic + Technology + Military + Other - Destroyed = Total pool | You: 50 + 600 + 168 + 0 - 0 = 818 | Opp: 50 + 500 + 120 + 0 - 0 = 670","strategy":{"economy":{"you":6.1,"opponent":7.5,"delta":-1.4},"military":{"you":20.5,"opponent":17.9,"delta":2.6},"technology":{"you":73.3,"opponent":74.6,"delta":-1.3}},"gather":{"you":500,"opponent":480,"delta":20},"significantEvent":null,"bandBreakdown":{"economic":{"you":[{"label":"Villager","value":50,"percent":100,"count":1}],"opponent":[]},"populationCap":{"you":[],"opponent":[]},"militaryCapacity":{"you":[],"opponent":[]},"militaryActive":{"you":[],"opponent":[]},"defensive":{"you":[],"opponent":[]},"research":{"you":[],"opponent":[]},"advancement":{"you":[],"opponent":[]},"opportunityLost":{"you":[{"label":"0:00-0:30","value":90,"percent":100,"count":1}],"opponent":[{"label":"0:00-0:30","value":140,"percent":100,"count":2}]}}}]</script>
-  <script id="post-match-hover-data-url" type="application/json">{"url":"/dummy-hover-data"}</script>
+
+  <script id="post-match-hover-data" type="application/json">[{"timestamp":0,"timeLabel":"0:00","strategyX":96,"markers":[],"you":{"economic":50,"populationCap":0,"militaryCapacity":0,"militaryActive":168,"defensive":0,"research":100,"advancement":500,"total":818},"opponent":{"economic":50,"populationCap":0,"militaryCapacity":0,"militaryActive":120,"defensive":0,"research":100,"advancement":400,"total":670},"delta":{"economic":0,"populationCap":0,"militaryCapacity":0,"militaryActive":48,"defensive":0,"research":0,"advancement":100,"total":148},"allocation":{"economic":{"you":50,"opponent":50,"delta":0,"youShare":6.1,"opponentShare":7.5,"shareDelta":-1.4},"technology":{"you":600,"opponent":500,"delta":100,"youShare":73.3,"opponentShare":74.6,"shareDelta":-1.3},"military":{"you":168,"opponent":120,"delta":48,"youShare":20.5,"opponentShare":17.9,"shareDelta":2.6},"other":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"destroyed":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"overall":{"you":818,"opponent":670,"delta":148,"youShare":0,"opponentShare":0,"shareDelta":0},"float":{"you":500,"opponent":1000,"delta":-500,"youShare":0,"opponentShare":0,"shareDelta":0},"opportunityLost":{"you":90,"opponent":140,"delta":-50,"youShare":0,"opponentShare":0,"shareDelta":0}},"allocationCategory":{"economic":{"net":{"you":50,"opponent":50,"delta":0,"youShare":6.1,"opponentShare":7.5,"shareDelta":-1.4},"resourceGeneration":{"you":30,"opponent":35,"delta":-5,"youShare":60,"opponentShare":70,"shareDelta":-10},"resourceInfrastructure":{"you":20,"opponent":15,"delta":5,"youShare":40,"opponentShare":30,"shareDelta":10},"destroyed":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"investment":{"you":50,"opponent":50,"delta":0,"youShare":6.1,"opponentShare":7.5,"shareDelta":-1.4}},"technology":{"net":{"you":600,"opponent":500,"delta":100,"youShare":73.3,"opponentShare":74.6,"shareDelta":-1.3},"resourceGeneration":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"resourceInfrastructure":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"destroyed":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"investment":{"you":600,"opponent":500,"delta":100,"youShare":73.3,"opponentShare":74.6,"shareDelta":-1.3}},"military":{"net":{"you":168,"opponent":120,"delta":48,"youShare":20.5,"opponentShare":17.9,"shareDelta":2.6},"resourceGeneration":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"resourceInfrastructure":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"destroyed":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"investment":{"you":168,"opponent":120,"delta":48,"youShare":20.5,"opponentShare":17.9,"shareDelta":2.6}},"other":{"net":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"resourceGeneration":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"resourceInfrastructure":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"destroyed":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"investment":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0}}},"opportunityLostComponents":{"villagersLost":{"you":90,"opponent":140,"delta":-50,"youShare":0,"opponentShare":0,"shareDelta":0},"underproduction":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0}},"totalPoolTooltip":"Economic net + Technology net + Military net + Other net = Total pool | Investment rows reconcile net + destroyed inside each category. | English: 50 + 600 + 168 + 0 = 818 | French: 50 + 500 + 120 + 0 = 670","strategy":{"economy":{"you":6.1,"opponent":7.5,"delta":-1.4},"military":{"you":20.5,"opponent":17.9,"delta":2.6},"technology":{"you":73.3,"opponent":74.6,"delta":-1.3}},"gather":{"you":500,"opponent":480,"delta":20},"significantEvent":null,"bandBreakdown":{"economic":{"you":[{"label":"Villager","value":30,"percent":60,"count":1,"economicRole":"resourceGenerator"},{"label":"Farm","value":20,"percent":40,"count":1,"economicRole":"resourceInfrastructure"}],"opponent":[{"label":"Villager","value":35,"percent":70,"count":1,"economicRole":"resourceGenerator"},{"label":"Farm","value":15,"percent":30,"count":1,"economicRole":"resourceInfrastructure"}]},"populationCap":{"you":[],"opponent":[]},"militaryCapacity":{"you":[],"opponent":[]},"militaryActive":{"you":[],"opponent":[]},"defensive":{"you":[],"opponent":[]},"research":{"you":[],"opponent":[]},"advancement":{"you":[],"opponent":[]},"float":{"you":[{"label":"Food","value":120,"percent":24,"category":"resource-stockpile"},{"label":"Wood","value":180,"percent":36,"category":"resource-stockpile"},{"label":"Gold","value":200,"percent":40,"category":"resource-stockpile"}],"opponent":[{"label":"Food","value":600,"percent":60,"category":"resource-stockpile"},{"label":"Wood","value":400,"percent":40,"category":"resource-stockpile"}]},"opportunityLost":{"you":[{"label":"0:00-0:30","value":90,"percent":100,"count":1}],"opponent":[{"label":"0:00-0:30","value":140,"percent":100,"count":2}]}}}]</script>
   <script>
     (function () {
       var payloadEl = document.getElementById('post-match-hover-data');
@@ -1983,9 +2254,12 @@
       var byTimestamp = new Map();
       var pinned = false;
       var selectedBand = 'economic';
+      var selectedEconomicRoleFilter = '';
+      var selectedInvestmentCategory = '';
       var currentTimestamp = null;
       var scheduledTimestamp = null;
       var framePending = false;
+      var playerLabels = {"you":"English","opponent":"French"};
       var bandLabels = {
         economic: 'Economic',
         populationCap: 'Population cap',
@@ -1995,7 +2269,48 @@
         research: 'Research',
         advancement: 'Advancement',
         destroyed: 'Destroyed',
+        economicDestroyed: 'Economic destroyed',
+        technologyDestroyed: 'Advancement destroyed',
+        militaryDestroyed: 'Military destroyed',
+        otherDestroyed: 'Other destroyed',
+        float: 'Float',
         opportunityLost: 'Opportunity lost'
+      };
+      var economicRoleFilterLabels = {
+        resourceGenerator: 'Resource generation',
+        resourceInfrastructure: 'Resource infrastructure'
+      };
+      var economicRoleBasisMap = {
+        resourceGenerator: 'resourceGeneration',
+        resourceInfrastructure: 'resourceInfrastructure'
+      };
+      var opportunityLostCategoryDefs = [
+        { key: 'villagers-lost', label: 'Villagers lost' },
+        { key: 'villager-underproduction', label: 'Villager underproduction' }
+      ];
+      var investmentCategoryLabels = {
+        economic: 'Total Economic Investment',
+        technology: 'Total Technology Investment',
+        military: 'Total Military Investment',
+        other: 'Total Other Investment'
+      };
+      var investmentCategoryBandKeys = {
+        economic: ['economic'],
+        technology: ['research', 'advancement'],
+        military: ['militaryCapacity', 'militaryActive', 'defensive'],
+        other: ['populationCap']
+      };
+      var investmentCategoryDestroyedKeys = {
+        economic: 'economicDestroyed',
+        technology: 'technologyDestroyed',
+        military: 'militaryDestroyed',
+        other: 'otherDestroyed'
+      };
+      var categoryDestroyedBandMap = {
+        economicDestroyed: 'economic',
+        technologyDestroyed: 'technology',
+        militaryDestroyed: 'military',
+        otherDestroyed: 'other'
       };
       var allocationGraphDefs = {
         economic: { label: 'Economic', mode: 'share' },
@@ -2107,6 +2422,7 @@
         setText('[data-hover-field="' + name + '"]', text);
       }
 
+
       function setTitle(selector, text) {
         document.querySelectorAll(selector).forEach(function (el) {
           el.setAttribute('title', text);
@@ -2124,7 +2440,7 @@
         setText('[data-mobile-summary-value="' + key + '"]', formatSigned(safeRow.delta));
         setText(
           '[data-mobile-summary-detail="' + key + '"]',
-          'You ' + formatNumber(safeRow.you) + ' · Opp ' + formatNumber(safeRow.opponent)
+          playerLabels.you + ' ' + formatNumber(safeRow.you) + ' · ' + playerLabels.opponent + ' ' + formatNumber(safeRow.opponent)
         );
       }
 
@@ -2174,40 +2490,95 @@
         var bandData = point.bandBreakdown && point.bandBreakdown[selectedBand]
           ? point.bandBreakdown[selectedBand]
           : { you: [], opponent: [] };
-        var bandLabel = bandLabels[selectedBand] || selectedBand;
-        var selectedValues = selectedBand === 'destroyed' || selectedBand === 'opportunityLost'
-          ? ((point.allocation && point.allocation[selectedBand]) || { you: 0, opponent: 0, delta: 0 })
-          : {
-              you: point.you && Number.isFinite(Number(point.you[selectedBand])) ? Number(point.you[selectedBand]) : 0,
-              opponent: point.opponent && Number.isFinite(Number(point.opponent[selectedBand])) ? Number(point.opponent[selectedBand]) : 0,
-              delta: point.delta && Number.isFinite(Number(point.delta[selectedBand])) ? Number(point.delta[selectedBand]) : 0
-            };
+        var filteredBandData = bandData;
+        if (selectedInvestmentCategory) {
+          filteredBandData = combinedInvestmentBreakdown(point, selectedInvestmentCategory);
+        } else if (selectedBand === 'economic' && selectedEconomicRoleFilter) {
+          filteredBandData = {
+            you: bandData.you.filter(function (entry) {
+              return (entry.economicRole || 'resourceInfrastructure') === selectedEconomicRoleFilter;
+            }),
+            opponent: bandData.opponent.filter(function (entry) {
+              return (entry.economicRole || 'resourceInfrastructure') === selectedEconomicRoleFilter;
+            })
+          };
+        }
+        var bandLabel = selectedInvestmentCategory
+          ? investmentCategoryLabels[selectedInvestmentCategory] || selectedInvestmentCategory
+          : selectedBand === 'economic' && selectedEconomicRoleFilter
+          ? economicRoleFilterLabels[selectedEconomicRoleFilter] || bandLabels[selectedBand] || selectedBand
+          : bandLabels[selectedBand] || selectedBand;
+        var destroyedCategory = categoryDestroyedBandMap[selectedBand];
+        var economicRoleBasis = selectedBand === 'economic' && selectedEconomicRoleFilter
+          ? economicRoleBasisMap[selectedEconomicRoleFilter]
+          : '';
+        var selectedValues = selectedInvestmentCategory && point.allocationCategory && point.allocationCategory[selectedInvestmentCategory]
+          ? point.allocationCategory[selectedInvestmentCategory].investment
+          : economicRoleBasis && point.allocationCategory && point.allocationCategory.economic && point.allocationCategory.economic[economicRoleBasis]
+          ? point.allocationCategory.economic[economicRoleBasis]
+          : destroyedCategory
+          ? ((point.allocationCategory &&
+              point.allocationCategory[destroyedCategory] &&
+              point.allocationCategory[destroyedCategory].destroyed) ||
+              { you: 0, opponent: 0, delta: 0 })
+          : selectedBand === 'destroyed' || selectedBand === 'float' || selectedBand === 'opportunityLost'
+            ? ((point.allocation && point.allocation[selectedBand]) || { you: 0, opponent: 0, delta: 0 })
+            : {
+                you: point.you && Number.isFinite(Number(point.you[selectedBand])) ? Number(point.you[selectedBand]) : 0,
+                opponent: point.opponent && Number.isFinite(Number(point.opponent[selectedBand])) ? Number(point.opponent[selectedBand]) : 0,
+                delta: point.delta && Number.isFinite(Number(point.delta[selectedBand])) ? Number(point.delta[selectedBand]) : 0
+              };
 
         var titleEl = document.querySelector('[data-band-breakdown-title]');
         if (titleEl) {
           titleEl.textContent = selectedBand === 'opportunityLost'
-            ? 'Opportunity lost buckets'
+            ? 'Opportunity lost: components and death windows'
             : bandLabel + ' composition';
         }
         setText('[data-band-summary-label]', bandLabel);
         setText('[data-band-summary-you]', formatNumber(selectedValues.you));
         setText('[data-band-summary-opponent]', formatNumber(selectedValues.opponent));
         setText('[data-band-summary-delta]', formatSigned(selectedValues.delta));
+        document.querySelectorAll('[data-band-summary-value]').forEach(function (el) {
+          el.hidden = selectedBand === 'opportunityLost';
+        });
+        document.querySelectorAll('[data-opportunity-lost-components]').forEach(function (el) {
+          el.hidden = selectedBand !== 'opportunityLost';
+        });
+        var opportunityComponents = point.opportunityLostComponents || {};
+        var opportunityTotal = (point.allocation && point.allocation.opportunityLost) || { you: 0, opponent: 0, delta: 0 };
+        var villagersLost = opportunityComponents.villagersLost || { you: 0, opponent: 0, delta: 0 };
+        var underproduction = opportunityComponents.underproduction || { you: 0, opponent: 0, delta: 0 };
+        setText('[data-opportunity-lost-component-total-you]', formatNumber(opportunityTotal.you));
+        setText('[data-opportunity-lost-component-total-opponent]', formatNumber(opportunityTotal.opponent));
+        setText('[data-opportunity-lost-component-total-delta]', formatSigned(opportunityTotal.delta));
+        setText('[data-opportunity-lost-component-villagers-lost-you]', formatNumber(villagersLost.you));
+        setText('[data-opportunity-lost-component-villagers-lost-opponent]', formatNumber(villagersLost.opponent));
+        setText('[data-opportunity-lost-component-villagers-lost-delta]', formatSigned(villagersLost.delta));
+        setText('[data-opportunity-lost-component-underproduction-you]', formatNumber(underproduction.you));
+        setText('[data-opportunity-lost-component-underproduction-opponent]', formatNumber(underproduction.opponent));
+        setText('[data-opportunity-lost-component-underproduction-delta]', formatSigned(underproduction.delta));
 
         function listHtml(entries, bandKey) {
           if (!entries || entries.length === 0) {
-            return '<li class="band-breakdown-empty">No active items</li>';
+            return bandKey === 'opportunityLost'
+              ? '<li class="band-breakdown-empty">No villager deaths</li>'
+              : '<li class="band-breakdown-empty">No active items</li>';
+          }
+
+          function opportunityLostCategoryKey(entry) {
+            if (entry.category === 'villager-underproduction') return 'villager-underproduction';
+            return 'villagers-lost';
           }
 
           function displayLabel(entry) {
-            if (bandKey === 'research' || bandKey === 'advancement') {
-              return entry.label;
-            }
-            var count = Number(entry.count || 0);
-            if (!Number.isFinite(count) || count <= 0) {
-              return entry.label;
-            }
-            return entry.label + ' (' + formatNumber(count) + ')';
+            var count = Number(entry.count);
+            return entry.label + (Number.isFinite(count) && count > 0 ? ' (' + formatNumber(count) + ')' : '');
+          }
+
+          function breakdownEntryHtml(entry) {
+            var label = displayLabel(entry);
+            return '<li><span class="band-item-label band-item-label-truncated" title="' + escapeHtml(label) + '" tabindex="0">' + escapeHtml(label) + '</span><span class="band-item-metric">' + formatNumber(entry.value) + '</span></li>';
           }
 
           if (bandKey === 'research') {
@@ -2223,9 +2594,7 @@
               });
               if (groupEntries.length === 0) return '';
               var rows = groupEntries.map(function (entry) {
-                var label = displayLabel(entry);
-                var percent = Number(entry.percent || 0).toFixed(1);
-                return '<li><span class="band-item-label band-item-label-truncated" title="' + escapeHtml(label) + '" tabindex="0">' + escapeHtml(label) + '</span><span class="band-item-metric">' + formatNumber(entry.value) + ' <small>(' + percent + '%)</small></span></li>';
+                return breakdownEntryHtml(entry);
               }).join('');
               return '<li class="band-breakdown-group">' + escapeHtml(def.label) + '</li>' + rows;
             }).join('');
@@ -2233,23 +2602,80 @@
             if (grouped.length > 0) return grouped;
           }
 
+          if (bandKey === 'opportunityLost') {
+            var opportunityGroups = opportunityLostCategoryDefs.map(function (def) {
+              var groupEntries = entries.filter(function (entry) {
+                return opportunityLostCategoryKey(entry) === def.key;
+              });
+              if (groupEntries.length === 0) return '';
+              var rows = groupEntries.map(function (entry) {
+                return breakdownEntryHtml(entry);
+              }).join('');
+              return '<li class="band-breakdown-group">' + escapeHtml(def.label) + '</li>' + rows;
+            }).join('');
+
+            if (opportunityGroups.length > 0) return opportunityGroups;
+          }
+
           return entries.map(function (entry) {
-            var label = displayLabel(entry);
-            var percent = Number(entry.percent || 0).toFixed(1);
-            return '<li><span class="band-item-label band-item-label-truncated" title="' + escapeHtml(label) + '" tabindex="0">' + escapeHtml(label) + '</span><span class="band-item-metric">' + formatNumber(entry.value) + ' <small>(' + percent + '%)</small></span></li>';
+            return breakdownEntryHtml(entry);
           }).join('');
         }
 
         var youList = document.querySelector('[data-band-breakdown-list="you"]');
         var oppList = document.querySelector('[data-band-breakdown-list="opponent"]');
-        if (youList) youList.innerHTML = listHtml(bandData.you, selectedBand);
-        if (oppList) oppList.innerHTML = listHtml(bandData.opponent, selectedBand);
+        if (youList) youList.innerHTML = listHtml(filteredBandData.you, selectedBand);
+        if (oppList) oppList.innerHTML = listHtml(filteredBandData.opponent, selectedBand);
+      }
+
+      function combinedInvestmentBreakdown(point, category) {
+        function entriesFor(side) {
+          var entries = [];
+          var bandKeys = investmentCategoryBandKeys[category] || [];
+          bandKeys.forEach(function (bandKey) {
+            var data = point.bandBreakdown && point.bandBreakdown[bandKey];
+            if (data && Array.isArray(data[side])) {
+              entries = entries.concat(data[side]);
+            }
+          });
+
+          var destroyedKey = investmentCategoryDestroyedKeys[category];
+          var destroyedData = destroyedKey && point.bandBreakdown && point.bandBreakdown[destroyedKey];
+          if (destroyedData && Array.isArray(destroyedData[side])) {
+            entries = entries.concat(destroyedData[side].map(function (entry) {
+              return Object.assign({}, entry, {
+                label: 'Destroyed ' + entry.label
+              });
+            }));
+          }
+
+          var total = entries.reduce(function (sum, entry) {
+            return sum + Math.max(0, Number(entry.value) || 0);
+          }, 0);
+
+          return entries.map(function (entry) {
+            var value = Math.max(0, Number(entry.value) || 0);
+            return Object.assign({}, entry, {
+              value: value,
+              percent: total > 0 ? value / total * 100 : 0
+            });
+          });
+        }
+
+        return {
+          you: entriesFor('you'),
+          opponent: entriesFor('opponent')
+        };
       }
 
       function syncBandSelection() {
         document.querySelectorAll('.band-toggle[data-band-key]').forEach(function (button) {
           var key = button.getAttribute('data-band-key');
-          var isSelected = key === selectedBand;
+          var roleFilter = button.getAttribute('data-economic-role-filter') || '';
+          var investmentCategory = button.getAttribute('data-allocation-investment-category') || '';
+          var isSelected = key === selectedBand &&
+            roleFilter === selectedEconomicRoleFilter &&
+            investmentCategory === selectedInvestmentCategory;
           button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
           var row = button.closest('tr.band-row');
           if (row) {
@@ -2259,9 +2685,31 @@
         });
       }
 
+      function isCategoryCollapsed(category) {
+        var button = document.querySelector('[data-allocation-category-toggle="' + category + '"]');
+        return !!button && button.getAttribute('aria-expanded') === 'false';
+      }
+
+      function syncDestroyedRowVisibility(point) {
+        ['economic', 'technology', 'military', 'other'].forEach(function (category) {
+          var destroyedRow = point.allocationCategory &&
+            point.allocationCategory[category] &&
+            point.allocationCategory[category].destroyed
+            ? point.allocationCategory[category].destroyed
+            : { you: 0, opponent: 0 };
+          var isEmpty = Math.max(0, Number(destroyedRow.you) || 0) <= 0 &&
+            Math.max(0, Number(destroyedRow.opponent) || 0) <= 0;
+          document.querySelectorAll('[data-destroyed-row-category="' + category + '"]').forEach(function (row) {
+            row.setAttribute('data-destroyed-row-empty', isEmpty ? 'true' : 'false');
+            row.hidden = isCategoryCollapsed(category) || isEmpty;
+          });
+        });
+      }
+
       function setCategoryCollapsed(key, collapsed) {
         document.querySelectorAll('[data-allocation-category-child="' + key + '"]').forEach(function (row) {
-          row.hidden = collapsed;
+          var isEmptyDestroyed = row.getAttribute('data-destroyed-row-empty') === 'true';
+          row.hidden = collapsed || isEmptyDestroyed;
         });
         document.querySelectorAll('[data-allocation-category-toggle="' + key + '"]').forEach(function (button) {
           button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
@@ -2283,14 +2731,6 @@
         return sign + rounded.toFixed(1) + 'pp';
       }
 
-      function significantTopLossesText(event) {
-        if (!event || !Array.isArray(event.topLosses) || event.topLosses.length === 0) {
-          return 'No itemized losses';
-        }
-        return event.topLosses.map(function (item) {
-          return (item.label || 'Loss') + ' x' + formatNumber(item.count) + ' (' + formatNumber(item.value) + ')';
-        }).join(' · ');
-      }
 
       function significantEventLossRowsHtml(items) {
         if (!Array.isArray(items) || items.length === 0) {
@@ -2302,6 +2742,33 @@
             '<span class="event-impact-loss-value">' + formatNumber(item.value || 0) + '</span>' +
             '</li>';
         }).join('');
+      }
+
+      function significantEventArmyRowsHtml(items) {
+        if (!Array.isArray(items) || items.length === 0) {
+          return '<li class="event-impact-loss-row event-impact-loss-row-empty">No active military</li>';
+        }
+        return significantEventLossRowsHtml(items);
+      }
+
+      function significantEventArmyValue(event, playerKey) {
+        var armies = event && event.preEncounterArmies ? event.preEncounterArmies : null;
+        var army = armies ? armies[playerKey] : null;
+        return army && Number.isFinite(Number(army.totalValue)) ? Number(army.totalValue) : 0;
+      }
+
+      function updateSignificantEventUnderdog(event) {
+        var context = event && event.favorableUnderdogFight ? event.favorableUnderdogFight : null;
+        document.querySelectorAll('[data-significant-event-underdog-toggle]').forEach(function (el) {
+          el.hidden = !context;
+        });
+        document.querySelectorAll('[data-significant-event-underdog-details]').forEach(function (el) {
+          el.hidden = !context;
+          if (!context) el.open = false;
+        });
+        document.querySelectorAll('[data-significant-event-underdog-details-text]').forEach(function (el) {
+          el.textContent = context ? context.details || '' : '';
+        });
       }
 
       function significantEventLossValue(event, playerKey, metric) {
@@ -2345,8 +2812,8 @@
       }
 
       function updateSignificantEventLosses(event) {
-        var player1Label = event && event.player1Civilization ? event.player1Civilization : 'Player 1';
-        var player2Label = event && event.player2Civilization ? event.player2Civilization : 'Player 2';
+        var player1Label = event && (event.player1Label || event.player1Civilization) ? (event.player1Label || event.player1Civilization) : 'Player 1';
+        var player2Label = event && (event.player2Label || event.player2Civilization) ? (event.player2Label || event.player2Civilization) : 'Player 2';
         document.querySelectorAll('[data-significant-event-loss-heading="player1"]').forEach(function (el) {
           el.textContent = player1Label + ' losses';
         });
@@ -2363,6 +2830,33 @@
         updateSignificantEventLossSummary(event, 'player2', player2Label);
       }
 
+      function updateSignificantEventArmies(event) {
+        var showArmies = !!(event && event.kind === 'fight' && event.preEncounterArmies);
+        var player1Label = event && (event.player1Label || event.player1Civilization) ? (event.player1Label || event.player1Civilization) : 'Player 1';
+        var player2Label = event && (event.player2Label || event.player2Civilization) ? (event.player2Label || event.player2Civilization) : 'Player 2';
+        document.querySelectorAll('[data-significant-event-armies]').forEach(function (el) {
+          el.hidden = !showArmies;
+        });
+        document.querySelectorAll('[data-significant-event-army-heading="player1"]').forEach(function (el) {
+          el.textContent = player1Label + ' army before fight';
+        });
+        document.querySelectorAll('[data-significant-event-army-heading="player2"]').forEach(function (el) {
+          el.textContent = player2Label + ' army before fight';
+        });
+        document.querySelectorAll('[data-significant-event-army-total="player1"]').forEach(function (el) {
+          el.textContent = event ? formatNumber(significantEventArmyValue(event, 'player1')) : '';
+        });
+        document.querySelectorAll('[data-significant-event-army-total="player2"]').forEach(function (el) {
+          el.textContent = event ? formatNumber(significantEventArmyValue(event, 'player2')) : '';
+        });
+        document.querySelectorAll('[data-significant-event-army-list="player1"]').forEach(function (el) {
+          el.innerHTML = significantEventArmyRowsHtml(event && event.preEncounterArmies ? event.preEncounterArmies.player1.units : []);
+        });
+        document.querySelectorAll('[data-significant-event-army-list="player2"]').forEach(function (el) {
+          el.innerHTML = significantEventArmyRowsHtml(event && event.preEncounterArmies ? event.preEncounterArmies.player2.units : []);
+        });
+      }
+
       function updateSignificantEvent(point) {
         var event = point.significantEvent || null;
         document.querySelectorAll('[data-significant-event]').forEach(function (el) {
@@ -2370,17 +2864,15 @@
         });
         if (!event) {
           setField('significantEvent.label', '');
-          setField('significantEvent.description', '');
-          setField('significantEvent.grossLoss', '');
-          setField('significantEvent.topLosses', '');
+          updateSignificantEventUnderdog(null);
+          updateSignificantEventArmies(null);
           updateSignificantEventLosses(null);
           return;
         }
 
         setField('significantEvent.label', event.headline || ((event.victimLabel ? event.victimLabel + ' ' : '') + (event.label || 'Event')));
-        setField('significantEvent.description', event.description || '');
-        setField('significantEvent.grossLoss', formatNumber(event.grossImpact ?? event.grossLoss));
-        setField('significantEvent.topLosses', significantTopLossesText(event));
+        updateSignificantEventUnderdog(event);
+        updateSignificantEventArmies(event);
         updateSignificantEventLosses(event);
       }
 
@@ -2392,7 +2884,9 @@
         setField('timeLabel', point.timeLabel);
         var contextEl = document.querySelector('[data-hover-context]');
         if (contextEl) {
+
           contextEl.textContent = mobileContext(point);
+
         }
         updateSignificantEvent(point);
 
@@ -2409,10 +2903,27 @@
           setField('allocation.' + key + '.opponent', formatNumber(allocationRow.opponent));
           setField('allocation.' + key + '.delta', formatSigned(allocationRow.delta));
         });
+        ['economic', 'technology', 'military', 'other'].forEach(function (categoryKey) {
+          var basisKeys = categoryKey === 'economic'
+            ? ['net', 'resourceGeneration', 'resourceInfrastructure', 'destroyed', 'investment']
+            : ['net', 'destroyed', 'investment'];
+          basisKeys.forEach(function (basisKey) {
+            var categoryRow = point.allocationCategory &&
+              point.allocationCategory[categoryKey] &&
+              point.allocationCategory[categoryKey][basisKey]
+              ? point.allocationCategory[categoryKey][basisKey]
+              : { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 };
+            setField('allocationCategory.' + categoryKey + '.' + basisKey + '.you', formatNumber(categoryRow.you));
+            setField('allocationCategory.' + categoryKey + '.' + basisKey + '.opponent', formatNumber(categoryRow.opponent));
+            setField('allocationCategory.' + categoryKey + '.' + basisKey + '.delta', formatSigned(categoryRow.delta));
+          });
+        });
+        syncDestroyedRowVisibility(point);
         setTitle(
           '[data-total-pool-tooltip]',
-          point.totalPoolTooltip || 'Economic + Technology + Military + Other - Destroyed = Total pool'
+          point.totalPoolTooltip || 'Economic net + Technology net + Military net + Other net = Total pool'
         );
+
         setField('gather.you', formatNumber(point.gather.you));
         setField('gather.opponent', formatNumber(point.gather.opponent));
         setField('gather.delta', formatSigned(point.gather.delta));
@@ -2478,6 +2989,11 @@
           var key = button.getAttribute('data-band-key');
           if (!key) return;
           selectedBand = key;
+          selectedInvestmentCategory = button.getAttribute('data-allocation-investment-category') || '';
+          selectedEconomicRoleFilter = key === 'economic'
+            ? button.getAttribute('data-economic-role-filter') || ''
+            : '';
+          if (selectedInvestmentCategory) selectedEconomicRoleFilter = '';
           syncBandSelection();
           if (currentTimestamp !== null) {
             updateInspector(currentTimestamp);
@@ -2528,8 +3044,18 @@
         });
       });
 
+      document.querySelectorAll('[data-significant-event-underdog-toggle]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          document.querySelectorAll('[data-significant-event-underdog-details]').forEach(function (details) {
+            if (details.hidden) return;
+            details.open = true;
+            if (details.scrollIntoView) details.scrollIntoView({ block: 'nearest' });
+          });
+        });
+      });
+
       function syncMobileDetailsForViewport() {
-        var isMobile = window.matchMedia && window.matchMedia('(max-width: 520px)').matches;
+        var isMobile = window.matchMedia && window.matchMedia('(max-width: 760px), (pointer: coarse)').matches;
         document.querySelectorAll('[data-mobile-details]').forEach(function (details) {
           if (isMobile) {
             if (!details.hasAttribute('data-mobile-user-toggled')) details.removeAttribute('open');
@@ -2620,62 +3146,6 @@
       initializeSelection();
     }());
   </script>
-  <script id="web-vitals-monitor">(function(){
-  if (typeof window === 'undefined' || !('PerformanceObserver' in window)) return;
-  var endpoint = "/api/web-vitals";
-  var lcp = 0;
-  var cls = 0;
-  var inp = 0;
-  var sent = {};
-  function send(name, value) {
-    if (!Number.isFinite(value) || sent[name] === value) return;
-    sent[name] = value;
-    var body = JSON.stringify({
-      name: name,
-      value: Math.round(value * 100) / 100,
-      path: window.location.pathname,
-      ts: Date.now()
-    });
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon(endpoint, body);
-      return;
-    }
-    fetch(endpoint, {
-      method: 'POST',
-      body: body,
-      keepalive: true,
-      headers: { 'content-type': 'application/json' }
-    }).catch(function(){});
-  }
-  try {
-    new PerformanceObserver(function(list){
-      var entries = list.getEntries();
-      if (entries.length > 0) lcp = entries[entries.length - 1].startTime;
-    }).observe({ type: 'largest-contentful-paint', buffered: true });
-  } catch (_) {}
-  try {
-    new PerformanceObserver(function(list){
-      list.getEntries().forEach(function(entry){
-        if (!entry.hadRecentInput) cls += entry.value || 0;
-      });
-    }).observe({ type: 'layout-shift', buffered: true });
-  } catch (_) {}
-  try {
-    new PerformanceObserver(function(list){
-      list.getEntries().forEach(function(entry){
-        if (entry.interactionId) inp = Math.max(inp, entry.duration || 0);
-      });
-    }).observe({ type: 'event', durationThreshold: 40, buffered: true });
-  } catch (_) {}
-  function flush() {
-    send('LCP', lcp);
-    send('CLS', cls);
-    send('INP', inp);
-  }
-  document.addEventListener('visibilitychange', function(){
-    if (document.visibilityState === 'hidden') flush();
-  });
-  window.addEventListener('pagehide', flush);
-}());</script>
+
 </body>
 </html>

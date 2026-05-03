@@ -118,10 +118,11 @@ describe('post-match allocation widget integration', () => {
 
     const html = renderPostMatchHtml(model);
 
-    expect(html.indexOf('Allocation lead and mix over time')).toBeLessThan(html.indexOf('Dark age'));
-    expect(html.indexOf('Dark age')).toBeLessThan(html.indexOf('Final pool delta'));
-    expect(html.indexOf('Imperial age')).toBeLessThan(html.indexOf('Final pool delta'));
-    expect(html).toContain('Only English reached Imperial, so there was no shared Imperial window to compare.');
+    expect(html).toContain('Allocation lead and mix over time');
+    expect(html).not.toContain('<section class="panel metrics">');
+    expect(html).not.toContain('Dark age');
+    expect(html).not.toContain('Final pool delta');
+    expect(html).not.toContain('Only English reached Imperial, so there was no shared Imperial window to compare.');
     expect(html).toContain('<details class="allocation-read-guide" aria-label="Allocation chart legend">');
     expect(html).toContain('<summary class="allocation-read-guide-summary">How to read this chart</summary>');
     expect(html).toContain('class="mobile-timeline-control"');
@@ -153,6 +154,8 @@ describe('post-match allocation widget integration', () => {
     expect(html).toContain('grid-template-columns: minmax(0, 1fr) clamp(var(--inspector-min-width), 32vw, var(--inspector-max-width));');
     expect(html).toContain('.chart-stack { overflow-x: hidden; }');
     expect(html).toContain('.mobile-timeline-button');
+    expect(html).toContain('.band-toggle,\n    .allocation-category-toggle,\n    .band-sub-link {\n      min-height: 36px;');
+    expect(html).toContain('.band-toggle:hover,\n    .allocation-category-toggle:hover,\n    .band-sub-link:hover {');
     expect(html).toContain('data-band-breakdown-summary');
     expect(html).toContain('grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));');
     expect(html).toContain('.band-summary-label {\n      grid-column: 1 / -1;');
@@ -310,6 +313,19 @@ describe('post-match allocation widget integration', () => {
 
   it('renders player-2 perspective allocation visuals with matching legend, leader strip, and paths', () => {
     const html = renderPostMatchHtml(makeSwappedPerspectiveColorModel());
+
+    expect(html).toContain('--aoe-color-report-bg: #f2f4ee;');
+    expect(html).toContain('--color-background: var(--aoe-color-report-bg);');
+    expect(html).toContain('--color-card: var(--aoe-color-report-surface);');
+    expect(html).toContain('--color-muted: var(--aoe-color-report-muted);');
+    expect(html).toContain('--color-border: var(--aoe-color-report-border);');
+    expect(html).toContain('--you: #D85A30;');
+    expect(html).toContain('--opponent: #378ADD;');
+    expect(html).toContain('font-family: var(--aoe-font-report);');
+    expect(html).toContain('border-radius: var(--aoe-radius-lg);');
+    expect(html).toContain('border-radius: var(--aoe-radius-md);');
+    expect(html).toContain('box-shadow: var(--aoe-shadow-panel);');
+    expect(html).not.toContain('--color-background: #f2f4ee;');
 
     expect(html).toContain('<span class="age-line" style="border-color:#D85A30"></span>RepleteCactus · Ottomans age-up');
     expect(html).toContain('<span class="age-line dashed" style="border-color:#378ADD"></span>sohaijim2022 · Golden Horde age-up');

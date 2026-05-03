@@ -14,6 +14,14 @@ over theme decoration.
 - Tokens live in `design-system/tokens.css`.
 - Global app styles import those tokens from `src/app/globals.css`.
 - Use the `--aoe-*` namespace for reusable colors, radii, spacing, shadows, and fonts.
+- Raw HTML surfaces that bypass the React CSS pipeline must embed the canonical
+  token declarations and map any local aliases back to `--aoe-*` tokens.
+- Report tokens use `--aoe-color-report-*` for the compact analysis workspace:
+  background, surface, muted text, borders, chart background, control states,
+  focus, and link treatment.
+- Player perspective colors remain semantic data colors. Use `--aoe-color-you`
+  and `--aoe-color-opponent` for defaults, but generated reports may override
+  local player variables when the perspective player is not player 1.
 
 ## Component Rules
 

@@ -135,9 +135,20 @@ describe('matches route e2e', () => {
       sig: 'abc123',
       hoverDataUrl: '/matches/my-slug/230143339/hover-data?sig=abc123',
     });
+    expect(body).toContain('--aoe-color-report-bg: #f2f4ee;');
+    expect(body).toContain('--aoe-color-report-surface: #fbfcf9;');
+    expect(body).toContain('--color-background: var(--aoe-color-report-bg);');
+    expect(body).toContain('--color-card: var(--aoe-color-report-surface);');
+    expect(body).toContain('--color-text: var(--aoe-color-report-text);');
+    expect(body).toContain('--color-muted: var(--aoe-color-report-muted);');
+    expect(body).toContain('--color-border: var(--aoe-color-report-border);');
+    expect(body).toContain('font-family: var(--aoe-font-report);');
+    expect(body).not.toContain('--color-background: #f2f4ee;');
     expect(body).toContain('Allocation lead and mix over time');
-    expect(body).toContain('Dark age');
-    expect(body.indexOf('Imperial age')).toBeLessThan(body.indexOf('Final pool delta'));
+    expect(body).not.toContain('<section class="panel metrics">');
+    expect(body).not.toContain('Dark age');
+    expect(body).not.toContain('Imperial age');
+    expect(body).not.toContain('Final pool delta');
     expect(body).toContain('id="allocation-leader-strip"');
     expect(body).toContain('id="allocation-comparison"');
     expect(body).toContain('class="mobile-timeline-control"');
@@ -146,6 +157,8 @@ describe('matches route e2e', () => {
     expect(body).toContain('data-mobile-timeline-step="1"');
     expect(body).toContain('data-mobile-summary="overall"');
     expect(body).toContain('data-mobile-current-time');
+    expect(body).toContain('.band-toggle,\n    .allocation-category-toggle,\n    .band-sub-link {\n      min-height: 36px;');
+    expect(body).toContain('.band-toggle:hover,\n    .allocation-category-toggle:hover,\n    .band-sub-link:hover {');
     expect(body).toContain('grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));');
     expect(body).toContain('.band-summary-label {\n      grid-column: 1 / -1;');
     expect(body).toContain('.band-breakdown-summary > span:not(.band-summary-label) {\n      min-width: 0;');
@@ -258,6 +271,32 @@ describe('matches route e2e', () => {
     expect(response.status).toBe(200);
     expect(body).toContain('Delhi support unavailable');
     expect(body).toContain("This app doesn&#39;t work for Delhi yet.");
+  });
+
+  it('returns a tokenized error document when route parsing fails', async () => {
+    parseMatchRouteParams.mockImplementation(() => {
+      throw new Error('bad <game> id');
+    });
+
+    const response = await GET(new Request('http://localhost/matches/my-slug/not-a-game'), {
+      params: Promise.resolve({
+        profileSlug: 'my-slug',
+        gameId: 'not-a-game',
+      }),
+    });
+    const body = await response.text();
+
+    expect(response.status).toBe(500);
+    expect(body).toContain('Unable to load match (500)');
+    expect(body).toContain('bad game id');
+    expect(body).toContain('--aoe-color-bg: #f7f2e8;');
+    expect(body).toContain('--background: var(--aoe-color-bg);');
+    expect(body).toContain('--surface: var(--aoe-color-surface);');
+    expect(body).toContain('--border: var(--aoe-color-border);');
+    expect(body).toContain('--text: var(--aoe-color-text);');
+    expect(body).toContain('--muted: var(--aoe-color-muted);');
+    expect(body).toContain('font-family: var(--aoe-font-display);');
+    expect(body).not.toContain('background: #f7f2e8;');
   });
 
   it('returns opportunity-lost buckets in chronological order through the match route', async () => {

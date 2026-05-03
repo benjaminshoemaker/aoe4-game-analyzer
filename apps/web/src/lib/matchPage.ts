@@ -6,6 +6,7 @@ import {
   WinProbabilityExample,
 } from '@aoe4/analyzer-core/analysis/winProbability';
 import { buildPostMatchHoverPayload, renderPostMatchHtml } from '@aoe4/analyzer-core/formatters/postMatchHtml';
+import { embeddedAoeTokenCss } from './designTokens';
 import { fetchGameSummaryFromApi, GameSummary } from '@aoe4/analyzer-core/parser/gameSummaryParser';
 import { buildWebVitalsScript } from './webVitals';
 
@@ -72,10 +73,18 @@ function renderUnsupportedMatchHtml(message: string): string {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AoE4 Match Web</title>
   <style>
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 28px; font-family: "Trebuchet MS", "Avenir Next", "Gill Sans", sans-serif; background: #f7f2e8; color: #2a1f16; }
-    .panel { max-width: 720px; background: #fffdf9; border: 1px solid #d9c9ad; border-radius: 8px; padding: 22px; box-shadow: 0 14px 36px rgba(42, 31, 22, 0.08); }
+    :root {
+      ${embeddedAoeTokenCss}
+      --background: var(--aoe-color-bg);
+      --surface: var(--aoe-color-surface);
+      --border: var(--aoe-color-border);
+      --text: var(--aoe-color-text);
+      --muted: var(--aoe-color-muted);
+    }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 28px; font-family: var(--aoe-font-display); background: var(--background); color: var(--text); }
+    .panel { max-width: 720px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--aoe-radius-md); padding: 22px; box-shadow: var(--aoe-shadow-home-panel); }
     h1 { margin: 0 0 10px; font-size: 24px; line-height: 1.2; }
-    p { margin: 0; color: #5f5345; font-size: 15px; line-height: 1.45; }
+    p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.45; }
   </style>
 </head>
 <body>

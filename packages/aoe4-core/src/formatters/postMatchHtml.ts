@@ -125,6 +125,50 @@ const strategyBucketDefs: StrategyBucketDef[] = [
   { key: 'technology', label: 'Technology' },
 ];
 
+const embeddedAoeTokenCss = `
+      --aoe-color-bg: #f7f2e8;
+      --aoe-color-bg-accent: #efe1cb;
+      --aoe-color-surface: #fffdf9;
+      --aoe-color-report-bg: #f2f4ee;
+      --aoe-color-report-bg-secondary: #eef2e7;
+      --aoe-color-report-surface: #fbfcf9;
+      --aoe-color-text: #1f1a14;
+      --aoe-color-report-text: #1f2a1f;
+      --aoe-color-report-strong: #253226;
+      --aoe-color-muted: #5f5345;
+      --aoe-color-report-muted: #5b6257;
+      --aoe-color-border: #d9c9ad;
+      --aoe-color-report-border: #d6ddd1;
+      --aoe-color-report-border-subtle: #edf1ea;
+      --aoe-color-report-border-strong: #cad2c7;
+      --aoe-color-report-chart-bg: #f7faf8;
+      --aoe-color-report-control-bg: #ffffff;
+      --aoe-color-report-control-hover: #f1f6fb;
+      --aoe-color-report-control-selected: #f5f8f2;
+      --aoe-color-report-link: #1f3551;
+      --aoe-color-report-focus: #1f6fb7;
+      --aoe-color-primary: #9d2f1b;
+      --aoe-color-primary-border: #7f2014;
+      --aoe-color-primary-contrast: #fff9f5;
+      --aoe-color-field-bg: #ffffff;
+      --aoe-color-error: #8f2714;
+      --aoe-color-home-glow-primary: rgba(157, 47, 27, 0.08);
+      --aoe-color-home-glow-secondary: rgba(39, 107, 80, 0.07);
+      --aoe-color-you: #378add;
+      --aoe-color-opponent: #d85a30;
+      --aoe-radius-sm: 4px;
+      --aoe-radius-md: 8px;
+      --aoe-radius-lg: 10px;
+      --aoe-space-1: 4px;
+      --aoe-space-2: 8px;
+      --aoe-space-3: 12px;
+      --aoe-space-4: 16px;
+      --aoe-space-6: 24px;
+      --aoe-shadow-panel: 0 1px 3px rgba(32, 43, 32, 0.08);
+      --aoe-shadow-home-panel: 0 10px 30px rgba(62, 45, 22, 0.08);
+      --aoe-font-display: "Trebuchet MS", "Avenir Next", "Gill Sans", sans-serif;
+      --aoe-font-report: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;`.trim();
+
 const svgWidth = 980;
 const poolPadding = { top: 54, right: 12, bottom: 30, left: 58 };
 const poolLaneHeight = 170;
@@ -425,26 +469,6 @@ function formatBetLabel(label: string): string {
     .split('-')
     .map(part => part.charAt(0).toUpperCase() + part.slice(1))
     .join('-');
-}
-
-function formatAgeMetricTitle(age: string): string {
-  return `${age} age`;
-}
-
-function buildAgeMetricCardsHtml(model: PostMatchViewModel): string {
-  return model.metricCards.ageAnalyses
-    .map(card => `
-      <article class="metric-card metric-card-age">
-        <div class="metric-title">${escapeHtml(formatAgeMetricTitle(card.age))}</div>
-        <div class="metric-range">${escapeHtml(card.timeRangeLabel)}</div>
-        <div class="metric-analysis-lines">
-          <div class="metric-analysis metric-analysis-gap">${escapeHtml(card.gapSummary)}</div>
-          <div class="metric-analysis">${escapeHtml(card.allocationSummary)}</div>
-          <div class="metric-analysis">${escapeHtml(card.destructionSummary)}</div>
-          <div class="metric-analysis">${escapeHtml(card.conversionSummary)}</div>
-        </div>
-      </article>`)
-    .join('');
 }
 
 function poolPointAtOrBefore(series: PoolSeriesPoint[], timestamp: number): PoolSeriesPoint {
@@ -2406,7 +2430,7 @@ function buildPoolComparisonSvg(
 
     return `
       ${areaPaths.join('')}
-      <path d="${totalPath}" fill="none" stroke="#253226" stroke-width="1.1" opacity="0.55" />`;
+      <path d="${totalPath}" fill="none" stroke="var(--color-strong)" stroke-width="1.1" opacity="0.55" />`;
   };
 
   const buildLaneGrid = (laneTop: number): string => {
@@ -2505,7 +2529,7 @@ function buildPoolComparisonSvg(
 
   return `
 <svg id="pool-comparison" class="pool-chart pool-comparison-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Aligned deployed resource pool comparison chart">
-  <rect x="0" y="0" width="${width}" height="${height}" fill="#F7FAF8" rx="8" />
+  <rect x="0" y="0" width="${width}" height="${height}" fill="var(--color-chart-bg)" rx="8" />
   ${xGridAndTicks}
   ${buildLaneGrid(laneOneTop)}
   ${buildLaneGrid(laneTwoTop)}
@@ -2513,7 +2537,7 @@ function buildPoolComparisonSvg(
   <text x="${padding.left}" y="${(laneTwoTop - 10).toFixed(2)}" font-size="12" font-weight="700" fill="${opponentColor}">Opponent</text>
   <g>${buildLanePaths(youSeries, laneOneTop)}</g>
   <g>${buildLanePaths(opponentSeries, laneTwoTop)}</g>
-  <text x="${padding.left}" y="${(deltaTop - 13).toFixed(2)}" font-size="12" font-weight="700" fill="#253226">Pool delta (You - Opponent)</text>
+  <text x="${padding.left}" y="${(deltaTop - 13).toFixed(2)}" font-size="12" font-weight="700" fill="var(--color-strong)">Pool delta (You - Opponent)</text>
   <line x1="${padding.left}" y1="${deltaMid.toFixed(2)}" x2="${(width - padding.right).toFixed(2)}" y2="${deltaMid.toFixed(2)}" stroke="#7F867B" stroke-width="1" />
   <text x="${(padding.left - 8).toFixed(2)}" y="${(deltaY(maxDelta) + 4).toFixed(2)}" text-anchor="end" font-size="10" fill="${youColor}">+${Math.round(maxDelta)}</text>
   <text x="${(padding.left - 8).toFixed(2)}" y="${(deltaY(-maxDelta) + 4).toFixed(2)}" text-anchor="end" font-size="10" fill="${opponentColor}">-${Math.round(maxDelta)}</text>
@@ -2595,7 +2619,7 @@ function buildAllocationLeaderStripSvg(
 
       return `
         <g>
-          <text x="12" y="${(rowTop + 13).toFixed(2)}" font-size="12" font-weight="700" fill="#253226">${escapeHtml(category.label)}</text>
+          <text x="12" y="${(rowTop + 13).toFixed(2)}" font-size="12" font-weight="700" fill="var(--color-strong)">${escapeHtml(category.label)}</text>
           ${segmentRects}
         </g>
       `;
@@ -2623,7 +2647,7 @@ function buildAllocationLeaderStripSvg(
 
   return `
 <svg id="allocation-leader-strip" class="leader-strip" viewBox="0 0 ${width} ${leaderStripHeight}" role="img" aria-label="Thirty-second leader strip by allocation category">
-  <rect x="0" y="0" width="${width}" height="${leaderStripHeight}" fill="#F7FAF8" rx="8" />
+  <rect x="0" y="0" width="${width}" height="${leaderStripHeight}" fill="var(--color-chart-bg)" rx="8" />
   ${verticalTicks}
   ${rows}
   <g data-time-axis="allocation-leader">
@@ -2652,7 +2676,7 @@ function buildStrategyAllocationSvg(
   if (!defaultHover) {
     return `
 <svg id="allocation-comparison" class="strategy-chart allocation-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Allocation comparison chart">
-  <rect x="0" y="0" width="${width}" height="${height}" fill="#F7FAF8" rx="10" />
+  <rect x="0" y="0" width="${width}" height="${height}" fill="var(--color-chart-bg)" rx="10" />
 </svg>`;
   }
 
@@ -2729,7 +2753,7 @@ function buildStrategyAllocationSvg(
         <g class="${laneClass}">
           ${laneDivider}
           ${laneBackground}
-          <text x="12" y="${(laneTop + 19).toFixed(2)}" font-size="13" font-weight="800" fill="#253226">${escapeHtml(graph.label)}</text>
+          <text x="12" y="${(laneTop + 19).toFixed(2)}" font-size="13" font-weight="800" fill="var(--color-strong)">${escapeHtml(graph.label)}</text>
           <text x="${(padding.left - 8).toFixed(2)}" y="${(laneTop + 4).toFixed(2)}" text-anchor="end" font-size="11" fill="#5B6257">${topLabel}</text>
           <text x="${(padding.left - 8).toFixed(2)}" y="${(laneTop + strategyLaneHeight / 2 + 4).toFixed(2)}" text-anchor="end" font-size="11" fill="#5B6257">${midLabel}</text>
           <text x="${(padding.left - 8).toFixed(2)}" y="${(laneBottom + 4).toFixed(2)}" text-anchor="end" font-size="11" fill="#5B6257">${bottomLabel}</text>
@@ -2765,7 +2789,7 @@ function buildStrategyAllocationSvg(
 
   return `
 <svg id="allocation-comparison" class="strategy-chart allocation-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Allocation comparison chart">
-  <rect x="0" y="0" width="${width}" height="${height}" fill="#F7FAF8" rx="10" />
+  <rect x="0" y="0" width="${width}" height="${height}" fill="var(--color-chart-bg)" rx="10" />
   ${xTicks}
   ${ageMarkerLayer}
   ${lanes}
@@ -2854,7 +2878,7 @@ function buildGatherRateSvg(
 
   return `
 <svg class="gather-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Gather rate chart">
-  <rect x="0" y="0" width="${width}" height="${height}" fill="#F7FAF8" rx="10" />
+  <rect x="0" y="0" width="${width}" height="${height}" fill="var(--color-chart-bg)" rx="10" />
   <line x1="${padding.left}" y1="${(height - padding.bottom).toFixed(2)}" x2="${(width - padding.right).toFixed(2)}" y2="${(height - padding.bottom).toFixed(2)}" stroke="#5B6257" stroke-width="1.2" />
   <path d="${youPath}" fill="none" stroke="${youColor}" stroke-width="2.5" />
   <path d="${oppPath}" fill="none" stroke="${opponentColor}" stroke-width="2.5" stroke-dasharray="7 5" />
@@ -3085,14 +3109,14 @@ function buildVillagerOpportunityCard(
     <article class="villager-opportunity-card" id="${cardId}">
       <h3>${playerLabel}</h3>
       <svg class="villager-opportunity-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${playerLabel} villager opportunity resource chart">
-        <rect x="0" y="0" width="${width}" height="${height}" fill="#F7FAF8" rx="8" />
+        <rect x="0" y="0" width="${width}" height="${height}" fill="var(--color-chart-bg)" rx="8" />
         ${ticks}
         <line x1="${padding.left.toFixed(2)}" y1="${(height - padding.bottom).toFixed(2)}" x2="${(width - padding.right).toFixed(2)}" y2="${(height - padding.bottom).toFixed(2)}" stroke="#7F867B" stroke-width="1" />
         ${yLabels}
         ${xLabels}
         <path d="${lossPath}" fill="none" stroke="#C56C52" stroke-width="1.9" />
         <path d="${gainedPath}" fill="none" stroke="#378ADD" stroke-width="1.9" />
-        <path d="${possiblePath}" fill="none" stroke="#253226" stroke-width="2.4" />
+        <path d="${possiblePath}" fill="none" stroke="var(--color-strong)" stroke-width="2.4" />
         <g class="hover-readouts" aria-hidden="true">
           <line data-hover-line-villager-${playerKey} class="hover-active-line" x1="${x(defaultHover.timestamp).toFixed(2)}" y1="${padding.top.toFixed(2)}" x2="${x(defaultHover.timestamp).toFixed(2)}" y2="${(height - padding.bottom).toFixed(2)}" />
           <text data-hover-label-villager-${playerKey}-loss class="hover-value-label villager-loss-label" x="${hoverLabelX(x(defaultHover.timestamp)).toFixed(2)}" y="${(padding.top + 18).toFixed(2)}" text-anchor="${hoverLabelAnchor(x(defaultHover.timestamp))}">Loss ${formatNumber(defaultResourcePoint.cumulativeLoss)}</text>
@@ -3122,7 +3146,7 @@ function buildVillagerOpportunitySection(model: PostMatchViewModel, hoverSnapsho
       <div class="villager-opportunity-legend">
         <span class="line-chip"><span class="line-swatch" style="border-color:#C56C52"></span>Cumulative loss</span>
         <span class="line-chip"><span class="line-swatch" style="border-color:#378ADD"></span>Resources gained</span>
-        <span class="line-chip"><span class="line-swatch" style="border-color:#253226"></span>Resources possible</span>
+        <span class="line-chip"><span class="line-swatch" style="border-color:var(--color-strong)"></span>Resources possible</span>
       </div>
       <div class="villager-opportunity-grid">
         ${buildVillagerOpportunityCard(
@@ -4352,8 +4376,8 @@ export function renderPostMatchHtml(
     .villager-opportunity-card {
       min-width: 0;
       border: 1px solid var(--color-border);
-      border-radius: 8px;
-      background: #fff;
+      border-radius: var(--aoe-radius-md);
+      background: var(--color-control-bg);
       padding: 12px;
     }
 
@@ -4382,7 +4406,7 @@ export function renderPostMatchHtml(
       display: flex;
       justify-content: space-between;
       gap: 10px;
-      border-top: 1px solid #edf1ea;
+      border-top: 1px solid var(--color-border-subtle);
       padding-top: 4px;
       font-variant-numeric: tabular-nums;
     }
@@ -4395,9 +4419,9 @@ export function renderPostMatchHtml(
 
     .event-card {
       border: 1px solid var(--color-border);
-      border-radius: 8px;
+      border-radius: var(--aoe-radius-md);
       padding: 11px;
-      background: #fff;
+      background: var(--color-control-bg);
     }
 
     .event-card p {
@@ -4438,7 +4462,7 @@ export function renderPostMatchHtml(
       gap: 8px;
       border: 1px solid var(--color-border);
       border-radius: 999px;
-      background: #fff;
+      background: var(--color-control-bg);
       padding: 4px 10px;
     }
 
@@ -4466,12 +4490,22 @@ export function renderPostMatchHtml(
   <title>AoE4 Post-Match Analysis</title>
   <style>
     :root {
-      --color-background: #f2f4ee;
-      --color-background-secondary: #eef2e7;
-      --color-card: #fbfcf9;
-      --color-text: #1f2a1f;
-      --color-muted: #5b6257;
-      --color-border: #d6ddd1;
+      ${embeddedAoeTokenCss}
+      --color-background: var(--aoe-color-report-bg);
+      --color-background-secondary: var(--aoe-color-report-bg-secondary);
+      --color-card: var(--aoe-color-report-surface);
+      --color-text: var(--aoe-color-report-text);
+      --color-strong: var(--aoe-color-report-strong);
+      --color-muted: var(--aoe-color-report-muted);
+      --color-border: var(--aoe-color-report-border);
+      --color-border-subtle: var(--aoe-color-report-border-subtle);
+      --color-border-strong: var(--aoe-color-report-border-strong);
+      --color-chart-bg: var(--aoe-color-report-chart-bg);
+      --color-control-bg: var(--aoe-color-report-control-bg);
+      --color-control-hover: var(--aoe-color-report-control-hover);
+      --color-control-selected: var(--aoe-color-report-control-selected);
+      --color-link: var(--aoe-color-report-link);
+      --color-focus: var(--aoe-color-report-focus);
       --you: ${escapeHtml(playerLabels.you.color)};
       --opponent: ${escapeHtml(playerLabels.opponent.color)};
       --report-max-width: 1440px;
@@ -4484,11 +4518,11 @@ export function renderPostMatchHtml(
     body {
       margin: 0;
       color: var(--color-text);
-      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: var(--aoe-font-report);
       font-size: 14px;
       line-height: 1.45;
-      background: radial-gradient(circle at 8% -12%, #d8e6d6, transparent 34%),
-        radial-gradient(circle at 92% -8%, #f0ddd0, transparent 32%),
+      background: radial-gradient(circle at 8% -12%, var(--color-background-secondary), transparent 34%),
+        radial-gradient(circle at 92% -8%, var(--aoe-color-bg-accent), transparent 32%),
         var(--color-background);
       padding: 22px;
     }
@@ -4506,9 +4540,9 @@ export function renderPostMatchHtml(
       min-width: 0;
       background: var(--color-card);
       border: 1px solid var(--color-border);
-      border-radius: 10px;
+      border-radius: var(--aoe-radius-lg);
       padding: 14px 16px;
-      box-shadow: 0 1px 3px rgba(32, 43, 32, 0.08);
+      box-shadow: var(--aoe-shadow-panel);
     }
 
     .header-row {
@@ -4575,7 +4609,7 @@ export function renderPostMatchHtml(
       border: 1px solid var(--color-border);
       border-radius: 999px;
       padding: 6px 10px;
-      background: #fff;
+      background: var(--color-control-bg);
       max-width: 100%;
       overflow-wrap: anywhere;
       white-space: normal;
@@ -4590,7 +4624,7 @@ export function renderPostMatchHtml(
     .outcome {
       font-size: 18px;
       font-weight: 700;
-      color: #253226;
+      color: var(--color-strong);
       text-align: right;
     }
 
@@ -4598,76 +4632,9 @@ export function renderPostMatchHtml(
       background: #fff7dc;
       border: 1px solid #f1d57d;
       color: #6d4a00;
-      border-radius: 10px;
+      border-radius: var(--aoe-radius-lg);
       padding: 10px 12px;
       font-size: 13px;
-    }
-
-    .metrics {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    .metric-card {
-      min-width: 0;
-      border: 1px solid var(--color-border);
-      background: #fff;
-      border-radius: 8px;
-      padding: 12px;
-    }
-
-    .metric-card-final {
-      grid-column: -2 / -1;
-    }
-
-    .metric-title {
-      font-size: 13px;
-      color: var(--color-muted);
-      margin-bottom: 8px;
-      overflow-wrap: anywhere;
-    }
-
-    .metric-value {
-      font-size: 24px;
-      font-weight: 700;
-      line-height: 1;
-    }
-
-    .metric-range {
-      font-size: 18px;
-      font-weight: 700;
-      line-height: 1.1;
-      overflow-wrap: anywhere;
-    }
-
-    .metric-analysis {
-      margin-top: 8px;
-      color: #253226;
-      font-size: 12px;
-      line-height: 1.35;
-      overflow-wrap: anywhere;
-    }
-
-    .metric-analysis-lines {
-      margin-top: 8px;
-      display: grid;
-      gap: 5px;
-    }
-
-    .metric-analysis-lines .metric-analysis {
-      margin-top: 0;
-    }
-
-    .metric-analysis-gap {
-      font-weight: 700;
-    }
-
-    .metric-sub {
-      margin-top: 6px;
-      font-size: 12px;
-      color: var(--color-muted);
-      overflow-wrap: anywhere;
     }
 
     .section-title {
@@ -4686,8 +4653,8 @@ export function renderPostMatchHtml(
     .allocation-read-guide {
       margin: 8px 0 10px;
       border: 1px solid #dde6da;
-      border-radius: 8px;
-      background: #fff;
+      border-radius: var(--aoe-radius-md);
+      background: var(--color-control-bg);
       color: var(--color-muted);
       font-size: 13px;
       line-height: 1.4;
@@ -4699,7 +4666,7 @@ export function renderPostMatchHtml(
       gap: 8px;
       min-height: 44px;
       padding: 8px 10px;
-      color: #253226;
+      color: var(--color-strong);
       font-weight: 800;
       cursor: pointer;
       user-select: none;
@@ -4721,7 +4688,7 @@ export function renderPostMatchHtml(
     }
 
     .allocation-read-guide[open] .allocation-read-guide-summary {
-      border-bottom: 1px solid #edf1ea;
+      border-bottom: 1px solid var(--color-border-subtle);
     }
 
     .allocation-read-guide[open] .allocation-read-guide-summary::before {
@@ -4737,7 +4704,7 @@ export function renderPostMatchHtml(
 
     .allocation-read-guide-title {
       grid-column: 1 / -1;
-      color: #253226;
+      color: var(--color-strong);
       font-weight: 800;
     }
 
@@ -4747,7 +4714,7 @@ export function renderPostMatchHtml(
 
     .allocation-read-guide-item strong {
       display: block;
-      color: #253226;
+      color: var(--color-strong);
       font-size: 13px;
       margin-bottom: 1px;
     }
@@ -4770,7 +4737,7 @@ export function renderPostMatchHtml(
       gap: 7px;
       border: 1px solid var(--color-border);
       border-radius: 999px;
-      background: #fff;
+      background: var(--color-control-bg);
       padding: 4px 9px;
       font-size: 12px;
     }
@@ -4797,7 +4764,7 @@ export function renderPostMatchHtml(
     .chart-head {
       font-size: 12px;
       margin: 10px 0 5px;
-      color: #253226;
+      color: var(--color-strong);
     }
 
     .age-legend {
@@ -4816,7 +4783,7 @@ export function renderPostMatchHtml(
       gap: 7px;
       border: 1px solid var(--color-border);
       border-radius: 999px;
-      background: #fff;
+      background: var(--color-control-bg);
       padding: 4px 9px;
     }
 
@@ -4837,7 +4804,7 @@ export function renderPostMatchHtml(
       gap: 7px;
       border-radius: 999px;
       padding: 4px 8px;
-      background: #fff;
+      background: var(--color-control-bg);
       border: 1px solid var(--color-border);
       font-size: 12px;
     }
@@ -4865,7 +4832,7 @@ export function renderPostMatchHtml(
       font-weight: 700;
       fill: #4f5a50;
       paint-order: stroke;
-      stroke: #fff;
+      stroke: var(--color-control-bg);
       stroke-width: 3px;
       stroke-linejoin: round;
       font-variant-numeric: tabular-nums;
@@ -4909,8 +4876,8 @@ export function renderPostMatchHtml(
       gap: 10px;
       margin-top: 10px;
       border: 1px solid #dfe6dc;
-      border-radius: 8px;
-      background: #fff;
+      border-radius: var(--aoe-radius-md);
+      background: var(--color-control-bg);
       padding: 10px;
     }
 
@@ -4925,7 +4892,7 @@ export function renderPostMatchHtml(
     }
 
     .mobile-timeline-meta strong {
-      color: #253226;
+      color: var(--color-strong);
       font-size: 18px;
       font-variant-numeric: tabular-nums;
     }
@@ -4941,9 +4908,9 @@ export function renderPostMatchHtml(
       min-width: 56px;
       min-height: 44px;
       border: 1px solid var(--color-border);
-      border-radius: 8px;
+      border-radius: var(--aoe-radius-md);
       background: #f8faf6;
-      color: #253226;
+      color: var(--color-strong);
       font: inherit;
       font-weight: 800;
       cursor: pointer;
@@ -4973,11 +4940,11 @@ export function renderPostMatchHtml(
       position: sticky;
       top: 12px;
       border: 1px solid var(--color-border);
-      border-radius: 8px;
-      background: #fff;
+      border-radius: var(--aoe-radius-md);
+      background: var(--color-control-bg);
       max-height: calc(100vh - 24px);
       padding: 12px 14px;
-      box-shadow: 0 1px 3px rgba(32, 43, 32, 0.08);
+      box-shadow: var(--aoe-shadow-panel);
       font-variant-numeric: tabular-nums;
       overflow: auto;
     }
@@ -4994,7 +4961,7 @@ export function renderPostMatchHtml(
       margin-top: 3px;
       font-size: 22px;
       font-weight: 700;
-      color: #253226;
+      color: var(--color-strong);
     }
 
     .inspector-context {
@@ -5009,7 +4976,7 @@ export function renderPostMatchHtml(
       margin: 8px 0 12px;
       padding: 9px 10px;
       border: 1px solid #ecd2c7;
-      border-radius: 8px;
+      border-radius: var(--aoe-radius-md);
       background: #fff8f5;
     }
 
@@ -5028,7 +4995,7 @@ export function renderPostMatchHtml(
       align-items: center;
       font-size: 13px;
       font-weight: 800;
-      color: #253226;
+      color: var(--color-strong);
     }
 
     .event-impact-help-button {
@@ -5037,7 +5004,7 @@ export function renderPostMatchHtml(
       height: 18px;
       border: 1px solid #d8bdae;
       border-radius: 999px;
-      background: #fff;
+      background: var(--color-control-bg);
       color: #7b3f32;
       font: inherit;
       font-size: 11px;
@@ -5125,7 +5092,7 @@ export function renderPostMatchHtml(
 
     .event-impact-loss-summary dd {
       margin: 0;
-      color: #253226;
+      color: var(--color-strong);
       font-size: 12px;
       font-weight: 800;
     }
@@ -5143,7 +5110,7 @@ export function renderPostMatchHtml(
       grid-template-columns: minmax(0, 1fr) auto;
       gap: 8px;
       align-items: baseline;
-      color: #253226;
+      color: var(--color-strong);
       font-size: 12px;
     }
 
@@ -5178,7 +5145,7 @@ export function renderPostMatchHtml(
     .mobile-summary-card {
       min-width: 0;
       border: 1px solid #e5ebe1;
-      border-radius: 8px;
+      border-radius: var(--aoe-radius-md);
       background: #f8faf6;
       padding: 9px;
       font-variant-numeric: tabular-nums;
@@ -5194,7 +5161,7 @@ export function renderPostMatchHtml(
 
     .mobile-summary-card strong {
       display: block;
-      color: #253226;
+      color: var(--color-strong);
       font-size: 18px;
       line-height: 1.15;
       margin: 3px 0;
@@ -5208,7 +5175,7 @@ export function renderPostMatchHtml(
       display: none;
       align-items: center;
       min-height: 44px;
-      color: #253226;
+      color: var(--color-strong);
       font-weight: 800;
       cursor: pointer;
       user-select: none;
@@ -5265,7 +5232,7 @@ export function renderPostMatchHtml(
     .inspector-table th,
     .inspector-table td {
       padding: 6px 0;
-      border-top: 1px solid #edf1ea;
+      border-top: 1px solid var(--color-border-subtle);
       text-align: right;
       white-space: nowrap;
     }
@@ -5298,13 +5265,21 @@ export function renderPostMatchHtml(
       white-space: nowrap;
     }
 
+    .band-toggle,
+    .allocation-category-toggle,
+    .band-sub-link {
+      min-height: 36px;
+      border-radius: var(--aoe-radius-sm);
+      transition: background-color 160ms ease, color 160ms ease;
+    }
+
     .band-toggle {
       display: inline-flex;
       align-items: center;
       gap: 6px;
       width: 100%;
-      margin: -2px 0;
-      padding: 2px 0;
+      margin: -6px 0;
+      padding: 6px 4px;
       border: 0;
       background: transparent;
       color: inherit;
@@ -5315,18 +5290,18 @@ export function renderPostMatchHtml(
 
     .band-row.is-selected th,
     .band-row.is-selected td {
-      background: #f1f6fb;
+      background: var(--color-control-hover);
     }
 
     .band-row.is-selected th {
       box-shadow: inset 3px 0 0 var(--you);
-      color: #1f3551;
+      color: var(--color-link);
     }
 
     .allocation-category-row th,
     .allocation-category-row td {
-      background: #f5f8f2;
-      color: #253226;
+      background: var(--color-control-selected);
+      color: var(--color-strong);
       font-weight: 800;
     }
 
@@ -5335,8 +5310,8 @@ export function renderPostMatchHtml(
       align-items: center;
       gap: 5px;
       width: 100%;
-      margin: -2px 0;
-      padding: 2px 0;
+      margin: -6px 0;
+      padding: 6px 4px;
       border: 0;
       background: transparent;
       color: inherit;
@@ -5369,17 +5344,26 @@ export function renderPostMatchHtml(
     }
 
     .band-sub-link {
-      display: inline-block;
-      margin: 0;
-      padding: 0 0 0 18px;
+      display: inline-flex;
+      align-items: center;
+      width: 100%;
+      margin: -6px 0;
+      padding: 6px 4px 6px 18px;
       border: 0;
       background: transparent;
-      color: #1f3551;
+      color: var(--color-link);
       font: inherit;
       font-size: 11px;
       text-align: left;
       text-decoration: underline;
       cursor: pointer;
+    }
+
+    .band-toggle:hover,
+    .allocation-category-toggle:hover,
+    .band-sub-link:hover {
+      background: var(--color-control-hover);
+      color: var(--color-link);
     }
 
     .recap-link:focus-visible,
@@ -5392,7 +5376,7 @@ export function renderPostMatchHtml(
     .band-sub-link:focus-visible,
     .event-impact-help-button:focus-visible,
     [data-significant-event-underdog-toggle]:focus-visible {
-      outline: 2px solid #1f6fb7;
+      outline: 2px solid var(--color-focus);
       outline-offset: 2px;
     }
 
@@ -5403,30 +5387,30 @@ export function renderPostMatchHtml(
 
     .inspector-total-row th,
     .inspector-total-row td {
-      color: #253226;
+      color: var(--color-strong);
       font-weight: 800;
-      border-top-color: #d6ddd1;
+      border-top-color: var(--color-border);
     }
 
     .allocation-category-destroyed-row th,
     .allocation-category-destroyed-row td {
       color: #5e2f22;
       font-weight: 800;
-      border-top-color: #d6ddd1;
+      border-top-color: var(--color-border);
     }
 
     .allocation-category-investment-row th,
     .allocation-category-investment-row td {
-      color: #253226;
+      color: var(--color-strong);
       font-weight: 800;
       background: #fafbf8;
     }
 
     .inspector-adjusted-row th,
     .inspector-adjusted-row td {
-      color: #1f3551;
+      color: var(--color-link);
       font-weight: 700;
-      border-top-color: #d6ddd1;
+      border-top-color: var(--color-border);
       white-space: normal;
       line-height: 1.2;
     }
@@ -5447,14 +5431,14 @@ export function renderPostMatchHtml(
     .inspector-float-row td {
       color: #5c4720;
       font-weight: 800;
-      border-top-color: #d6ddd1;
+      border-top-color: var(--color-border);
     }
 
     .inspector-opportunity-lost-row th,
     .inspector-opportunity-lost-row td {
       color: #7b3f32;
       font-weight: 800;
-      border-top-color: #d6ddd1;
+      border-top-color: var(--color-border);
     }
 
     .band-breakdown {
@@ -5466,7 +5450,7 @@ export function renderPostMatchHtml(
     .band-breakdown-head {
       font-size: 13px;
       font-weight: 700;
-      color: #253226;
+      color: var(--color-strong);
       margin-bottom: 6px;
     }
 
@@ -5490,7 +5474,7 @@ export function renderPostMatchHtml(
     }
 
     .band-breakdown-summary strong {
-      color: #253226;
+      color: var(--color-strong);
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
     }
@@ -5498,7 +5482,7 @@ export function renderPostMatchHtml(
     .band-summary-label {
       grid-column: 1 / -1;
       min-width: 0;
-      color: #253226;
+      color: var(--color-strong);
       font-weight: 800;
       overflow-wrap: normal;
       word-break: normal;
@@ -5557,7 +5541,7 @@ export function renderPostMatchHtml(
     }
 
     .opportunity-lost-components tbody th {
-      color: #253226;
+      color: var(--color-strong);
       font-weight: 800;
     }
 
@@ -5565,7 +5549,7 @@ export function renderPostMatchHtml(
     .opportunity-lost-components tbody tr[data-opportunity-lost-component="total"] td {
       padding-bottom: 5px;
       border-bottom: 1px solid #dfe6dc;
-      color: #253226;
+      color: var(--color-strong);
       font-weight: 900;
     }
 
@@ -5599,7 +5583,7 @@ export function renderPostMatchHtml(
       justify-content: space-between;
       gap: 8px;
       align-items: flex-start;
-      border-bottom: 1px dashed #edf1ea;
+      border-bottom: 1px dashed var(--color-border-subtle);
       padding-bottom: 2px;
       min-width: 0;
     }
@@ -5615,7 +5599,7 @@ export function renderPostMatchHtml(
     }
 
     .band-item-label {
-      color: #253226;
+      color: var(--color-strong);
       flex: 1;
       min-width: 0;
     }
@@ -5637,7 +5621,7 @@ export function renderPostMatchHtml(
       text-overflow: clip;
       outline: 1px solid #c8d6c3;
       outline-offset: 1px;
-      background: #fff;
+      background: var(--color-control-bg);
       padding: 1px 2px;
     }
 
@@ -5685,13 +5669,13 @@ export function renderPostMatchHtml(
     }
 
     .significant-event-dot {
-      stroke: #fff;
+      stroke: var(--color-control-bg);
       stroke-width: 2;
       filter: drop-shadow(0 1px 2px rgba(32, 43, 32, 0.24));
     }
 
     .significant-event-glyph {
-      fill: #fff;
+      fill: var(--color-control-bg);
       font-size: 10px;
       font-weight: 900;
       pointer-events: none;
@@ -5715,7 +5699,7 @@ export function renderPostMatchHtml(
       font-size: 11px;
       font-weight: 800;
       paint-order: stroke;
-      stroke: #F7FAF8;
+      stroke: var(--color-chart-bg);
       stroke-width: 3px;
       stroke-linejoin: round;
       font-variant-numeric: tabular-nums;
@@ -5745,12 +5729,12 @@ export function renderPostMatchHtml(
     }
 
     .allocation-lane-overall .delta-label {
-      fill: #1f3551;
+      fill: var(--color-link);
     }
 
     .you-label { fill: var(--you); }
     .opponent-label { fill: var(--opponent); }
-    .delta-label { fill: #253226; }
+    .delta-label { fill: var(--color-strong); }
 
     body[data-hover-pinned="true"] .hover-inspector {
       border-color: #9bbce0;
@@ -5766,8 +5750,8 @@ export function renderPostMatchHtml(
 
     .strategy-readout-card {
       border: 1px solid var(--color-border);
-      border-radius: 8px;
-      background: #fff;
+      border-radius: var(--aoe-radius-md);
+      background: var(--color-control-bg);
       padding: 10px;
       font-size: 12px;
       font-variant-numeric: tabular-nums;
@@ -5776,21 +5760,21 @@ export function renderPostMatchHtml(
     .strategy-readout-card h3 {
       margin: 0 0 8px;
       font-size: 13px;
-      color: #253226;
+      color: var(--color-strong);
     }
 
     .strategy-readout-row {
       display: flex;
       justify-content: space-between;
       gap: 10px;
-      border-top: 1px solid #edf1ea;
+      border-top: 1px solid var(--color-border-subtle);
       padding-top: 4px;
       margin-top: 4px;
       color: var(--color-muted);
     }
 
     .strategy-readout-row strong {
-      color: #253226;
+      color: var(--color-strong);
     }
 
     .strategy-state-strip {
@@ -5802,8 +5786,8 @@ export function renderPostMatchHtml(
 
     .strategy-state-card {
       border: 1px solid var(--color-border);
-      border-radius: 8px;
-      background: #fff;
+      border-radius: var(--aoe-radius-md);
+      background: var(--color-control-bg);
       padding: 9px;
       font-size: 12px;
     }
@@ -5821,7 +5805,7 @@ export function renderPostMatchHtml(
     }
 
     .strategy-state-title {
-      color: #253226;
+      color: var(--color-strong);
       font-weight: 800;
       margin-bottom: 4px;
     }
@@ -5845,8 +5829,6 @@ ${fullSurfaceStyles}
 
     @media (max-width: 980px) {
       body { padding: 16px; }
-      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .metric-card-final { grid-column: -2 / -1; }
       .header-row { grid-template-columns: 1fr; }
       .outcome { text-align: left; }
       .band-breakdown-cols { grid-template-columns: 1fr; }
@@ -5889,7 +5871,7 @@ ${fullSurfaceNarrowStyles}
       }
 
       .inspector-table tr {
-        border-top: 1px solid #edf1ea;
+        border-top: 1px solid var(--color-border-subtle);
         padding: 6px 0;
       }
 
@@ -5902,7 +5884,7 @@ ${fullSurfaceNarrowStyles}
 
       .inspector-table th:first-child {
         width: 100%;
-        color: #253226;
+        color: var(--color-strong);
         font-weight: 700;
         margin-bottom: 2px;
       }
@@ -5928,7 +5910,7 @@ ${fullSurfaceNarrowStyles}
       }
 
       .inspector-total-row {
-        border-top-color: #d6ddd1;
+        border-top-color: var(--color-border);
       }
     }
 
@@ -5954,8 +5936,6 @@ ${fullSurfaceNarrowStyles}
       .panel { padding: 12px; }
       .chips { flex-direction: column; align-items: stretch; }
       .civ-chip { width: 100%; }
-      .metrics { grid-template-columns: 1fr; }
-      .metric-card-final { grid-column: auto; }
       .section-title { font-size: 19px; }
       .chart-stack { overflow-x: hidden; }
       .chart-stack .leader-strip,
@@ -6059,15 +6039,6 @@ ${fullSurfaceNarrowStyles}
     </section>
 
     ${surface === 'full' ? buildFullSurfaceSections(model, hoverSnapshots, defaultHoverSnapshot, playerLabels) : ''}
-
-    <section class="panel metrics">
-      ${buildAgeMetricCardsHtml(model)}
-      <article class="metric-card metric-card-final">
-        <div class="metric-title">Final pool delta</div>
-        <div class="metric-value">${formatSigned(model.metricCards.finalPoolDelta)}</div>
-        <div class="metric-sub">at surrender/end</div>
-      </article>
-    </section>
 
   </main>
   ${buildHoverInteractionScript(inlineHoverSnapshots, playerLabels, undefined, { includeAdjustedMilitary })}

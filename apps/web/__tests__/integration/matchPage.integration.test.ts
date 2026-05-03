@@ -55,6 +55,14 @@ describe('buildMatchHtml integration', () => {
     expect(renderPostMatchHtml).not.toHaveBeenCalled();
     expect(html).toContain("This app doesn&#39;t work for Delhi yet.");
     expect(html).toContain('Delhi support unavailable');
+    expect(html).toContain('--aoe-color-bg: #f7f2e8;');
+    expect(html).toContain('--background: var(--aoe-color-bg);');
+    expect(html).toContain('--surface: var(--aoe-color-surface);');
+    expect(html).toContain('--border: var(--aoe-color-border);');
+    expect(html).toContain('--text: var(--aoe-color-text);');
+    expect(html).toContain('--muted: var(--aoe-color-muted);');
+    expect(html).toContain('font-family: var(--aoe-font-display);');
+    expect(html).not.toContain('background: #f7f2e8;');
   });
 
   it('fetches summary with sig and orchestrates analysis + render', async () => {

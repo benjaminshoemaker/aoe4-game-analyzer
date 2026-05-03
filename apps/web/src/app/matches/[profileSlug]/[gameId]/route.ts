@@ -1,4 +1,5 @@
 import { buildMatchHtml, parseMatchRouteParams } from '../../../../lib/matchPage';
+import { embeddedAoeTokenCss } from '../../../../lib/designTokens';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -11,10 +12,18 @@ function errorDocument(message: string, status: number): string {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AoE4 Match Web</title>
   <style>
-    body { margin: 0; padding: 28px; font-family: "Trebuchet MS", "Avenir Next", "Gill Sans", sans-serif; background: #f7f2e8; color: #2a1f16; }
-    .panel { max-width: 760px; margin: 0 auto; background: #fffdf9; border: 1px solid #d9c9ad; border-radius: 10px; padding: 18px; }
+    :root {
+      ${embeddedAoeTokenCss}
+      --background: var(--aoe-color-bg);
+      --surface: var(--aoe-color-surface);
+      --border: var(--aoe-color-border);
+      --text: var(--aoe-color-text);
+      --muted: var(--aoe-color-muted);
+    }
+    body { margin: 0; padding: 28px; font-family: var(--aoe-font-display); background: var(--background); color: var(--text); }
+    .panel { max-width: 760px; margin: 0 auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--aoe-radius-lg); padding: 18px; }
     h1 { margin: 0 0 10px; font-size: 24px; }
-    p { margin: 0; color: #5f5345; font-size: 14px; }
+    p { margin: 0; color: var(--muted); font-size: 14px; }
   </style>
 </head>
 <body>
