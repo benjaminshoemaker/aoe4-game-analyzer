@@ -6,6 +6,10 @@
 
 ## Decisions
 
+- **[2026-05-02]** Post-match `militaryActive` should match AoE4World army value semantics: live units use base resource cost, not tier-scaled replacement value. Upgrade/tier scaling belongs in separate combat-adjusted views, not the raw army-value hover number. *(source: conversation/code verification)*
+- **[2026-05-02]** Unit lifecycle accounting must operate across a unit line, not only per resolved build-order row; upgraded-row deaths should consume active lower-tier units with the same `baseId`/line key when the upgraded row has no active count. *(source: conversation/code verification)*
+- **[2026-05-02]** Destroyed-only upgraded unit rows must remain in `ResolvedBuildOrder.resolved`; dropping them loses AoE4World death events such as Veteran Spearman/Sipahi deaths after an upgrade. *(source: conversation/code verification)*
+- **[2026-05-02]** Religious units such as Imam and Monk count as `militaryActive` army value for AoE4World alignment, while religious buildings such as monasteries remain economic infrastructure. *(source: conversation/code verification)*
 - **[2026-05-01]** Yatai unit `pbgid=9001316` uses AoE4World `unknown["14"]` as production and `unknown["15"]` as destruction/removal; counting only bucket `14` creates impossible active Yatai counts in live match `229727104`. *(source: conversation/code verification)*
 - **[2026-05-01]** Yatai Trade Cart `pbgid=9003449` is a zero-cost delivery/output artifact, not deployed capital; its `unknown["15"]` bucket should remain ignored and it should not appear in deployed-resource breakdowns. *(source: conversation/code verification)*
 - **[2026-05-01]** Keep root analyzer and `apps/web` resolver/mapping copies in sync for unknown-bucket handling so static reports and the deployed Next app use the same accounting semantics. *(source: conversation/code verification)*
@@ -22,6 +26,8 @@
 
 ## Action Items
 
+- [ ] **[2026-05-02]** Consider adding a durable real-match regression fixture for RepleteCactus game `231277359` so the exact AoE4World `17:40` army-value case is covered in addition to the synthetic upgraded-death fixture. — Owner: engineering
+- [ ] **[2026-05-02]** Review non-hover consumers such as `armyReconstruction` and `significantResourceLossEvents` for the same cross-tier death and tier-multiplier assumptions if they are expected to match raw AoE4World army value. — Owner: engineering
 - [ ] **[2026-05-01]** Add `@LEARNINGS.md` to `CLAUDE.md` if Claude sessions should auto-load these learnings. — Owner: project maintainer
 - [ ] **[2026-05-01]** Resolve `npm audit` findings for `next`/`postcss`; current fix path suggests a breaking Next 16 upgrade. — Owner: project maintainer
 - [ ] **[2026-05-01]** Decide whether to delete the empty Vercel project named `web`; user said "never mind," so it remains. — Owner: user
@@ -34,6 +40,10 @@
 
 ## Context
 
+- **[2026-05-02]** In RepleteCactus/Ottomans game `231277359`, AoE4World army value at `17:40` (`t=1060`) is `1485`; after the fix, the web hover model reports `Mehter=720`, `Spearman=400`, `Imam=300`, and `Scout=65`. *(source: conversation/code verification)*
+- **[2026-05-02]** The discrepancy for game `231277359` was decomposed as: Hardened/Sipahi tier multipliers inflated live value, Veteran destroyed-only rows were dropped or could not subtract lower-tier active units, and Imams were excluded from `militaryActive`. *(source: conversation/code verification)*
+- **[2026-05-02]** Regression coverage for upgraded-unit army value now spans unit tests (`resourcePool`, `buildOrderResolver`), post-match integration, and CLI e2e via `__tests__/helpers/upgradedUnitDeathsFixture.ts`. *(source: conversation/code verification)*
+- **[2026-05-02]** Verification commands for commit `46ea161 Fix upgraded unit army value accounting` were root `npm run build`, root `npm test`, `npm --workspace aoe4-game-analyzer-web run verify`, and `npm --workspace aoe4-game-analyzer-web run build`. *(source: conversation/code verification)*
 - **[2026-05-01]** In live cached match `tmp/229727104-live.summary.json`, Sengoku Yatai resolves to 9 production timestamps and 7 destruction/removal timestamps; at `t=1362`, the correct active Yatai count is `3` with value `375`. *(source: conversation/code verification)*
 - **[2026-05-01]** Verification commands used for the Yatai/Yatai Trade Cart accounting change were root `npm test -- --runInBand`, root `npm run build`, and `cd apps/web && npm run verify`. *(source: conversation/code verification)*
 - **[2026-05-01]** Production app URL is `https://aoe4-game-analyzer-web.vercel.app`. *(source: conversation)*
@@ -49,6 +59,8 @@
 
 ## Bugs & Issues
 
+- **[2026-05-02]** Webapp army value showed `5313` instead of AoE4World `1485` at `17:40` for RepleteCactus game `231277359`. Fixed in commit `46ea161` by using base unit cost for raw live army value, preserving destroyed-only upgraded rows, applying upgraded deaths across active unit-line tiers, and classifying religious units as military army value. *(source: conversation/code verification)*
+- **[2026-05-02]** Local port `3000` had an older unresponsive `next-server`; fixed-route verification used a fresh dev server on `3001` and also found an older server on `3005` still serving stale `1185` output. Status: local environment cleanup may be needed outside the committed fix. *(source: conversation/code verification)*
 - **[2026-05-01]** Yatai active count regressed to `9` when `9001316` bucket `15` was changed back to ignored. Fixed by restoring bucket `15` as destruction/removal and updating tests/audit expectations. *(source: conversation/code verification)*
 - **[2026-05-01]** Focused tests briefly passed while live Yatai behavior was wrong because expectations had been changed to accept ignored Yatai bucket `15`; fixed by asserting Yatai bucket `15` produces `-125` deltas while Trade Cart bucket `15` remains ignored. *(source: conversation/code verification)*
 - **[2026-05-01]** Vercel first production deployment failed with "No Output Directory named `public` found" because the project used static output defaults. Fixed by adding `apps/web/vercel.json`. *(source: conversation)*
@@ -62,6 +74,7 @@
 
 ## Deferred Investigations
 
+- **[2026-05-02]** Clarify labels around `allocation.military` versus raw `militaryActive`; the former can include broader military-category deployed value while the latter is the AoE4World-style live army value. *(source: conversation/code verification)*
 - **[2026-05-01]** Consider adding a durable fixture derived from live match `229727104` so future unknown-bucket changes are checked against the real Yatai event sequence, not only synthetic timings. *(source: conversation)*
 - **[2026-05-01]** Add web-app caching for AoE4World responses and static data. *(source: conversation)*
 - **[2026-05-01]** Upgrade Next/PostCSS safely rather than using `npm audit fix --force` blindly. *(source: conversation)*
