@@ -5,6 +5,7 @@ export const VILLAGER_RATE_BASELINE_RPM = 40;
 export const VILLAGER_TARGET_COUNT = 120;
 
 const DEFAULT_VILLAGER_TRAIN_SECONDS = 20;
+const TOTAL_POPULATION_LOCK = 200;
 const GOLDEN_HORDE_BATCH_SECONDS = 37;
 const GOLDEN_HORDE_BATCH_SIZE = 2;
 const OOTD_GILDED_VILLAGER_TRAIN_SECONDS = 23;
@@ -44,6 +45,11 @@ interface ProductionUpgradeEvent {
 interface TownCenterEvent {
   timestamp: number;
   delta: number;
+}
+
+interface TotalPopulationPoint {
+  timestamp: number;
+  population: number;
 }
 
 interface VillagerTrainingInterval {
@@ -110,6 +116,10 @@ function isVillagerUnit(entry: BuildOrderEntry): boolean {
   return isVillagerBuildOrderEntry(entry);
 }
 
+function isTransformedVillagerEntry(entry: BuildOrderEntry): boolean {
+  return isVillagerUnit(entry) && Array.isArray(entry.transformed) && entry.transformed.length > 0;
+}
+
 function isTownCenterBuilding(entry: BuildOrderEntry): boolean {
   if (entry.type !== 'Building') return false;
 
@@ -132,6 +142,30 @@ function normalizeTimestamps(values: number[] | undefined, duration: number): nu
 function uniqueSortedTimestamps(values: number[]): number[] {
   return [...new Set(values.filter(value => Number.isFinite(value) && value >= 0))]
     .sort((a, b) => a - b);
+}
+
+function collectTotalPopulationPoints(player: PlayerSummary, duration: number): TotalPopulationPoint[] {
+  const resources = player.resources;
+  const populationValues =
+    resources.population ??
+    resources.totalPopulation ??
+    resources.totalPop ??
+    resources.pop;
+
+  if (!Array.isArray(populationValues) || populationValues.length === 0) return [];
+
+  const points: TotalPopulationPoint[] = [];
+  for (let i = 0; i < resources.timestamps.length && i < populationValues.length; i += 1) {
+    const timestamp = resources.timestamps[i];
+    const population = populationValues[i];
+    if (!Number.isFinite(timestamp) || !Number.isFinite(population)) continue;
+    points.push({
+      timestamp: Math.max(0, Math.min(duration, Number(timestamp))),
+      population: Number(population),
+    });
+  }
+
+  return points.sort((a, b) => a.timestamp - b.timestamp);
 }
 
 function collectTownCenterTimeline(player: PlayerSummary, duration: number): {
@@ -494,13 +528,23 @@ export function buildVillagerOpportunityForPlayer(params: BuildVillagerOpportuni
   const villagerTrainSeconds = villagerTrainSecondsForCivilization(player.civilization);
   const villagerGatherRateMultiplier = villagerGatherRateMultiplierForCivilization(player.civilization);
   const townCenterTimeline = collectTownCenterTimeline(player, duration);
+  const totalPopulationPoints = collectTotalPopulationPoints(player, duration);
 
   const villagerEntries = player.buildOrder.filter(isVillagerUnit);
   const producedVillagerTimes = villagerEntries
     .flatMap(entry => normalizeTimestamps(entry.finished, duration))
     .sort((a, b) => a - b);
+  const transformedVillagerTimes = villagerEntries
+    .filter(isTransformedVillagerEntry)
+    .flatMap(entry => normalizeTimestamps(entry.transformed, duration))
+    .sort((a, b) => a - b);
   const villagerDeathTimes = villagerEntries
-    .flatMap(entry => normalizeTimestamps(entry.destroyed, duration))
+    .flatMap(entry => {
+      const transformedTimes = uniqueSortedTimestamps(normalizeTimestamps(entry.transformed, duration));
+      const firstTransform = transformedTimes[0];
+      return normalizeTimestamps(entry.destroyed, duration)
+        .filter(timestamp => firstTransform === undefined || timestamp < firstTransform);
+    })
     .sort((a, b) => a - b);
   const startingVillagers = producedVillagerTimes.filter(timestamp => timestamp <= 0).length;
 
@@ -516,7 +560,9 @@ export function buildVillagerOpportunityForPlayer(params: BuildVillagerOpportuni
     duration,
     ...secondGrid(duration),
     ...normalizeTimestamps(player.resources.timestamps, duration),
+    ...totalPopulationPoints.map(point => point.timestamp),
     ...producedVillagerTimes,
+    ...transformedVillagerTimes,
     ...villagerDeathTimes,
     ...townCenterTimeline.events.map(event => event.timestamp),
     ...rateUpgradeEvents.map(event => event.timestamp),
@@ -534,10 +580,14 @@ export function buildVillagerOpportunityForPlayer(params: BuildVillagerOpportuni
   let productionBonusMultiplier = 1;
   let activeTownCenters = townCenterTimeline.initialCount;
   let expectedVillagerProgress = startingVillagers;
+  let expectedVillagerGrowthLocked = expectedVillagerProgress >= targetVillagers;
   let producedVillagers = 0;
+  let transformedVillagers = 0;
   let villagerDeaths = 0;
   let producedIndex = 0;
+  let transformedIndex = 0;
   let deathIndex = 0;
+  let totalPopulationIndex = 0;
   let townCenterEventIndex = 0;
   let rateEventIndex = 0;
   let productionEventIndex = 0;
@@ -553,7 +603,7 @@ export function buildVillagerOpportunityForPlayer(params: BuildVillagerOpportuni
     const elapsed = timestamp - previousTimestamp;
 
     if (elapsed > 0 && previousPoint) {
-      if (expectedVillagerProgress < targetVillagers) {
+      if (!expectedVillagerGrowthLocked && expectedVillagerProgress < targetVillagers) {
         const productionMultiplier = productionBaseMultiplier * productionBonusMultiplier;
         const nextExpectedVillagerProgress = Math.min(
           targetVillagers,
@@ -565,6 +615,9 @@ export function buildVillagerOpportunityForPlayer(params: BuildVillagerOpportuni
             (expectedProgressDelta * villagerTrainSeconds) / productionMultiplier;
         }
         expectedVillagerProgress = nextExpectedVillagerProgress;
+        if (expectedVillagerProgress >= targetVillagers - EPSILON) {
+          expectedVillagerGrowthLocked = true;
+        }
       }
 
       cumulativeUnderproductionLoss += (previousPoint.underproductionLossPerMin / 60) * elapsed;
@@ -606,9 +659,27 @@ export function buildVillagerOpportunityForPlayer(params: BuildVillagerOpportuni
       rateEventIndex += 1;
     }
 
+    while (
+      totalPopulationIndex < totalPopulationPoints.length &&
+      totalPopulationPoints[totalPopulationIndex].timestamp <= timestamp
+    ) {
+      if (totalPopulationPoints[totalPopulationIndex].population >= TOTAL_POPULATION_LOCK) {
+        expectedVillagerGrowthLocked = true;
+      }
+      totalPopulationIndex += 1;
+    }
+
     while (producedIndex < producedVillagerTimes.length && producedVillagerTimes[producedIndex] <= timestamp) {
       producedVillagers += 1;
       producedIndex += 1;
+    }
+
+    while (
+      transformedIndex < transformedVillagerTimes.length &&
+      transformedVillagerTimes[transformedIndex] <= timestamp
+    ) {
+      transformedVillagers += 1;
+      transformedIndex += 1;
     }
 
     while (deathIndex < villagerDeathTimes.length && villagerDeathTimes[deathIndex] <= timestamp) {
@@ -617,8 +688,9 @@ export function buildVillagerOpportunityForPlayer(params: BuildVillagerOpportuni
     }
 
     const expectedVillagers = Math.min(targetVillagers, Math.floor(expectedVillagerProgress + EPSILON));
-    const aliveVillagers = Math.max(0, producedVillagers - villagerDeaths);
-    const underproductionDeficit = Math.max(0, expectedVillagers - producedVillagers);
+    const economicProducedVillagers = Math.max(0, producedVillagers - transformedVillagers);
+    const aliveVillagers = Math.max(0, economicProducedVillagers - villagerDeaths);
+    const underproductionDeficit = Math.max(0, expectedVillagers - economicProducedVillagers);
     const totalDeficit = Math.max(0, expectedVillagers - aliveVillagers);
     const deathDeficit = Math.max(0, totalDeficit - underproductionDeficit);
     const expectedVillagerRateRpm = computeExpectedVillagerRateRpm(
@@ -641,7 +713,7 @@ export function buildVillagerOpportunityForPlayer(params: BuildVillagerOpportuni
       timestamp,
       expectedVillagerRateRpm,
       expectedVillagers,
-      producedVillagers,
+      producedVillagers: economicProducedVillagers,
       aliveVillagers,
       underproductionDeficit,
       deathDeficit,

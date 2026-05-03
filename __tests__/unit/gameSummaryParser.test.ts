@@ -87,4 +87,41 @@ describe('gameSummaryParser', () => {
 
     expect(cattle?.unknown?.['14']).toEqual([120, 180]);
   });
+
+  it('preserves optional total-population and transformed timestamp series', () => {
+    const json = loadGameSummaryFromFile(fixturePath);
+    const withOptionalSeries = {
+      ...json,
+      players: json.players.map((player: any, index: number) =>
+        index === 0
+          ? {
+            ...player,
+            resources: {
+              ...player.resources,
+              population: [90, 200, 160],
+            },
+            buildOrder: [
+              ...player.buildOrder,
+              {
+                id: 'jeanne-darc-villager',
+                icon: 'icons/races/jeanne_darc/units/jeanne_darc_villager',
+                pbgid: 424242,
+                type: 'Unit',
+                finished: [0],
+                constructed: [],
+                destroyed: [180],
+                transformed: [120],
+              },
+            ],
+          }
+          : player
+      ),
+    };
+
+    const parsed = parseGameSummary(withOptionalSeries);
+    const jeanne = parsed.players[0].buildOrder.find(entry => entry.pbgid === 424242);
+
+    expect((parsed.players[0].resources as any).population).toEqual([90, 200, 160]);
+    expect((jeanne as any)?.transformed).toEqual([120]);
+  });
 });

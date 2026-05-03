@@ -6,6 +6,21 @@ This file records items moved out of `NEXT_STEPS.md` after they are verified as 
 
 ## 2026-05-03
 
+- [x] `P0` Villager-opportunity cap parity with product rule (120-villager target OR 200-pop cap)
+  - Implemented expected-villager growth lock once either the configured 120-villager target is reached or parsed total population reaches 200.
+  - The 200-pop lock is permanent for the rest of the match, even if observed population drops later.
+  - Verification: full `npm test` passed after targeted unit/integration/e2e coverage.
+
+- [x] `P0` Ottoman Military School economic-infrastructure classification
+  - Military Schools now classify as `economic` infrastructure, analogous to Pit Mine-style economic investment.
+  - Produced units still count normally as `militaryActive`; Mehmed Imperial Armory stays landmark/advancement value.
+  - Verification: full `npm test` passed after targeted unit/integration/e2e coverage.
+
+- [x] `P0` Jeanne d'Arc villager-to-military transform accounting
+  - Parsed `transformed` timestamps are preserved.
+  - Jeanne counts as economic villager value before transform, military value after transform, and post-transform death is not counted as a villager death.
+  - Verification: full `npm test` passed after targeted unit/integration/e2e coverage.
+
 - [x] `P0` Finish and stabilize significant-resource-loss event wiring
   - Original goal: ensure `significantResourceLossEvents` is present on `GameAnalysis` and rendered hover points include the selected significant raid/destruction event.
   - Current state: significant resource loss events are produced, converted into timeline events, included in hover snapshots, rendered in the web UI, and shown on the allocation chart as significant-event markers.
@@ -15,6 +30,6 @@ This file records items moved out of `NEXT_STEPS.md` after they are verified as 
 
 - [x] `P0` Broad Ottoman free-production overlay scope
   - Original goal: model Military School cadence, Janissary-company injections, and related Ottoman free-production paths as a broad accounting overlay.
-  - Current decision: do not build a separate free-production overlay for v1. The remaining actionable fix is to classify Military Schools as economic infrastructure while counting produced units normally as military value.
+  - Current decision: do not build a separate free-production overlay for v1. Military School classification is tracked above as completed; produced units continue to count normally as military value.
   - Scope notes: Mehmed Imperial Armory stays landmark/advancement value; Mehter belongs to adjusted-military combat-strength modeling.
   - Source: user clarification on 2026-05-03.

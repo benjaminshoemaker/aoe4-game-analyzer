@@ -80,6 +80,10 @@ export interface TimeSeriesResources {
   stoneGathered?: number[];
   woodGathered?: number[];
   oliveoilGathered?: number[];
+  population?: number[];
+  totalPopulation?: number[];
+  totalPop?: number[];
+  pop?: number[];
 }
 
 export interface BuildOrderEntry {
@@ -90,6 +94,7 @@ export interface BuildOrderEntry {
   finished: number[];
   constructed: number[];
   destroyed: number[];
+  transformed?: number[];
   unknown?: Record<string, number[]>;
 }
 
@@ -210,7 +215,11 @@ function parseTimeSeries(raw: unknown): TimeSeriesResources {
     'goldGathered',
     'stoneGathered',
     'woodGathered',
-    'oliveoilGathered'
+    'oliveoilGathered',
+    'population',
+    'totalPopulation',
+    'totalPop',
+    'pop'
   ] as const;
 
   optionalFields.forEach((field) => {
@@ -236,6 +245,10 @@ function parseBuildOrder(raw: unknown): BuildOrderEntry[] {
         ? typeRaw
         : 'Unknown';
 
+    const transformed = obj.transformed === undefined
+      ? undefined
+      : assertArray<number>(obj.transformed, `buildOrder[${index}].transformed`);
+
     return {
       id: assertString(obj.id, `buildOrder[${index}].id`),
       icon: assertString(obj.icon, `buildOrder[${index}].icon`),
@@ -244,6 +257,7 @@ function parseBuildOrder(raw: unknown): BuildOrderEntry[] {
       finished: assertArray<number>(obj.finished, `buildOrder[${index}].finished`),
       constructed: assertArray<number>(obj.constructed, `buildOrder[${index}].constructed`),
       destroyed: assertArray<number>(obj.destroyed, `buildOrder[${index}].destroyed`),
+      ...(transformed !== undefined ? { transformed } : {}),
       unknown: parseUnknownTimestampBuckets(obj.unknown, `buildOrder[${index}].unknown`)
     };
   });

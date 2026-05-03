@@ -271,6 +271,22 @@ describe('villagerOpportunity', () => {
     expect(finalPoint.expectedVillagers).toBe(VILLAGER_TARGET_COUNT);
   });
 
+  it('permanently locks expected villager growth once total population reaches 200', () => {
+    const player = makeProductionPlayerSummary('english', {}, [0, 0, 0, 0, 0, 0]);
+    (player.resources as any).population = [80, 200, 160, 160];
+
+    const result = buildVillagerOpportunityForPlayer({
+      player,
+      duration: 360,
+    });
+
+    const at120 = pointAt(result.series, 120);
+    const at360 = pointAt(result.series, 360);
+
+    expect(at120.expectedVillagers).toBe(12);
+    expect(at360.expectedVillagers).toBe(at120.expectedVillagers);
+  });
+
   it('starts expected villager curve at villagers present at t=0', () => {
     const player = makeProductionPlayerSummary('english', {}, [0, 0, 0, 0, 0, 0]);
     const result = buildVillagerOpportunityForPlayer({
@@ -411,5 +427,33 @@ describe('villagerOpportunity', () => {
     const at120 = pointAt(result.series, 120);
     expect(at120.expectedVillagers).toBe(15);
     expect(at120.underproductionDeficit).toBe(9);
+  });
+
+  it('does not count transformed Jeanne as a villager death after she becomes military', () => {
+    const player = makeProductionPlayerSummary('jeanne_darc', {}, [0, 0, 0, 0, 0]);
+    player.buildOrder.unshift({
+      id: 'jeanne-darc-villager',
+      icon: 'icons/races/jeanne_darc/units/jeanne_darc_villager',
+      pbgid: 424242,
+      type: 'Unit',
+      finished: [0],
+      constructed: [],
+      destroyed: [180],
+      transformed: [120],
+    } as any);
+
+    const result = buildVillagerOpportunityForPlayer({
+      player,
+      duration: 240,
+    });
+
+    const at60 = pointAt(result.series, 60);
+    const at180 = pointAt(result.series, 180);
+    const finalPoint = result.series[result.series.length - 1];
+
+    expect(at60.producedVillagers).toBe(6);
+    expect(at180.aliveVillagers).toBe(5);
+    expect(at180.deathDeficit).toBe(0);
+    expect(finalPoint.cumulativeDeathLoss).toBe(0);
   });
 });

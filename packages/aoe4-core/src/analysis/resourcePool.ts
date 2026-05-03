@@ -225,6 +225,8 @@ const poolBands: PoolBand[] = [
   'advancement',
 ];
 
+const TRANSFORMED_JEANNE_MILITARY_CLASS = 'transformed_jeanne_military';
+
 interface BandAllocation {
   band: PoolBand;
   ratio: number;
@@ -259,6 +261,11 @@ function hasLandmarkClass(classes: string[]): boolean {
   return classes
     .map(normalizeText)
     .some(cls => cls.includes('landmark') && cls !== 'town_center_or_landmark');
+}
+
+function isTransformedJeanneMilitaryItem(item: ResolvedBuildItem): boolean {
+  if (item.type !== 'unit') return false;
+  return hasExactClassToken(item.classes, [TRANSFORMED_JEANNE_MILITARY_CLASS]);
 }
 
 function isEconomicUnit(item: ResolvedBuildItem): boolean {
@@ -365,6 +372,7 @@ export function classifyResolvedItemBand(
   }
 
   if (item.type === 'unit') {
+    if (isTransformedJeanneMilitaryItem(item)) return 'militaryActive';
     return isEconomicUnit(item) ? 'economic' : 'militaryActive';
   }
 
@@ -758,6 +766,72 @@ function computeHasNavalMilitaryProduction(items: ResolvedBuildItem[]): boolean 
   return items.some(item => isNavalMilitaryUnit(item));
 }
 
+function normalizeLifecycleTimestamps(values: number[] | undefined, duration: number): number[] {
+  if (!Array.isArray(values) || values.length === 0) return [];
+  return [...new Set(values
+    .filter(value => Number.isFinite(value))
+    .map(value => Math.max(0, Math.min(duration, Number(value)))))]
+    .sort((a, b) => a - b);
+}
+
+function isJeanneTransformingVillagerItem(item: ResolvedBuildItem): boolean {
+  if (item.type !== 'unit') return false;
+  if (!isVillagerResolvedItem(item)) return false;
+  if (!Array.isArray(item.originalEntry.transformed) || item.originalEntry.transformed.length === 0) return false;
+
+  const haystack = [
+    item.id,
+    item.baseId ?? '',
+    item.name,
+    item.originalEntry.id,
+    item.originalEntry.icon,
+    ...item.classes,
+  ].map(normalizeText).join(' ');
+
+  return haystack.includes('jeanne');
+}
+
+function expandTransformedJeanneItems(items: ResolvedBuildItem[], duration: number): ResolvedBuildItem[] {
+  const expanded: ResolvedBuildItem[] = [];
+
+  for (const item of items) {
+    if (!isJeanneTransformingVillagerItem(item)) {
+      expanded.push(item);
+      continue;
+    }
+
+    const transformTimes = normalizeLifecycleTimestamps(item.originalEntry.transformed, duration);
+    const firstTransform = transformTimes[0];
+    if (firstTransform === undefined) {
+      expanded.push(item);
+      continue;
+    }
+
+    expanded.push({
+      ...item,
+      id: `${item.id}:economic-before-transform`,
+      produced: item.produced.filter(timestamp => timestamp <= firstTransform),
+      destroyed: [
+        ...item.destroyed.filter(timestamp => timestamp < firstTransform),
+        firstTransform,
+      ].sort((a, b) => a - b),
+    });
+
+    expanded.push({
+      ...item,
+      id: `${item.id}:military-after-transform`,
+      classes: [
+        ...item.classes.filter(cls => !['worker', 'villager'].includes(normalizeText(cls))),
+        TRANSFORMED_JEANNE_MILITARY_CLASS,
+      ],
+      produced: transformTimes,
+      destroyed: item.destroyed.filter(timestamp => timestamp >= firstTransform),
+    });
+  }
+
+  return expanded;
+}
+
 export function getDeferredCivilizationNotices(civilization: string): string[] {
   const normalized = normalizeCivilization(civilization);
   const notices: string[] = [];
@@ -790,7 +864,7 @@ export function buildPlayerDeployedPoolSeries(
   if (isChineseOrZhuXi(player.civilization) && !hasTrackedImperialOfficial(items)) {
     items.push(createSyntheticImperialOfficial());
   }
-  const allItems = items;
+  const allItems = expandTransformedJeanneItems(items, gameDuration);
   const hasNavalMilitaryProduction = computeHasNavalMilitaryProduction(allItems);
   const militarySchoolConstructedAt = allItems
     .filter(item => item.type === 'building')
@@ -817,7 +891,7 @@ export function buildPlayerDeployedPoolSeries(
   const lifecycleContexts: PoolItemContext[] = [];
   const lifecycleEvents: LifecyclePoolEvent[] = [];
 
-  for (const [order, item] of items.entries()) {
+  for (const [order, item] of allItems.entries()) {
     const allocations = resolveBandAllocations(item, context);
     if (allocations.length === 0) continue;
 

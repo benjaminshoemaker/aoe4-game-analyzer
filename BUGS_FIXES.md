@@ -11,11 +11,6 @@ Priority levels:
 
 ## P0 — Existing Metric Correctness
 
-- [ ] `P0` Villager-opportunity cap parity with product rule (120-villager target OR 200-pop cap)
-  - Implement "stop expected villager growth if player reaches 120 villagers OR is population-capped at 200" exactly as agreed.
-  - Why: current model enforces the 120 target cap but does not yet stop at 200-pop cap.
-  - Source: user-approved villager-opportunity defaults and follow-up clarifications.
-
 - [ ] `P0` Villager-opportunity civ gather-rate correctness sweep
   - Add missing civ gather modifiers that directly change villager resource throughput (not static/non-villager income).
   - Highest-confidence next adds from current data: Abbasid/Ayyubid Golden Age gather boosts, Chinese Ancient Techniques dynasty gather boost, Ottoman Anatolian Hills mining speed.
@@ -36,27 +31,11 @@ Priority levels:
 
 ## P0 — Civ-Specific Accounting Fixes
 
-- [ ] `P0` Ottoman Military School economic-infrastructure classification
-  - Classify Ottoman Military Schools as `economic` infrastructure, analogous to a Pit Mine, because they are durable investments that generate future military value.
-  - Keep produced units counted normally as `militaryActive`; do not add a separate free-production overlay for v1.
-  - Keep Mehmed Imperial Armory as a landmark/advancement item, not as economic infrastructure.
-  - Treat Mehter effects as adjusted-military/combat-strength work, not Ottoman economic accounting.
-  - Why: the current broad free-production framing is overcomplicated for the tool; Military School classification is the concrete accounting bug.
-  - Source: user clarification on Ottoman accounting.
-
 - [ ] `P0` Delhi time-as-resource model
   - Represent tech-time + scholar-gating as first-class state (not standard resource spend).
   - Keep this deferred, but keep it `P0` because Delhi can fundamentally distort trusted tech/resource accounting.
   - Why: explicitly deferred; breaks baseline spend assumptions.
   - Source: `NOTES.md` (Civ dispositions), `MECHANICS_RESEARCH.md` (`de` civ mechanics).
-
-- [ ] `P0` Jeanne d'Arc villager-to-military transform accounting
-  - Stop counting Jeanne as an economic villager once she transforms from villager/worker state into hero/combat state.
-  - After transformation, count Jeanne as military value.
-  - If Jeanne dies after transformation, count it as military value destroyed, not as a villager death and not as villager-opportunity loss.
-  - Leave companion/rally injections and consecrated discount windows deferred unless they become visible enough to model reliably.
-  - Why: the main correctness bug is that Jeanne transformation can otherwise look like a villager lost.
-  - Source: `NOTES.md` (User Caveats + Civ dispositions), `MECHANICS_RESEARCH.md` (`je` civ mechanics).
 
 - [ ] `P1` Chinese/Zhu Xi state completeness
   - Keep Imperial Officials counted as economic units with their resource value.

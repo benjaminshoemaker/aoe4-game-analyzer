@@ -242,6 +242,24 @@ describe('resource pool band classifier', () => {
     expect(classifyResolvedItemBand(barracks, { hasNavalMilitaryProduction: false })).toBe('militaryCapacity');
   });
 
+  it('classifies Ottoman Military School as economic infrastructure', () => {
+    const militarySchool = makeItem({
+      type: 'building',
+      id: 'military-school-1',
+      name: 'Military School',
+      classes: ['building', 'military_school_ott', 'free_passive_unit_production']
+    });
+    const mehmedArmory = makeItem({
+      type: 'building',
+      id: 'mehmed-imperial-armory-3',
+      name: 'Mehmed Imperial Armory',
+      classes: ['building', 'landmark', 'siege_production_landmark']
+    });
+
+    expect(classifyResolvedItemBand(militarySchool, { hasNavalMilitaryProduction: false })).toBe('economic');
+    expect(classifyResolvedItemBand(mehmedArmory, { hasNavalMilitaryProduction: false })).toBe('advancement');
+  });
+
   it('classifies non-landmark Town Center as economic even with town_center_or_landmark class', () => {
     const townCenter = makeItem({
       type: 'building',
@@ -874,6 +892,59 @@ describe('buildPlayerDeployedPoolSeries', () => {
         band: 'economic',
         itemLabel: 'Cattle',
         deltaValue: 90,
+        deltaCount: 1,
+      }),
+    ]));
+  });
+
+  it("moves Jeanne d'Arc from economic to military value after transform", () => {
+    const player = makePlayer("Jeanne d'Arc");
+    player.resources.timestamps = [0, 60, 120, 180, 240];
+
+    const result = buildPlayerDeployedPoolSeries(
+      player,
+      makeBuildOrder([
+        makeItem({
+          originalEntry: {
+            id: 'jeanne-darc-villager',
+            icon: 'icons/races/jeanne_darc/units/jeanne_darc_villager',
+            pbgid: 424242,
+            type: 'Unit',
+            finished: [0],
+            constructed: [],
+            destroyed: [180],
+            transformed: [120],
+          } as any,
+          type: 'unit',
+          id: 'jeanne-darc-villager',
+          name: "Jeanne d'Arc",
+          classes: ['worker', 'villager', 'hero'],
+          cost: { food: 50, wood: 0, gold: 0, stone: 0, total: 50 },
+          produced: [0],
+          destroyed: [180]
+        })
+      ]),
+      240
+    );
+
+    expect(result.series.find(point => point.timestamp === 60)?.economic).toBe(50);
+    expect(result.series.find(point => point.timestamp === 60)?.militaryActive).toBe(0);
+    expect(result.series.find(point => point.timestamp === 120)?.economic).toBe(0);
+    expect(result.series.find(point => point.timestamp === 120)?.militaryActive).toBe(50);
+    expect(result.series.find(point => point.timestamp === 180)?.militaryActive).toBe(0);
+    expect(result.bandItemDeltas).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        timestamp: 120,
+        band: 'economic',
+        itemLabel: "Jeanne d'Arc",
+        deltaValue: -50,
+        deltaCount: -1,
+      }),
+      expect.objectContaining({
+        timestamp: 120,
+        band: 'militaryActive',
+        itemLabel: "Jeanne d'Arc",
+        deltaValue: 50,
         deltaCount: 1,
       }),
     ]));
