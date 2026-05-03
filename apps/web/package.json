@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "prebuild": "npm --prefix ../.. --workspace @aoe4/analyzer-core run build",
+    "prebuild": "tsc -p ../../packages/aoe4-core/tsconfig.json",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",
-    "@aoe4/analyzer-core": "0.1.0",
+    "@aoe4/analyzer-core": "file:../../packages/aoe4-core",
     "axios": "^1.6.8",
     "next": "^16.2.4",
     "react": "^18.2.0",

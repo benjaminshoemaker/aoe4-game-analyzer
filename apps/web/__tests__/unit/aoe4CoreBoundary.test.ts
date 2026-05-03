@@ -4,6 +4,10 @@ import path from 'path';
 const webRoot = path.resolve(__dirname, '..', '..');
 const projectRoot = path.resolve(webRoot, '..', '..');
 
+function readJson(relativePath: string): any {
+  return JSON.parse(fs.readFileSync(path.join(webRoot, relativePath), 'utf-8'));
+}
+
 function collectSourceFiles(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
@@ -25,5 +29,11 @@ describe('web shared-core boundary', () => {
       .map(filePath => path.relative(webRoot, filePath));
 
     expect(offenders).toEqual([]);
+  });
+
+  it('installs the shared analyzer core from the local package', () => {
+    const packageJson = readJson('package.json');
+
+    expect(packageJson.dependencies['@aoe4/analyzer-core']).toBe('file:../../packages/aoe4-core');
   });
 });

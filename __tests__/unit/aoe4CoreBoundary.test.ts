@@ -3,6 +3,10 @@ import path from 'path';
 
 const projectRoot = path.resolve(__dirname, '..', '..');
 
+function readJson(relativePath: string): any {
+  return JSON.parse(fs.readFileSync(path.join(projectRoot, relativePath), 'utf-8'));
+}
+
 function collectSourceFiles(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
@@ -29,5 +33,21 @@ describe('AoE4 core boundary', () => {
       .map(filePath => path.relative(projectRoot, filePath));
 
     expect(offenders).toEqual([]);
+  });
+
+  it('points core package test scripts at existing root test suites', () => {
+    const packageJson = readJson('packages/aoe4-core/package.json');
+    const suiteByScript: Record<string, string> = {
+      'test:unit': '__tests__/unit',
+      'test:integration': '__tests__/integration',
+      'test:e2e': '__tests__/e2e',
+    };
+
+    for (const [scriptName, suitePath] of Object.entries(suiteByScript)) {
+      const command = packageJson.scripts[scriptName];
+      expect(command).toContain('--config ../../package.json');
+      expect(command).toContain(suitePath);
+      expect(fs.existsSync(path.join(projectRoot, suitePath))).toBe(true);
+    }
   });
 });
