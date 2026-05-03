@@ -3804,6 +3804,10 @@ export function renderPostMatchHtml(
       pointer-events: none;
     }
 
+    .significant-event-window {
+      pointer-events: none;
+    }
+
     .significant-event-dot {
       stroke: var(--color-control-bg);
       stroke-width: 2;

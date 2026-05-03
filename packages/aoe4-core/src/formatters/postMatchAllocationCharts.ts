@@ -189,6 +189,32 @@ function significantEventMarkerGlyph(event: SignificantTimelineEvent): string {
   return 'L';
 }
 
+function buildSignificantEventWindowLayer(params: {
+  events: SignificantTimelineEvent[];
+  duration: number;
+  x: (timestamp: number) => number;
+  lineStartY: number;
+  lineEndY: number;
+  labels: AllocationChartPlayerLabels;
+}): string {
+  const events = params.events.filter(event => event.timestamp >= 0 && event.timestamp <= params.duration);
+  if (events.length === 0) return '';
+
+  return events
+    .map(event => {
+      const boundedStart = Math.max(0, Math.min(params.duration, Math.min(event.windowStart, event.windowEnd)));
+      const boundedEnd = Math.max(0, Math.min(params.duration, Math.max(event.windowStart, event.windowEnd)));
+      const startX = params.x(boundedStart);
+      const endX = params.x(boundedEnd);
+      const width = Math.max(2, endX - startX);
+      const color = escapeHtml(significantEventMarkerColor(event, params.labels));
+      const label = `${event.label} window ${formatTime(boundedStart)}-${formatTime(boundedEnd)}`;
+
+      return `<rect class="significant-event-window" data-significant-event-window data-significant-event-id="${escapeHtml(event.id)}" x="${startX.toFixed(2)}" y="${params.lineStartY.toFixed(2)}" width="${width.toFixed(2)}" height="${(params.lineEndY - params.lineStartY).toFixed(2)}" rx="6" fill="${color}" opacity="0.14" stroke="${color}" stroke-width="1.2" stroke-opacity="0.34" pointer-events="none" display="none" aria-hidden="true"><title>${escapeHtml(label)}</title></rect>`;
+    })
+    .join('');
+}
+
 function buildSignificantEventMarkerLayer(params: {
   events: SignificantTimelineEvent[];
   duration: number;
@@ -489,6 +515,15 @@ export function buildStrategyAllocationSvg(
     opponentColor,
   });
 
+  const significantEvents = uniqueSignificantEvents(hoverSnapshots);
+  const significantEventWindowLayer = buildSignificantEventWindowLayer({
+    events: significantEvents,
+    duration,
+    x,
+    lineStartY: padding.top,
+    lineEndY: height - padding.bottom,
+    labels,
+  });
   const ageMarkerLayer = buildAgeMarkerLayer({
     markers: ageMarkers,
     duration,
@@ -500,7 +535,7 @@ export function buildStrategyAllocationSvg(
     labels,
   });
   const significantEventLayer = buildSignificantEventMarkerLayer({
-    events: uniqueSignificantEvents(hoverSnapshots),
+    events: significantEvents,
     duration,
     x,
     lineStartY: padding.top,
@@ -511,6 +546,7 @@ export function buildStrategyAllocationSvg(
   return `
 <svg id="allocation-comparison" class="strategy-chart allocation-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Allocation comparison chart">
   <rect x="0" y="0" width="${width}" height="${height}" fill="var(--color-chart-bg)" rx="10" />
+  ${significantEventWindowLayer}
   ${xTicks}
   ${ageMarkerLayer}
   ${lanes}

@@ -806,8 +806,25 @@ ${adjustedFormatters}
         });
       }
 
+      function syncSignificantEventWindowSpotlight(point) {
+        var eventId = point && point.significantEvent && point.significantEvent.id
+          ? String(point.significantEvent.id)
+          : '';
+        document.querySelectorAll('[data-significant-event-window]').forEach(function (el) {
+          var isSelected = !!eventId && el.getAttribute('data-significant-event-id') === eventId;
+          if (isSelected) {
+            el.removeAttribute('display');
+            el.setAttribute('aria-hidden', 'false');
+          } else {
+            el.setAttribute('display', 'none');
+            el.setAttribute('aria-hidden', 'true');
+          }
+        });
+      }
+
       function updateSignificantEvent(point) {
         var event = point.significantEvent || null;
+        syncSignificantEventWindowSpotlight(point);
         document.querySelectorAll('[data-significant-event]').forEach(function (el) {
           el.hidden = !event;
         });

@@ -56,6 +56,8 @@ const allocation = {
 const significantEvent = {
   id: 'loss-1',
   timestamp: 30,
+  windowStart: 20,
+  windowEnd: 40,
   kind: 'raid',
   victim: 'you',
   label: 'Raid',
@@ -112,6 +114,10 @@ describe('post-match allocation chart SVG builders', () => {
     expect(html).toContain('data-hover-timestamp="30"');
     expect(html).toContain('data-age-marker="Player One Feudal"');
     expect(html).toContain('data-significant-event-marker');
+    expect(html).toContain('data-significant-event-window');
+    expect(html).toContain('data-significant-event-id="loss-1"');
+    expect(html).toContain('class="significant-event-window"');
+    expect(html).toContain('display="none"');
     expect(html).toContain('Economic');
   });
 });

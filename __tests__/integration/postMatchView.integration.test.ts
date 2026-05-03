@@ -581,6 +581,11 @@ describe('post-match view integration', () => {
       villagerDeaths: 1,
     }));
     expect(html).toContain('data-significant-event-marker');
+    expect(html).toContain('data-significant-event-window');
+    expect(html).toContain('class="significant-event-window"');
+    expect(html).toContain('display="none"');
+    expect(html).toContain('function syncSignificantEventWindowSpotlight(point)');
+    expect(html).toContain("document.querySelectorAll('[data-significant-event-window]').forEach");
     expect(html).toMatch(/<details class="event-impact" data-significant-event(?: hidden)? open>/);
     expect(html).toContain('<summary class="event-impact-heading">Event impact</summary>');
     expect(html).toContain('Event impact');
