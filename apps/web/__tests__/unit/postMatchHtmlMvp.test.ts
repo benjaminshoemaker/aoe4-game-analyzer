@@ -17,6 +17,12 @@ function extractAllocationLane(html: string, key: string): string {
   return match[0];
 }
 
+function extractInspectorTable(html: string): string {
+  const match = html.match(/<table class="inspector-table">[\s\S]*?<\/table>/);
+  if (!match) throw new Error('Expected inspector table');
+  return match[0];
+}
+
 function extractAgeMarker(svg: string, label: string): string {
   const match = svg.match(new RegExp(`<g class="age-marker" data-age-marker="${label}">[\\s\\S]*?</g>`));
   if (!match) throw new Error(`Expected age marker ${label}`);
@@ -379,6 +385,7 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).toContain('data-hover-field="allocationCategory.military.investment.delta"');
     expect(html).toContain('data-hover-field="allocation.float.delta"');
     expect(html).toContain('data-hover-field="allocation.opportunityLost.delta"');
+    expect(extractInspectorTable(html)).not.toContain('class="legend-dot');
     expect(html).not.toContain('data-inspector-row="destroyed"');
     expect(html).not.toContain('data-band-key="destroyed"');
     expect(html).toContain('data-allocation-category-accounting="economic-resource-generation"');
@@ -481,6 +488,9 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).toContain('<th scope="col">Gap</th>');
     expect(html).toContain('data-opportunity-lost-component="total"');
     expect(html).toContain('data-opportunity-lost-component-total-you');
+    expect(html).toContain('data-opportunity-lost-component="low_underproduction"');
+    expect(html).toContain('<th scope="row">Under production seconds</th>');
+    expect(html).toContain('data-opportunity-lost-component-low-underproduction-you');
     expect(html).toContain('data-band-summary-label');
     expect(html).toContain('data-band-summary-value');
     expect(html).toContain('data-band-summary-you');
@@ -499,6 +509,11 @@ describe('renderPostMatchHtml (web mvp)', () => {
       you: 90,
       opponent: 140,
       delta: -50,
+    }));
+    expect(payload[0].opportunityLostComponents.low_underproduction).toEqual(expect.objectContaining({
+      you: 0,
+      opponent: 0,
+      delta: 0,
     }));
     expect(payload[0].bandBreakdown.opportunityLost.you).toEqual([
       expect.objectContaining({ label: '0:00-0:30', value: 90, count: 1 }),

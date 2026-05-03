@@ -161,6 +161,7 @@ export interface VillagerOpportunityContext {
 export interface VillagerOpportunityResourcePoint {
   timestamp: number;
   cumulativeLoss: number;
+  cumulativeUnderproductionSeconds?: number;
   cumulativeUnderproductionLoss?: number;
   cumulativeDeathLoss?: number;
   cumulativeResourcesGained: number;
@@ -427,6 +428,7 @@ function finalVillagerOpportunityPoint(opportunity: VillagerOpportunityForPlayer
       underproductionLossPerMin: 0,
       deathLossPerMin: 0,
       totalLossPerMin: 0,
+      cumulativeUnderproductionSeconds: 0,
       cumulativeUnderproductionLoss: 0,
       cumulativeDeathLoss: 0,
       cumulativeTotalLoss: 0,
@@ -688,6 +690,7 @@ function buildVillagerOpportunityResourceSeries(
     underproductionLossPerMin: 0,
     deathLossPerMin: 0,
     totalLossPerMin: 0,
+    cumulativeUnderproductionSeconds: 0,
     cumulativeUnderproductionLoss: 0,
     cumulativeDeathLoss: 0,
     cumulativeTotalLoss: 0,
@@ -701,6 +704,7 @@ function buildVillagerOpportunityResourceSeries(
     return {
       timestamp: point.timestamp,
       cumulativeLoss,
+      cumulativeUnderproductionSeconds: Math.max(0, point.cumulativeUnderproductionSeconds ?? 0),
       cumulativeUnderproductionLoss: Math.max(0, point.cumulativeUnderproductionLoss),
       cumulativeDeathLoss: Math.max(0, point.cumulativeDeathLoss),
       cumulativeResourcesGained,

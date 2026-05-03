@@ -86,7 +86,7 @@ interface AllocationComparisonRow {
 }
 
 type AllocationComparison = Record<AllocationGraphKey | AllocationCategoryKey, AllocationComparisonRow>;
-type OpportunityLostComponents = Record<'villagersLost' | 'underproduction', AllocationComparisonRow>;
+type OpportunityLostComponents = Record<'villagersLost' | 'underproduction' | 'low_underproduction', AllocationComparisonRow>;
 type AllocationCategoryBasis = 'net' | 'destroyed' | 'investment';
 type EconomicAllocationBasis = 'resourceGeneration' | 'resourceInfrastructure';
 type AllocationCategoryRows = Record<AllocationCategoryBasis, AllocationComparisonRow> &
@@ -724,6 +724,12 @@ function cumulativeUnderproductionOpportunityLoss(
   return 0;
 }
 
+function cumulativeUnderproductionSeconds(
+  point: HoverSnapshot['villagerOpportunity']['you']
+): number {
+  return Math.max(0, Math.round(point.cumulativeUnderproductionSeconds ?? 0));
+}
+
 function economicRoleTotalsFromBreakdown(
   breakdown?: BandBreakdownPayload
 ): Record<EconomicAllocationBasis, { you: number; opponent: number }> {
@@ -763,6 +769,8 @@ function buildHoverSnapshots(model: PostMatchViewModel, labels: RenderPlayerLabe
     const opponentVillagersLost = sumBreakdownValues(opportunityLostBreakdown?.opponent);
     const youUnderproduction = cumulativeUnderproductionOpportunityLoss(snapshot.villagerOpportunity.you);
     const opponentUnderproduction = cumulativeUnderproductionOpportunityLoss(snapshot.villagerOpportunity.opponent);
+    const youUnderproductionSeconds = cumulativeUnderproductionSeconds(snapshot.villagerOpportunity.you);
+    const opponentUnderproductionSeconds = cumulativeUnderproductionSeconds(snapshot.villagerOpportunity.opponent);
     const opportunityLostComponents: OpportunityLostComponents = {
       villagersLost: buildAllocationComparisonRow(
         'opportunityLost',
@@ -775,6 +783,13 @@ function buildHoverSnapshots(model: PostMatchViewModel, labels: RenderPlayerLabe
         'opportunityLost',
         youUnderproduction,
         opponentUnderproduction,
+        0,
+        0
+      ),
+      low_underproduction: buildAllocationComparisonRow(
+        'opportunityLost',
+        youUnderproductionSeconds,
+        opponentUnderproductionSeconds,
         0,
         0
       ),
@@ -1596,6 +1611,12 @@ function buildHoverInspectorHtml(
                     <td><strong data-opportunity-lost-component-underproduction-you>${formatNumber(opportunityLostComponents.underproduction.you)}</strong></td>
                     <td><strong data-opportunity-lost-component-underproduction-opponent>${formatNumber(opportunityLostComponents.underproduction.opponent)}</strong></td>
                     <td><strong data-opportunity-lost-component-underproduction-delta>${formatSigned(opportunityLostComponents.underproduction.delta)}</strong></td>
+                  </tr>
+                  <tr data-opportunity-lost-component="low_underproduction">
+                    <th scope="row">Under production seconds</th>
+                    <td><strong data-opportunity-lost-component-low-underproduction-you>${formatNumber(opportunityLostComponents.low_underproduction.you)}</strong></td>
+                    <td><strong data-opportunity-lost-component-low-underproduction-opponent>${formatNumber(opportunityLostComponents.low_underproduction.opponent)}</strong></td>
+                    <td><strong data-opportunity-lost-component-low-underproduction-delta>${formatSigned(opportunityLostComponents.low_underproduction.delta)}</strong></td>
                   </tr>
                 </tbody>
               </table>

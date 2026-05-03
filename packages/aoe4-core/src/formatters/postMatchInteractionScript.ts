@@ -473,6 +473,7 @@ ${adjustedHelpers}
         var opportunityTotal = (point.allocation && point.allocation.opportunityLost) || { you: 0, opponent: 0, delta: 0 };
         var villagersLost = opportunityComponents.villagersLost || { you: 0, opponent: 0, delta: 0 };
         var underproduction = opportunityComponents.underproduction || { you: 0, opponent: 0, delta: 0 };
+        var lowUnderproduction = opportunityComponents.low_underproduction || { you: 0, opponent: 0, delta: 0 };
         setText('[data-opportunity-lost-component-total-you]', formatNumber(opportunityTotal.you));
         setText('[data-opportunity-lost-component-total-opponent]', formatNumber(opportunityTotal.opponent));
         setText('[data-opportunity-lost-component-total-delta]', formatSigned(opportunityTotal.delta));
@@ -482,6 +483,9 @@ ${adjustedHelpers}
         setText('[data-opportunity-lost-component-underproduction-you]', formatNumber(underproduction.you));
         setText('[data-opportunity-lost-component-underproduction-opponent]', formatNumber(underproduction.opponent));
         setText('[data-opportunity-lost-component-underproduction-delta]', formatSigned(underproduction.delta));
+        setText('[data-opportunity-lost-component-low-underproduction-you]', formatNumber(lowUnderproduction.you));
+        setText('[data-opportunity-lost-component-low-underproduction-opponent]', formatNumber(lowUnderproduction.opponent));
+        setText('[data-opportunity-lost-component-low-underproduction-delta]', formatSigned(lowUnderproduction.delta));
 
         function listHtml(entries, bandKey) {
           if (!entries || entries.length === 0) {

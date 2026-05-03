@@ -96,6 +96,7 @@ const snapshot: ClientHoverSnapshot = {
   opportunityLostComponents: {
     villagersLost: { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 },
     underproduction: { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 },
+    low_underproduction: { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 },
   },
   totalPoolTooltip: 'total',
   strategy: {
@@ -123,6 +124,7 @@ describe('post-match interaction script formatter', () => {
     expect(script).toContain('id="post-match-hover-data"');
     expect(script).toContain('searchParams.set');
     expect(script).toContain('searchParams.delete');
+    expect(script).toContain('data-opportunity-lost-component-low-underproduction-you');
     expect(script).not.toContain('payloadSourceUrl');
     expect(script).not.toContain('fetch(payloadSourceUrl');
   });

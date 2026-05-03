@@ -280,7 +280,7 @@ describe('matches route e2e', () => {
     expect(mockUnstableCache).toHaveBeenCalledTimes(1);
     expect(mockUnstableCache.mock.calls[0][1]).toEqual([
       'aoe4-rendered-report-html',
-      'v1',
+      'v4',
       'my-slug',
       '230143339',
       expect.stringMatching(/^sig-sha256:[a-f0-9]{64}$/),
@@ -411,6 +411,11 @@ describe('matches route e2e', () => {
       opponent: 0,
       delta: 1475,
     }));
+    expect(payload[0].opportunityLostComponents.low_underproduction).toEqual(expect.objectContaining({
+      you: 2213,
+      opponent: 0,
+      delta: 2213,
+    }));
     expect(payload[0].opportunityLostComponents.villagersLost).toEqual(expect.objectContaining({
       you: 0,
       opponent: 0,
@@ -431,6 +436,8 @@ describe('matches route e2e', () => {
     expect(body).toContain('<th scope="row">Total</th>');
     expect(body).toContain('data-opportunity-lost-component="underproduction"');
     expect(body).toContain('<span title="Villager underproduction">Under-production</span>');
+    expect(body).toContain('data-opportunity-lost-component="low_underproduction"');
+    expect(body).toContain('<th scope="row">Under production seconds</th>');
     expect(body).not.toContain('<th scope="row">Villager underproduction</th>');
   });
 
@@ -463,6 +470,8 @@ describe('matches route e2e', () => {
       opponent: 0,
       delta: 120,
     }));
+    expect(at90.opportunityLostComponents.low_underproduction.you).toBe(30);
+    expect(at180.opportunityLostComponents.low_underproduction.you).toBe(120);
     expect(body).toContain('resources lost by selected time');
   });
 });

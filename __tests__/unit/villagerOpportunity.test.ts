@@ -219,6 +219,46 @@ describe('villagerOpportunity', () => {
     );
   });
 
+  it('tracks cumulative town-center idle seconds behind expected villager production', () => {
+    const player = makeProductionPlayerSummary('english', {}, [0, 0, 0, 0, 0, 0]);
+    const result = buildVillagerOpportunityForPlayer({
+      player,
+      duration: 120,
+    });
+
+    const at120 = pointAt(result.series, 120);
+
+    expect(at120.cumulativeUnderproductionSeconds).toBeCloseTo(120, 6);
+    expect(at120.cumulativeUnderproductionLoss).toBeCloseTo(
+      (300 * VILLAGER_RATE_BASELINE_RPM) / 60,
+      6
+    );
+  });
+
+  it('subtracts actual villager training time from town-center idle seconds', () => {
+    const player = makeProductionPlayerSummary('english', {}, [0, 0, 0, 0, 0, 0, 60]);
+    const result = buildVillagerOpportunityForPlayer({
+      player,
+      duration: 60,
+    });
+
+    const at60 = pointAt(result.series, 60);
+
+    expect(at60.cumulativeUnderproductionSeconds).toBeCloseTo(40, 6);
+  });
+
+  it('credits in-progress villager training before the villager completion timestamp', () => {
+    const player = makeProductionPlayerSummary('english', {}, [0, 0, 0, 0, 0, 0, 60]);
+    const result = buildVillagerOpportunityForPlayer({
+      player,
+      duration: 70,
+    });
+
+    const at50 = pointAt(result.series, 50);
+
+    expect(at50.cumulativeUnderproductionSeconds).toBeCloseTo(40, 6);
+  });
+
   it('keeps expected villager count capped at the configured target', () => {
     const player = makePlayerSummary();
     const result = buildVillagerOpportunityForPlayer({

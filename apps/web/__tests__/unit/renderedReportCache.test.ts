@@ -21,7 +21,7 @@ describe('rendered report cache helpers', () => {
 
     expect(keyParts).toEqual([
       'aoe4-rendered-report-html',
-      'v1',
+      'v4',
       '8097972-RepleteCactus',
       '230143339',
       expect.stringMatching(/^sig-sha256:[a-f0-9]{64}$/),
@@ -35,7 +35,7 @@ describe('rendered report cache helpers', () => {
       gameId: 230143339,
     })).toEqual([
       'aoe4-rendered-report-html',
-      'v1',
+      'v4',
       'public-player',
       '230143339',
       'public',

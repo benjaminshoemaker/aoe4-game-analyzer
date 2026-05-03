@@ -19,6 +19,12 @@ function extractAllocationLane(html: string, key: string): string {
   return match[0];
 }
 
+function extractInspectorTable(html: string): string {
+  const match = html.match(/<table class="inspector-table">[\s\S]*?<\/table>/);
+  if (!match) throw new Error('Expected inspector table');
+  return match[0];
+}
+
 function extractHoverPayload(html: string): any[] {
   const payloadMatch = html.match(/<script id="post-match-hover-data" type="application\/json">([\s\S]*?)<\/script>/);
   if (!payloadMatch) throw new Error('Expected post-match hover data payload');
@@ -204,6 +210,7 @@ describe('post-match allocation widget integration', () => {
     expect(html).toContain('data-hover-field="allocationCategory.military.investment.delta"');
     expect(html).toContain('data-hover-field="allocation.float.delta"');
     expect(html).toContain('data-hover-field="allocation.opportunityLost.delta"');
+    expect(extractInspectorTable(html)).not.toContain('class="legend-dot');
     expect(html).not.toContain('data-inspector-row="destroyed"');
     expect(html).not.toContain('data-band-key="destroyed"');
     expect(html).toContain('data-allocation-category-accounting="economic-resource-generation"');
@@ -355,6 +362,11 @@ describe('post-match allocation widget integration', () => {
       opponent: 0,
       delta: 1475,
     }));
+    expect(payload[0].opportunityLostComponents.low_underproduction).toEqual(expect.objectContaining({
+      you: 2213,
+      opponent: 0,
+      delta: 2213,
+    }));
     expect(payload[0].opportunityLostComponents.villagersLost).toEqual(expect.objectContaining({
       you: 0,
       opponent: 0,
@@ -375,6 +387,8 @@ describe('post-match allocation widget integration', () => {
     expect(html).toContain('<th scope="row">Total</th>');
     expect(html).toContain('data-opportunity-lost-component="underproduction"');
     expect(html).toContain('<span title="Villager underproduction">Under-production</span>');
+    expect(html).toContain('data-opportunity-lost-component="low_underproduction"');
+    expect(html).toContain('<th scope="row">Under production seconds</th>');
     expect(html).not.toContain('<th scope="row">Villager underproduction</th>');
   });
 
@@ -400,6 +414,8 @@ describe('post-match allocation widget integration', () => {
       at90.opportunityLostComponents.villagersLost.you +
       at90.opportunityLostComponents.underproduction.you
     );
+    expect(at90.opportunityLostComponents.low_underproduction.you).toBe(30);
+    expect(at180.opportunityLostComponents.low_underproduction.you).toBe(120);
     expect(html).toContain('resources lost by selected time');
   });
 });

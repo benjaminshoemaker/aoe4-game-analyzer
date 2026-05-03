@@ -46,6 +46,11 @@ interface TownCenterEvent {
   delta: number;
 }
 
+interface VillagerTrainingInterval {
+  start: number;
+  end: number;
+}
+
 interface RateState {
   food: number;
   wood: number;
@@ -66,6 +71,7 @@ export interface VillagerOpportunityPoint {
   underproductionLossPerMin: number;
   deathLossPerMin: number;
   totalLossPerMin: number;
+  cumulativeUnderproductionSeconds?: number;
   cumulativeUnderproductionLoss: number;
   cumulativeDeathLoss: number;
   cumulativeTotalLoss: number;
@@ -419,6 +425,67 @@ function computeExpectedVillagerRateRpm(baseline: number, rateState: RateState):
   return baseline * blendedMultiplier * rateState.wheelbarrow;
 }
 
+function applyProductionUpgradeEvent(
+  event: ProductionUpgradeEvent,
+  state: { baseMultiplier: number; bonusMultiplier: number }
+): void {
+  if (event.mode === 'set-base') {
+    state.baseMultiplier = Math.max(EPSILON, event.multiplier);
+  } else if (event.mode === 'mul-bonus') {
+    state.bonusMultiplier *= event.multiplier;
+  } else {
+    state.bonusMultiplier /= event.multiplier;
+  }
+}
+
+function buildVillagerTrainingIntervals(
+  producedVillagerTimes: number[],
+  productionUpgradeEvents: ProductionUpgradeEvent[],
+  villagerTrainSeconds: number
+): VillagerTrainingInterval[] {
+  const intervals: VillagerTrainingInterval[] = [];
+  const productionState = {
+    baseMultiplier: 1,
+    bonusMultiplier: 1,
+  };
+  let productionEventIndex = 0;
+
+  for (const producedTimestamp of producedVillagerTimes) {
+    while (
+      productionEventIndex < productionUpgradeEvents.length &&
+      productionUpgradeEvents[productionEventIndex].timestamp <= producedTimestamp
+    ) {
+      applyProductionUpgradeEvent(productionUpgradeEvents[productionEventIndex], productionState);
+      productionEventIndex += 1;
+    }
+
+    if (producedTimestamp <= 0) continue;
+
+    const productionMultiplier = Math.max(
+      EPSILON,
+      productionState.baseMultiplier * productionState.bonusMultiplier
+    );
+    const actualTrainingSeconds = villagerTrainSeconds / productionMultiplier;
+    intervals.push({
+      start: Math.max(0, producedTimestamp - actualTrainingSeconds),
+      end: producedTimestamp,
+    });
+  }
+
+  return intervals;
+}
+
+function cumulativeBusyTownCenterSecondsAt(intervals: VillagerTrainingInterval[], timestamp: number): number {
+  let total = 0;
+
+  for (const interval of intervals) {
+    if (interval.start >= timestamp) continue;
+    total += Math.max(0, Math.min(timestamp, interval.end) - interval.start);
+  }
+
+  return total;
+}
+
 export function buildVillagerOpportunityForPlayer(params: BuildVillagerOpportunityParams): VillagerOpportunityForPlayer {
   const baselineRateRpm = params.baselineRateRpm ?? VILLAGER_RATE_BASELINE_RPM;
   const targetVillagers = params.targetVillagers ?? VILLAGER_TARGET_COUNT;
@@ -439,6 +506,11 @@ export function buildVillagerOpportunityForPlayer(params: BuildVillagerOpportuni
 
   const rateUpgradeEvents = collectRateUpgradeEvents(player, duration);
   const productionUpgradeEvents = collectProductionUpgradeEvents(player, duration);
+  const actualVillagerTrainingIntervals = buildVillagerTrainingIntervals(
+    producedVillagerTimes,
+    productionUpgradeEvents,
+    villagerTrainSeconds
+  );
   const timeline = uniqueSortedTimestamps([
     0,
     duration,
@@ -469,6 +541,7 @@ export function buildVillagerOpportunityForPlayer(params: BuildVillagerOpportuni
   let townCenterEventIndex = 0;
   let rateEventIndex = 0;
   let productionEventIndex = 0;
+  let cumulativeExpectedTownCenterSeconds = 0;
   let cumulativeUnderproductionLoss = 0;
   let cumulativeDeathLoss = 0;
   let previousPoint: VillagerOpportunityPoint | null = null;
@@ -482,10 +555,16 @@ export function buildVillagerOpportunityForPlayer(params: BuildVillagerOpportuni
     if (elapsed > 0 && previousPoint) {
       if (expectedVillagerProgress < targetVillagers) {
         const productionMultiplier = productionBaseMultiplier * productionBonusMultiplier;
-        expectedVillagerProgress = Math.min(
+        const nextExpectedVillagerProgress = Math.min(
           targetVillagers,
           expectedVillagerProgress + (elapsed / villagerTrainSeconds) * productionMultiplier * activeTownCenters
         );
+        const expectedProgressDelta = Math.max(0, nextExpectedVillagerProgress - expectedVillagerProgress);
+        if (productionMultiplier > EPSILON) {
+          cumulativeExpectedTownCenterSeconds +=
+            (expectedProgressDelta * villagerTrainSeconds) / productionMultiplier;
+        }
+        expectedVillagerProgress = nextExpectedVillagerProgress;
       }
 
       cumulativeUnderproductionLoss += (previousPoint.underproductionLossPerMin / 60) * elapsed;
@@ -496,14 +575,13 @@ export function buildVillagerOpportunityForPlayer(params: BuildVillagerOpportuni
       productionEventIndex < productionUpgradeEvents.length &&
       productionUpgradeEvents[productionEventIndex].timestamp <= timestamp
     ) {
-      const event = productionUpgradeEvents[productionEventIndex];
-      if (event.mode === 'set-base') {
-        productionBaseMultiplier = Math.max(EPSILON, event.multiplier);
-      } else if (event.mode === 'mul-bonus') {
-        productionBonusMultiplier *= event.multiplier;
-      } else {
-        productionBonusMultiplier /= event.multiplier;
-      }
+      const productionState = {
+        baseMultiplier: productionBaseMultiplier,
+        bonusMultiplier: productionBonusMultiplier,
+      };
+      applyProductionUpgradeEvent(productionUpgradeEvents[productionEventIndex], productionState);
+      productionBaseMultiplier = productionState.baseMultiplier;
+      productionBonusMultiplier = productionState.bonusMultiplier;
       productionEventIndex += 1;
     }
 
@@ -549,6 +627,14 @@ export function buildVillagerOpportunityForPlayer(params: BuildVillagerOpportuni
     );
     const underproductionLossPerMin = underproductionDeficit * expectedVillagerRateRpm;
     const deathLossPerMin = deathDeficit * expectedVillagerRateRpm;
+    const cumulativeActualTownCenterSeconds = cumulativeBusyTownCenterSecondsAt(
+      actualVillagerTrainingIntervals,
+      timestamp
+    );
+    const cumulativeUnderproductionSeconds = Math.max(
+      0,
+      cumulativeExpectedTownCenterSeconds - cumulativeActualTownCenterSeconds
+    );
     const cumulativeTotalLoss = cumulativeUnderproductionLoss + cumulativeDeathLoss;
 
     const point: VillagerOpportunityPoint = {
@@ -563,6 +649,7 @@ export function buildVillagerOpportunityForPlayer(params: BuildVillagerOpportuni
       underproductionLossPerMin,
       deathLossPerMin,
       totalLossPerMin: underproductionLossPerMin + deathLossPerMin,
+      cumulativeUnderproductionSeconds,
       cumulativeUnderproductionLoss,
       cumulativeDeathLoss,
       cumulativeTotalLoss,

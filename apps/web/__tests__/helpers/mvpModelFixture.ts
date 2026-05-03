@@ -56,18 +56,22 @@ export function makeUnderproductionOnlyOpportunityLostModel(): PostMatchViewMode
   snapshot.villagerOpportunity.opponent.cumulativeResourcesPossible =
     snapshot.villagerOpportunity.opponent.cumulativeResourcesGained;
   snapshot.bandBreakdown.opportunityLost = { you: [], opponent: [] };
+  snapshot.villagerOpportunity.you.cumulativeUnderproductionSeconds = 2213;
   snapshot.villagerOpportunity.you.cumulativeUnderproductionLoss = 1475;
   snapshot.villagerOpportunity.you.cumulativeDeathLoss = 0;
+  snapshot.villagerOpportunity.opponent.cumulativeUnderproductionSeconds = 0;
   snapshot.villagerOpportunity.opponent.cumulativeUnderproductionLoss = 0;
   snapshot.villagerOpportunity.opponent.cumulativeDeathLoss = 0;
   model.villagerOpportunity.resourceSeries.you[0].cumulativeLoss = 1475;
   model.villagerOpportunity.resourceSeries.you[0].cumulativeResourcesPossible =
     model.villagerOpportunity.resourceSeries.you[0].cumulativeResourcesGained + 1475;
+  model.villagerOpportunity.resourceSeries.you[0].cumulativeUnderproductionSeconds = 2213;
   model.villagerOpportunity.resourceSeries.you[0].cumulativeUnderproductionLoss = 1475;
   model.villagerOpportunity.resourceSeries.you[0].cumulativeDeathLoss = 0;
   model.villagerOpportunity.resourceSeries.opponent[0].cumulativeLoss = 0;
   model.villagerOpportunity.resourceSeries.opponent[0].cumulativeResourcesPossible =
     model.villagerOpportunity.resourceSeries.opponent[0].cumulativeResourcesGained;
+  model.villagerOpportunity.resourceSeries.opponent[0].cumulativeUnderproductionSeconds = 0;
   model.villagerOpportunity.resourceSeries.opponent[0].cumulativeUnderproductionLoss = 0;
   model.villagerOpportunity.resourceSeries.opponent[0].cumulativeDeathLoss = 0;
 

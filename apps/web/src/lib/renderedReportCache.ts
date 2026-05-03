@@ -12,7 +12,11 @@ export const RENDERED_REPORT_CACHE_REVALIDATE_SECONDS = 24 * 60 * 60;
 const MEMORY_CACHE_TTL_MS = 5 * 60 * 1000;
 const MEMORY_CACHE_LIMIT = 25;
 const CACHE_NAMESPACE = 'aoe4-rendered-report-html';
-const CACHE_VERSION = 'v1';
+// Bumped whenever the rendered HTML / inline script changes in a way that
+// must invalidate any cached HTML.
+// v4: low_underproduction now reports inferred TC-idle seconds, crediting
+// in-progress villager training before the villager completion timestamp.
+const CACHE_VERSION = 'v4';
 
 type RenderedReportCacheEntry = {
   html: string;
