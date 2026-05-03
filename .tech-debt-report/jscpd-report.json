@@ -1,0 +1,889 @@
+{
+  "statistics": {
+    "detectionDate": "2026-05-03T07:13:47.275Z",
+    "formats": {
+      "typescript": {
+        "sources": {
+          "packages/aoe4-core/src/types/index.ts": {
+            "lines": 154,
+            "tokens": 1109,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/parser/gameSummaryParser.ts": {
+            "lines": 325,
+            "tokens": 3327,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/parser/buildOrderResolver.ts": {
+            "lines": 608,
+            "tokens": 5692,
+            "sources": 1,
+            "clones": 6,
+            "duplicatedLines": 100,
+            "duplicatedTokens": 886,
+            "percentage": 16.45,
+            "percentageTokens": 15.57,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/parser/aoe4WorldUrl.ts": {
+            "lines": 62,
+            "tokens": 545,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/formatters/sharedFormatters.ts": {
+            "lines": 50,
+            "tokens": 581,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/formatters/postMatchAllocationCharts.ts": {
+            "lines": 523,
+            "tokens": 6287,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 12,
+            "duplicatedTokens": 164,
+            "percentage": 2.29,
+            "percentageTokens": 2.61,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/formatters/analyzeFormatter.ts": {
+            "lines": 216,
+            "tokens": 3204,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 8,
+            "duplicatedTokens": 82,
+            "percentage": 3.7,
+            "percentageTokens": 2.56,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/data/upgradeMappings.ts": {
+            "lines": 117,
+            "tokens": 1501,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/data/unitCounterMatrix.ts": {
+            "lines": 227,
+            "tokens": 2467,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/data/unitClassificationRules.ts": {
+            "lines": 122,
+            "tokens": 1277,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/data/manualMappings.ts": {
+            "lines": 213,
+            "tokens": 2040,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/data/fetchStaticData.ts": {
+            "lines": 60,
+            "tokens": 673,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/data/combatValueEngine.ts": {
+            "lines": 83,
+            "tokens": 721,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/analysis/winProbability.ts": {
+            "lines": 472,
+            "tokens": 4456,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/analysis/villagerOpportunity.ts": {
+            "lines": 598,
+            "tokens": 5539,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 8,
+            "duplicatedTokens": 87,
+            "percentage": 1.34,
+            "percentageTokens": 1.57,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/analysis/villagerClassifier.ts": {
+            "lines": 32,
+            "tokens": 319,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/analysis/unknownBuildOrderAudit.ts": {
+            "lines": 106,
+            "tokens": 963,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/analysis/types.ts": {
+            "lines": 134,
+            "tokens": 1021,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/analysis/timeSeries.ts": {
+            "lines": 18,
+            "tokens": 142,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/analysis/significantResourceLossEvents.ts": {
+            "lines": 775,
+            "tokens": 8020,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/analysis/resourceLifecycle.ts": {
+            "lines": 93,
+            "tokens": 975,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/analysis/resourceAnalysis.ts": {
+            "lines": 342,
+            "tokens": 3427,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/analysis/phaseIdentification.ts": {
+            "lines": 121,
+            "tokens": 1236,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/analysis/phaseComparison.ts": {
+            "lines": 188,
+            "tokens": 1992,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/analysis/llmNarrative.ts": {
+            "lines": 81,
+            "tokens": 1135,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 8,
+            "duplicatedTokens": 82,
+            "percentage": 9.88,
+            "percentageTokens": 7.22,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/analysis/inflectionDetection.ts": {
+            "lines": 147,
+            "tokens": 1534,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/analysis/gameAnalysis.ts": {
+            "lines": 139,
+            "tokens": 1217,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/analysis/economicInsights.ts": {
+            "lines": 229,
+            "tokens": 2909,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/analysis/combatAdjustedMilitary.ts": {
+            "lines": 588,
+            "tokens": 5744,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 8,
+            "duplicatedTokens": 87,
+            "percentage": 1.36,
+            "percentageTokens": 1.51,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/analysis/armyReconstruction.ts": {
+            "lines": 31,
+            "tokens": 312,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "packages/aoe4-core/src/index.ts": {
+            "lines": 33,
+            "tokens": 453,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "apps/web/src/app/matches/[profileSlug]/[gameId]/win-probability-data/route.ts": {
+            "lines": 29,
+            "tokens": 238,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 11,
+            "duplicatedTokens": 93,
+            "percentage": 37.93,
+            "percentageTokens": 39.08,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "apps/web/src/app/matches/[profileSlug]/[gameId]/hover-data/route.ts": {
+            "lines": 19,
+            "tokens": 203,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 11,
+            "duplicatedTokens": 93,
+            "percentage": 57.89,
+            "percentageTokens": 45.81,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "apps/web/src/app/matches/[profileSlug]/[gameId]/routeResponses.ts": {
+            "lines": 47,
+            "tokens": 470,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "apps/web/src/app/matches/[profileSlug]/[gameId]/route.ts": {
+            "lines": 120,
+            "tokens": 889,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "apps/web/src/app/matches/open/route.ts": {
+            "lines": 16,
+            "tokens": 228,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "apps/web/src/app/api/web-vitals/route.ts": {
+            "lines": 41,
+            "tokens": 381,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "apps/web/src/lib/webVitals.ts": {
+            "lines": 59,
+            "tokens": 37,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "apps/web/src/lib/urlCanonicalization.ts": {
+            "lines": 42,
+            "tokens": 403,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "apps/web/src/lib/matchPage.ts": {
+            "lines": 171,
+            "tokens": 1207,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "apps/web/src/lib/homePageHtml.ts": {
+            "lines": 92,
+            "tokens": 124,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "apps/web/src/lib/designTokens.ts": {
+            "lines": 42,
+            "tokens": 13,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "apps/web/src/app/route.ts": {
+            "lines": 15,
+            "tokens": 127,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 7580,
+          "tokens": 75138,
+          "sources": 43,
+          "clones": 7,
+          "duplicatedLines": 83,
+          "duplicatedTokens": 787,
+          "percentage": 1.09,
+          "percentageTokens": 1.05,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      },
+      "javascript": {
+        "sources": {
+          "apps/web/src/app/layout.tsx": {
+            "lines": 0,
+            "tokens": 12,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 0,
+          "tokens": 12,
+          "sources": 1,
+          "clones": 0,
+          "duplicatedLines": 0,
+          "duplicatedTokens": 0,
+          "percentage": 0,
+          "percentageTokens": 0,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      },
+      "tsx": {
+        "sources": {
+          "apps/web/src/app/layout.tsx": {
+            "lines": 27,
+            "tokens": 183,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 27,
+          "tokens": 183,
+          "sources": 1,
+          "clones": 0,
+          "duplicatedLines": 0,
+          "duplicatedTokens": 0,
+          "percentage": 0,
+          "percentageTokens": 0,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      },
+      "css": {
+        "sources": {
+          "apps/web/src/app/globals.css": {
+            "lines": 34,
+            "tokens": 220,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 34,
+          "tokens": 220,
+          "sources": 1,
+          "clones": 0,
+          "duplicatedLines": 0,
+          "duplicatedTokens": 0,
+          "percentage": 0,
+          "percentageTokens": 0,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      }
+    },
+    "total": {
+      "lines": 7641,
+      "tokens": 75553,
+      "sources": 46,
+      "clones": 7,
+      "duplicatedLines": 83,
+      "duplicatedTokens": 787,
+      "percentage": 1.09,
+      "percentageTokens": 1.04,
+      "newDuplicatedLines": 0,
+      "newClones": 0
+    }
+  },
+  "duplicates": [
+    {
+      "format": "typescript",
+      "lines": 14,
+      "fragment": ") {\n    const tech = index.technologies.get(entry.pbgid);\n    if (tech) {\n      return {\n        originalEntry: entry,\n        type: 'upgrade',\n        id: tech.id,\n        baseId: tech.baseId,\n        name: tech.name,\n        cost: normalizeCost(tech.costs),\n        tier,\n        tierMultiplier: multiplier,\n        classes: tech.classes ?? [],\n        produced: getProducedTimestamps",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/aoe4-core/src/parser/buildOrderResolver.ts",
+        "start": 453,
+        "end": 466,
+        "startLoc": {
+          "line": 453,
+          "column": 10,
+          "position": 4315
+        },
+        "endLoc": {
+          "line": 466,
+          "column": 22,
+          "position": 4435
+        }
+      },
+      "secondFile": {
+        "name": "packages/aoe4-core/src/parser/buildOrderResolver.ts",
+        "start": 433,
+        "end": 446,
+        "startLoc": {
+          "line": 433,
+          "column": 10,
+          "position": 4152
+        },
+        "endLoc": {
+          "line": 446,
+          "column": 6,
+          "position": 4272
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 19,
+      "fragment": "const building = index.buildings.get(entry.pbgid);\n    if (building) {\n      return {\n        originalEntry: entry,\n        type: 'building',\n        id: building.id,\n        baseId: building.baseId,\n        name: building.name,\n        cost: normalizeCost(building.costs),\n        tier,\n        tierMultiplier: multiplier,\n        classes: building.classes ?? [],\n        produced: getProducedTimestamps(entry, 'building', building),\n        destroyed: getDestroyedTimestamps(entry, 'building', building),\n        civs: building.civs\n      };\n    }\n\n    const",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/aoe4-core/src/parser/buildOrderResolver.ts",
+        "start": 472,
+        "end": 490,
+        "startLoc": {
+          "line": 472,
+          "column": 5,
+          "position": 4472
+        },
+        "endLoc": {
+          "line": 490,
+          "column": 6,
+          "position": 4632
+        }
+      },
+      "secondFile": {
+        "name": "packages/aoe4-core/src/parser/buildOrderResolver.ts",
+        "start": 414,
+        "end": 431,
+        "startLoc": {
+          "line": 414,
+          "column": 5,
+          "position": 3979
+        },
+        "endLoc": {
+          "line": 431,
+          "column": 2,
+          "position": 4138
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 20,
+      "fragment": "const unit = index.units.get(entry.pbgid);\n    if (unit) {\n      return {\n        originalEntry: entry,\n        type: 'unit',\n        id: unit.id,\n        baseId: unit.baseId,\n        name: unit.name,\n        cost: normalizeCost(unit.costs),\n        tier,\n        tierMultiplier: multiplier,\n        classes: unit.classes ?? [],\n        produced: getProducedTimestamps(entry, 'unit', unit),\n        destroyed: getDestroyedTimestamps(entry, 'unit', unit),\n        civs: unit.civs\n      };\n    }\n  }\n\n  // Fallback: try to match by icon path",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/aoe4-core/src/parser/buildOrderResolver.ts",
+        "start": 490,
+        "end": 509,
+        "startLoc": {
+          "line": 490,
+          "column": 5,
+          "position": 4632
+        },
+        "endLoc": {
+          "line": 509,
+          "column": 39,
+          "position": 4795
+        }
+      },
+      "secondFile": {
+        "name": "packages/aoe4-core/src/parser/buildOrderResolver.ts",
+        "start": 394,
+        "end": 413,
+        "startLoc": {
+          "line": 394,
+          "column": 5,
+          "position": 3801
+        },
+        "endLoc": {
+          "line": 413,
+          "column": 3,
+          "position": 3964
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 7,
+      "fragment": ");\n  const xTicks = [0, 0.25, 0.5, 0.75, 1]\n    .map(step => {\n      const timestamp = Math.round(maxX * step);\n      const xPos = x(timestamp);\n      return `\n        <line x1=\"${xPos.toFixed(2)}\" y1=\"${padding",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/aoe4-core/src/formatters/postMatchAllocationCharts.ts",
+        "start": 468,
+        "end": 474,
+        "startLoc": {
+          "line": 468,
+          "column": 2,
+          "position": 5794
+        },
+        "endLoc": {
+          "line": 474,
+          "column": 8,
+          "position": 5876
+        }
+      },
+      "secondFile": {
+        "name": "packages/aoe4-core/src/formatters/postMatchAllocationCharts.ts",
+        "start": 298,
+        "end": 305,
+        "startLoc": {
+          "line": 298,
+          "column": 3,
+          "position": 3409
+        },
+        "endLoc": {
+          "line": 305,
+          "column": 2,
+          "position": 3492
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 9,
+      "fragment": ";\n\nfunction formatTime(seconds: number): string {\n  const mins = Math.floor(seconds / 60);\n  const secs = seconds % 60;\n  return `${mins}:${secs.toString().padStart(2, '0')}`;\n}\n\nfunction buildPrompt",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/aoe4-core/src/analysis/llmNarrative.ts",
+        "start": 2,
+        "end": 10,
+        "startLoc": {
+          "line": 2,
+          "column": 10,
+          "position": 20
+        },
+        "endLoc": {
+          "line": 10,
+          "column": 12,
+          "position": 102
+        }
+      },
+      "secondFile": {
+        "name": "packages/aoe4-core/src/formatters/analyzeFormatter.ts",
+        "start": 12,
+        "end": 20,
+        "startLoc": {
+          "line": 12,
+          "column": 31,
+          "position": 87
+        },
+        "endLoc": {
+          "line": 20,
+          "column": 9,
+          "position": 169
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 9,
+      "fragment": "));\n}\n\nfunction uniqueSortedTimestamps(values: number[]): number[] {\n  return [...new Set(values.filter(value => Number.isFinite(value) && value >= 0))]\n    .sort((a, b) => a - b);\n}\n\nfunction isCombatUpgradeType",
+      "tokens": 0,
+      "firstFile": {
+        "name": "packages/aoe4-core/src/analysis/combatAdjustedMilitary.ts",
+        "start": 91,
+        "end": 99,
+        "startLoc": {
+          "line": 91,
+          "column": 2,
+          "position": 656
+        },
+        "endLoc": {
+          "line": 99,
+          "column": 20,
+          "position": 743
+        }
+      },
+      "secondFile": {
+        "name": "packages/aoe4-core/src/analysis/villagerOpportunity.ts",
+        "start": 123,
+        "end": 131,
+        "startLoc": {
+          "line": 123,
+          "column": 2,
+          "position": 921
+        },
+        "endLoc": {
+          "line": 131,
+          "column": 26,
+          "position": 1008
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 12,
+      "fragment": "} from '../routeResponses';\nimport type { MatchRouteContext } from '../routeResponses';\n\nexport const dynamic = 'force-dynamic';\nexport const runtime = 'nodejs';\n\nexport async function GET(\n  request: Request,\n  context: MatchRouteContext\n): Promise<Response> {\n  try {\n    const { parsed, sig }",
+      "tokens": 0,
+      "firstFile": {
+        "name": "apps/web/src/app/matches/[profileSlug]/[gameId]/hover-data/route.ts",
+        "start": 2,
+        "end": 13,
+        "startLoc": {
+          "line": 2,
+          "column": 2,
+          "position": 25
+        },
+        "endLoc": {
+          "line": 13,
+          "column": 2,
+          "position": 118
+        }
+      },
+      "secondFile": {
+        "name": "apps/web/src/app/matches/[profileSlug]/[gameId]/win-probability-data/route.ts",
+        "start": 7,
+        "end": 18,
+        "startLoc": {
+          "line": 7,
+          "column": 1,
+          "position": 33
+        },
+        "endLoc": {
+          "line": 18,
+          "column": 2,
+          "position": 125
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Whole-Match Above-Fold Summary Options - Match 229727104</title>
+  <style>
+    :root {
+      --color-background: #f2f4ee;
+      --color-background-secondary: #eef2e7;
+      --color-card: #fbfcf9;
+      --color-text: #1f2a1f;
+      --color-muted: #5b6257;
+      --color-border: #d6ddd1;
+      --you: #D85A30;
+      --opponent: #378ADD;
+      --tie: #A8AEA5;
+      --economy: #58764f;
+      --technology: #556a9a;
+      --military: #9f4f38;
+      --other: #8f978a;
+      --report-max-width: 1440px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--color-text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
+      background: radial-gradient(circle at 8% -12%, #d8e6d6, transparent 34%),
+        radial-gradient(circle at 92% -8%, #f0ddd0, transparent 32%),
+        var(--color-background);
+      padding: 22px;
+    }
+
+    .wrap {
+      width: min(100%, var(--report-max-width));
+      max-width: var(--report-max-width);
+      margin: 0 auto;
+      display: grid;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .panel {
+      min-width: 0;
+      background: var(--color-card);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(32, 43, 32, 0.08);
+    }
+
+    .header-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: start;
+      min-width: 0;
+    }
+
+    .title {
+      font-size: 25px;
+      margin: 0;
+      letter-spacing: 0.2px;
+    }
+
+    .recap-heading {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+    }
+
+    .prototype-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border: 1px solid #bcd3ea;
+      border-radius: 999px;
+      background: #f2f7fc;
+      color: #0c447c;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .meta-line {
+      margin-top: 6px;
+      font-size: 13px;
+      color: var(--color-muted);
+    }
+
+    .chips {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .civ-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      border: 1px solid var(--color-border);
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: #fff;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      white-space: normal;
+    }
+
+    .swatch {
+      width: 11px;
+      height: 11px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+    }
+
+    .outcome {
+      font-size: 18px;
+      font-weight: 700;
+      color: #253226;
+      text-align: right;
+    }
+
+    .option-label {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 10px;
+      color: var(--color-muted);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .option-label strong {
+      color: #253226;
+      font-size: 13px;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .summary-card,
+    .mini-card,
+    .player-card,
+    .delta-card {
+      min-width: 0;
+      border: 1px solid var(--color-border);
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(32, 43, 32, 0.04);
+    }
+
+    .summary-card {
+      position: relative;
+      overflow: hidden;
+      padding: 11px 12px 10px;
+      display: grid;
+      gap: 7px;
+      min-height: 118px;
+    }
+
+    .summary-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      background: var(--accent, var(--tie));
+    }
+
+    .summary-label,
+    .mini-label,
+    .metric-label {
+      color: var(--color-muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }
+
+    .summary-value {
+      color: var(--accent, #253226);
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .summary-detail,
+    .mini-detail {
+      color: #384338;
+      font-size: 12px;
+      line-height: 1.25;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sparkline {
+      width: 100%;
+      height: 28px;
+      overflow: visible;
+      display: block;
+    }
+
+    .sparkline path {
+      fill: none;
+      stroke: var(--accent, #5b6257);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .sparkline .zero {
+      stroke: #d6ddd1;
+      stroke-width: 1;
+      stroke-dasharray: 3 3;
+    }
+
+    .option-b-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(160px, 0.45fr) minmax(0, 1fr);
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .player-card {
+      padding: 12px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .player-heading {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .player-name {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .player-name strong {
+      overflow-wrap: anywhere;
+      font-size: 15px;
+    }
+
+    .player-name span {
+      color: var(--color-muted);
+      font-size: 12px;
+    }
+
+    .age-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      border-radius: 999px;
+      border: 1px solid var(--color-border);
+      background: #f7faf8;
+      color: #253226;
+      padding: 0 9px;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .player-total {
+      color: var(--player-color);
+      font-size: 32px;
+      line-height: 1;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stacked-bar {
+      height: 16px;
+      display: flex;
+      overflow: hidden;
+      border-radius: 4px;
+      background: #eef2e7;
+      border: 1px solid #dce2d6;
+    }
+
+    .segment { min-width: 2px; }
+    .seg-economy { background: var(--economy); }
+    .seg-tech { background: var(--technology); }
+    .seg-military { background: var(--military); }
+
+    .mix-legend {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .mix-item {
+      display: grid;
+      gap: 2px;
+      font-size: 12px;
+      min-width: 0;
+    }
+
+    .mix-item strong {
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mix-key {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-width: 0;
+      color: var(--color-muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .mix-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--dot);
+      flex: 0 0 auto;
+    }
+
+    .delta-card {
+      padding: 12px;
+      display: grid;
+      gap: 9px;
+      align-content: center;
+      background: linear-gradient(180deg, #fff 0%, #f7faf8 100%);
+    }
+
+    .turning-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .turn-card {
+      min-width: 0;
+      border: 1px solid var(--color-border);
+      background: #fff;
+      border-radius: 8px;
+      padding: 12px;
+      display: grid;
+      gap: 9px;
+      box-shadow: 0 1px 2px rgba(32, 43, 32, 0.04);
+    }
+
+    .turn-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .turn-time {
+      color: var(--color-muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .turn-title {
+      color: #253226;
+      font-size: 15px;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+
+    .turn-number {
+      color: var(--turn-color);
+      font-size: 25px;
+      line-height: 1;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .turn-detail {
+      color: #384338;
+      font-size: 12px;
+      line-height: 1.3;
+      min-height: 48px;
+    }
+
+    .signal-list {
+      display: grid;
+      gap: 6px;
+      padding-top: 2px;
+      border-top: 1px solid #e4e9df;
+    }
+
+    .signal-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: baseline;
+      color: var(--color-muted);
+      font-size: 12px;
+    }
+
+    .signal-row strong {
+      color: var(--row-color, #253226);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .delta-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: baseline;
+      font-size: 12px;
+      min-width: 0;
+    }
+
+    .delta-row strong {
+      color: var(--row-color, #253226);
+      font-size: 15px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .option-c-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.8fr);
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .timeline-shell {
+      min-width: 0;
+      border: 1px solid var(--color-border);
+      background: #fff;
+      border-radius: 8px;
+      padding: 12px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .timeline-row {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+    }
+
+    .timeline-label {
+      color: var(--color-muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .track {
+      position: relative;
+      height: 22px;
+      border-radius: 4px;
+      overflow: hidden;
+      background: #eef2e7;
+      border: 1px solid #dce2d6;
+    }
+
+    .track .span {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      background: var(--span-color);
+      opacity: 0.92;
+    }
+
+    .time-marker {
+      position: absolute;
+      top: -3px;
+      bottom: -3px;
+      width: 2px;
+      background: #253226;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
+      z-index: 3;
+    }
+
+    .age-marker {
+      position: absolute;
+      top: 2px;
+      width: 2px;
+      height: 18px;
+      background: var(--marker-color);
+      z-index: 2;
+    }
+
+    .age-marker::after { display: none; }
+
+    .fight-marker {
+      position: absolute;
+      top: 2px;
+      width: 8px;
+      height: 18px;
+      margin-left: -4px;
+      border-radius: 3px;
+      background: var(--marker-color);
+      z-index: 2;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9);
+    }
+
+    .age-callouts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding-left: 102px;
+    }
+
+    .age-callout {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 26px;
+      border: 1px solid var(--color-border);
+      border-radius: 999px;
+      background: #f7faf8;
+      color: #253226;
+      padding: 0 8px;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .age-callout::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--callout-color);
+    }
+
+    .timeline-axis {
+      display: flex;
+      justify-content: space-between;
+      color: var(--color-muted);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      padding-left: 102px;
+    }
+
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .mini-card {
+      padding: 11px 12px;
+      display: grid;
+      gap: 5px;
+    }
+
+    .mini-value {
+      color: var(--mini-color, #253226);
+      font-size: 22px;
+      line-height: 1;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .selected-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 30px;
+      width: fit-content;
+      border-radius: 999px;
+      background: #253226;
+      color: #fff;
+      padding: 0 10px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .selected-pill::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #fff;
+    }
+
+    @media (max-width: 1100px) {
+      .summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .option-b-grid,
+      .option-c-grid,
+      .turning-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      body { padding: 16px; }
+      .panel { padding: 12px; }
+      .header-row { grid-template-columns: 1fr; }
+      .outcome { text-align: left; }
+      .summary-grid,
+      .mini-grid {
+        grid-template-columns: 1fr;
+      }
+      .timeline-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+      .timeline-axis {
+        padding-left: 0;
+      }
+      .age-callouts {
+        padding-left: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="panel">
+      <div class="header-row">
+        <div>
+          <div class="recap-heading">
+            <h1 class="title">Match recap</h1>
+            <span class="prototype-chip">Causal summary mockups</span>
+          </div>
+          <div class="meta-line">Ranked 1v1 &middot; 25:03 &middot; Dry Arabia &middot; investments, fights, outcome</div>
+          <div class="chips">
+            <span class="civ-chip"><span class="swatch" style="background:#D85A30"></span>washed up &middot; Sengoku Daimyo</span>
+            <span class="civ-chip"><span class="swatch" style="background:#378ADD"></span>2k and still no hands &middot; Macedonian Dynasty</span>
+          </div>
+        </div>
+        <div class="outcome">Defeated 25:03</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="option-label">
+        <span>Option A</span>
+        <strong>Causal answer strip</strong>
+      </div>
+      <div class="summary-grid" aria-label="Compact causal match summary">
+        <article class="summary-card" style="--accent:var(--opponent)">
+          <span class="summary-label">Opening choice</span>
+          <strong class="summary-value">1:48</strong>
+          <span class="summary-detail">2k reached Feudal first; washed up held early economy</span>
+          <svg class="sparkline" viewBox="0 0 112 28" aria-hidden="true">
+            <line class="zero" x1="0" y1="14" x2="112" y2="14" />
+            <path d="M0 14 L18 14 L30 22 L42 21 L56 16 L74 14 L92 13 L112 13" />
+          </svg>
+        </article>
+        <article class="summary-card" style="--accent:var(--you)">
+          <span class="summary-label">Recovery spike</span>
+          <strong class="summary-value">2,275</strong>
+          <span class="summary-detail">washed up led total pool at 9:00 after Castle timing</span>
+          <svg class="sparkline" viewBox="0 0 112 28" aria-hidden="true">
+            <line class="zero" x1="0" y1="14" x2="112" y2="14" />
+            <path d="M0 14 L18 17 L33 12 L46 4 L58 9 L74 14 L92 18 L112 25" />
+          </svg>
+        </article>
+        <article class="summary-card" style="--accent:var(--opponent)">
+          <span class="summary-label">Army conversion</span>
+          <strong class="summary-value">2,430</strong>
+          <span class="summary-detail">2k military lead by 16:42 while total pool flipped</span>
+          <svg class="sparkline" viewBox="0 0 112 28" aria-hidden="true">
+            <line class="zero" x1="0" y1="14" x2="112" y2="14" />
+            <path d="M0 14 L20 15 L36 12 L52 18 L66 21 L82 23 L98 24 L112 25" />
+          </svg>
+        </article>
+        <article class="summary-card" style="--accent:var(--opponent)">
+          <span class="summary-label">Late swing</span>
+          <strong class="summary-value">23:03</strong>
+          <span class="summary-detail">Sengoku lost 3,955 value, including villager damage</span>
+          <svg class="sparkline" viewBox="0 0 112 28" aria-hidden="true">
+            <line class="zero" x1="0" y1="14" x2="112" y2="14" />
+            <path d="M0 14 L18 14 L34 15 L50 17 L66 18 L82 23 L98 25 L112 26" />
+          </svg>
+        </article>
+        <article class="summary-card" style="--accent:var(--opponent)">
+          <span class="summary-label">Decisive fight</span>
+          <strong class="summary-value">23:47</strong>
+          <span class="summary-detail">Sengoku lost 10,965 vs 3,542 in the largest window</span>
+          <svg class="sparkline" viewBox="0 0 112 28" aria-hidden="true">
+            <line class="zero" x1="0" y1="14" x2="112" y2="14" />
+            <path d="M0 14 L18 14 L35 15 L52 17 L69 18 L86 22 L101 26 L112 27" />
+          </svg>
+        </article>
+        <article class="summary-card" style="--accent:var(--opponent)">
+          <span class="summary-label">Outcome</span>
+          <strong class="summary-value">9,479</strong>
+          <span class="summary-detail">2k finished with the military gap that decided the pool</span>
+          <svg class="sparkline" viewBox="0 0 112 28" aria-hidden="true">
+            <line class="zero" x1="0" y1="14" x2="112" y2="14" />
+            <path d="M0 14 L20 15 L36 12 L52 18 L66 21 L82 24 L98 26 L112 27" />
+          </svg>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="option-label">
+        <span>Option B</span>
+        <strong>Turning-point chain</strong>
+      </div>
+      <div class="turning-grid" aria-label="Match turning point chain">
+        <article class="turn-card" style="--turn-color:var(--opponent)">
+          <div class="turn-card-header">
+            <span class="turn-time">4:07-5:55</span>
+            <span class="age-pill">Open</span>
+          </div>
+          <div class="turn-title">2k buys tempo</div>
+          <strong class="turn-number">1:48</strong>
+          <div class="turn-detail">Macedonian Feudal arrives earlier. At 4:30, washed up has the economy edge, but 2k has the age/tech investment.</div>
+          <div class="signal-list">
+            <div class="signal-row"><span>Economy edge</span><strong style="--row-color:var(--you)">washed up 450</strong></div>
+            <div class="signal-row"><span>Tech/Age edge</span><strong style="--row-color:var(--opponent)">2k 525</strong></div>
+          </div>
+        </article>
+
+        <article class="turn-card" style="--turn-color:var(--you)">
+          <div class="turn-card-header">
+            <span class="turn-time">8:15-9:00</span>
+            <span class="age-pill">Spike</span>
+          </div>
+          <div class="turn-title">Sengoku takes the lead</div>
+          <strong class="turn-number">2,275</strong>
+          <div class="turn-detail">A favorable fight plus Castle timing creates washed up's largest total-pool lead around 9:00.</div>
+          <div class="signal-list">
+            <div class="signal-row"><span>8:15 fight</span><strong style="--row-color:var(--you)">886 vs 125</strong></div>
+            <div class="signal-row"><span>Castle</span><strong style="--row-color:var(--you)">8:45</strong></div>
+          </div>
+        </article>
+
+        <article class="turn-card" style="--turn-color:var(--opponent)">
+          <div class="turn-card-header">
+            <span class="turn-time">12:18-16:42</span>
+            <span class="age-pill">Convert</span>
+          </div>
+          <div class="turn-title">2k turns value into army</div>
+          <strong class="turn-number">2,430</strong>
+          <div class="turn-detail">The total lead is gone by midgame. By 16:42, 2k's military pool is materially larger.</div>
+          <div class="signal-list">
+            <div class="signal-row"><span>Military edge</span><strong style="--row-color:var(--opponent)">2k 2,430</strong></div>
+            <div class="signal-row"><span>Total pool edge</span><strong style="--row-color:var(--opponent)">2k 1,230</strong></div>
+          </div>
+        </article>
+
+        <article class="turn-card" style="--turn-color:var(--opponent)">
+          <div class="turn-card-header">
+            <span class="turn-time">23:03-25:03</span>
+            <span class="age-pill">Close</span>
+          </div>
+          <div class="turn-title">Late fights decide it</div>
+          <strong class="turn-number">9,479</strong>
+          <div class="turn-detail">The largest late fights leave 2k with the military pool that carries the final outcome.</div>
+          <div class="signal-list">
+            <div class="signal-row"><span>23:47 fight</span><strong style="--row-color:var(--opponent)">10,965 vs 3,542</strong></div>
+            <div class="signal-row"><span>Final military</span><strong style="--row-color:var(--opponent)">2k 9,479</strong></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="option-label">
+        <span>Option C</span>
+        <strong>Event-overlay timeline</strong>
+      </div>
+      <div class="option-c-grid" aria-label="Whole-match turning-point summary">
+        <div class="timeline-shell">
+          <div class="timeline-row">
+            <span class="timeline-label">Age timing</span>
+            <div class="track">
+              <span class="age-marker" style="left:16.4%; --marker-color:var(--opponent)" data-label="F 4:07"></span>
+              <span class="age-marker" style="left:23.6%; --marker-color:var(--you)" data-label="F 5:55"></span>
+              <span class="age-marker" style="left:34.9%; --marker-color:var(--you)" data-label="C 8:45"></span>
+              <span class="age-marker" style="left:38.9%; --marker-color:var(--opponent)" data-label="C 9:44"></span>
+              <span class="time-marker" style="left:98%"></span>
+            </div>
+          </div>
+          <div class="age-callouts">
+            <span class="age-callout" style="--callout-color:var(--opponent)">Macedonian F 4:07</span>
+            <span class="age-callout" style="--callout-color:var(--you)">Sengoku F 5:55</span>
+            <span class="age-callout" style="--callout-color:var(--you)">Sengoku C 8:45</span>
+            <span class="age-callout" style="--callout-color:var(--opponent)">Macedonian C 9:44</span>
+          </div>
+          <div class="timeline-row">
+            <span class="timeline-label">Fight windows</span>
+            <div class="track">
+              <span class="fight-marker" style="left:32.9%; --marker-color:var(--you)"></span>
+              <span class="fight-marker" style="left:49.1%; --marker-color:var(--opponent)"></span>
+              <span class="fight-marker" style="left:66.7%; --marker-color:var(--opponent)"></span>
+              <span class="fight-marker" style="left:79.2%; --marker-color:var(--opponent)"></span>
+              <span class="fight-marker" style="left:92.0%; --marker-color:var(--opponent)"></span>
+              <span class="fight-marker" style="left:94.9%; --marker-color:var(--opponent)"></span>
+              <span class="time-marker" style="left:98%"></span>
+            </div>
+          </div>
+          <div class="age-callouts">
+            <span class="age-callout" style="--callout-color:var(--you)">8:15 washed up fight</span>
+            <span class="age-callout" style="--callout-color:var(--opponent)">23:47 decisive fight</span>
+          </div>
+          <div class="timeline-row">
+            <span class="timeline-label">Total lead</span>
+            <div class="track">
+              <span class="span" style="left:0%; width:36%; --span-color:var(--you)"></span>
+              <span class="span" style="left:36%; width:64%; --span-color:var(--opponent)"></span>
+              <span class="time-marker" style="left:98%"></span>
+            </div>
+          </div>
+          <div class="timeline-row">
+            <span class="timeline-label">Tech lead</span>
+            <div class="track">
+              <span class="span" style="left:0%; width:35%; --span-color:var(--you)"></span>
+              <span class="span" style="left:35%; width:65%; --span-color:var(--opponent)"></span>
+              <span class="time-marker" style="left:98%"></span>
+            </div>
+          </div>
+          <div class="timeline-row">
+            <span class="timeline-label">Military lead</span>
+            <div class="track">
+              <span class="span" style="left:0%; width:40%; --span-color:var(--you)"></span>
+              <span class="span" style="left:40%; width:60%; --span-color:var(--opponent)"></span>
+              <span class="time-marker" style="left:98%"></span>
+            </div>
+          </div>
+          <div class="timeline-axis">
+            <span>0:00</span>
+            <span>9:00</span>
+            <span>12:30</span>
+            <span>25:03</span>
+          </div>
+        </div>
+
+        <div class="mini-grid">
+          <article class="mini-card">
+            <span class="mini-label">Tempo buy</span>
+            <strong class="mini-value" style="--mini-color:var(--opponent)">4:07</strong>
+            <span class="mini-detail">2k reaches Feudal first</span>
+          </article>
+          <article class="mini-card">
+            <span class="mini-label">Temporary peak</span>
+            <strong class="mini-value" style="--mini-color:var(--you)">9:00</strong>
+            <span class="mini-detail">washed up total lead peaks</span>
+          </article>
+          <article class="mini-card">
+            <span class="mini-label">Army convert</span>
+            <strong class="mini-value" style="--mini-color:var(--opponent)">16:42</strong>
+            <span class="mini-detail">2k has 2,430 military edge</span>
+          </article>
+          <article class="mini-card">
+            <span class="mini-label">Decisive fight</span>
+            <strong class="mini-value" style="--mini-color:var(--opponent)">23:47</strong>
+            <span class="mini-detail">10,965 vs 3,542 losses</span>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
