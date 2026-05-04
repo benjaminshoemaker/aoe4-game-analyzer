@@ -37,6 +37,7 @@ describe('HomePage form', () => {
     expect(html).toContain('2k and still no hands &middot; Macedonian Dynasty');
     expect(html).toContain('Match recap');
     expect(html).toContain('Allocation timeline');
+    expect(html).toContain('Resource state over time');
     expect(html).toContain('Selected time');
     expect(html).toContain('Sample report: Dry Arabia');
     expect(html).toContain('Macedonian win');

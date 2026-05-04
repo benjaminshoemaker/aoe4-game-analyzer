@@ -343,9 +343,11 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).not.toContain('Castle age');
     expect(html).not.toContain('Imperial age');
     expect(html).not.toContain('Final pool delta');
-    expect(html).toContain('Allocation lead and mix over time');
+    expect(html).toContain('Resource state over time');
     expect(html).toContain('Age timings');
     expect(html).toContain('How to read this chart');
+    expect(html).toContain('<p class="section-note allocation-section-note">');
+    expect(html).toContain('.allocation-section-note {\n      max-width: none;\n      width: 100%;\n    }');
     expect(html).toContain('id="allocation-leader-strip"');
     expect(html).toContain('id="allocation-comparison"');
     expect(html).toContain('data-allocation-leader-segment');
@@ -449,7 +451,7 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(extractAllocationLane(html, 'opportunityLost')).toContain('>140<');
     expect(html).toContain('Float (not deployed)');
     expect(html).toContain('Opportunity lost');
-    expect(html).toContain('Villagers lost plus villager underproduction');
+    expect(html).toContain('Resources missing because of villager deaths or villager underproduction');
     expect(html).toContain('Destroyed');
     expect(html).toContain('data-total-pool-tooltip');
     expect(html).toContain('Total net pool');

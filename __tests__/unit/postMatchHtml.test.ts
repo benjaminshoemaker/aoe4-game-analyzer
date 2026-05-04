@@ -653,8 +653,10 @@ describe('renderPostMatchHtml', () => {
 
     const html = renderPostMatchHtml(model, { surface: 'full' });
 
-    expect(html).toContain('Allocation lead and mix over time');
-    expect(html.indexOf('Allocation lead and mix over time')).toBeLessThan(html.indexOf('Gather rate'));
+    expect(html).toContain('Resource state over time');
+    expect(html.indexOf('Resource state over time')).toBeLessThan(html.indexOf('Gather rate'));
+    expect(html).toContain('<p class="section-note allocation-section-note">');
+    expect(html).toContain('.allocation-section-note {\n      max-width: none;\n      width: 100%;\n    }');
     expect(html).toContain('id="allocation-leader-strip"');
     expect(html).toContain('id="allocation-comparison"');
     expect(html).toContain('data-allocation-leader-segment');
@@ -669,11 +671,12 @@ describe('renderPostMatchHtml', () => {
     expect(html).toContain('<details class="allocation-read-guide" aria-label="Allocation chart legend">');
     expect(html).toContain('<summary class="allocation-read-guide-summary">How to read this chart</summary>');
     expect(html).not.toContain('allocation-read-guide-title">Reading the chart');
-    expect(html).toContain('Leader strip: current tracked-value leader by 30-second block');
-    expect(html).toContain('Economic, Technology, and Military: percentage share of current tracked pool');
-    expect(html).toContain('Overall: absolute current tracked pool value');
-    expect(html).toContain('Destroyed: cumulative value assumed destroyed by opponent');
-    expect(html).toContain('Float (not deployed): live stockpile resources not currently committed');
+    expect(html).toContain("This chart shows how each player's resources became game state.");
+    expect(html).toContain('Leader strip: who has the larger current tracked deployed pool in each 30-second block');
+    expect(html).toContain("Economic, Technology, and Military: shares of each player's current net pool, not gross spending totals");
+    expect(html).toContain('Overall: total current tracked deployed value across modeled categories after destroyed value is removed');
+    expect(html).toContain('Destroyed: cumulative tracked value removed by the opponent. This is where raids and fights show lasting damage');
+    expect(html).toContain('Float: resources in the bank that have not become useful game state yet');
     expect(html).toContain('class="allocation-lane allocation-lane-overall"');
     expect(html).toContain('class="allocation-lane allocation-lane-destroyed"');
     expect(html).toContain('class="allocation-lane allocation-lane-float"');
@@ -794,8 +797,8 @@ describe('renderPostMatchHtml', () => {
     expect(html).toContain('data-total-pool-tooltip');
     expect(html).toContain('Total net pool');
     expect(html).toContain('Economic net + Technology net + Military net + Other net = Total pool');
-    expect(html).toContain('Bands are remapped into Economic, Technology, Military, and Other');
-    expect(html).toContain('Overall is absolute current tracked pool value');
+    expect(html).toContain('Economic, Technology, and Military are live net deployed value');
+    expect(html).toContain("Use the lanes to find when one player's economy, tech, army, float, or losses started separating from the other player.");
     expect(html).toContain('data-allocation-category-toggle="economic" aria-expanded="true"');
     expect(html).toContain('data-allocation-category-toggle="technology" aria-expanded="false"');
     expect(html).toContain('data-allocation-category-toggle="military" aria-expanded="false"');

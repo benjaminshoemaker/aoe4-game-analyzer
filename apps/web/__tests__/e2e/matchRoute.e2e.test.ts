@@ -167,7 +167,7 @@ describe('matches route e2e', () => {
     expect(body).toContain('font-family: var(--aoe-font-report);');
     expect(body).not.toContain('--color-background: #f2f4ee;');
     expect(body).toContain('<a class="recap-link feedback-link" href="https://www.reddit.com/user/shoe7525/" target="_blank" rel="noreferrer noopener">Feedback? DM me on Reddit</a>');
-    expect(body).toContain('Allocation lead and mix over time');
+    expect(body).toContain('Resource state over time');
     expect(body).not.toContain('<section class="panel metrics">');
     expect(body).not.toContain('Dark age');
     expect(body).not.toContain('Imperial age');
@@ -195,7 +195,7 @@ describe('matches route e2e', () => {
     expect(leaderStrip).not.toContain('data-category-key="opportunityLost"');
     expect(body).toContain('Float (not deployed)');
     expect(body).toContain('Opportunity lost');
-    expect(body).toContain('Villagers lost plus villager underproduction');
+    expect(body).toContain('Resources missing because of villager deaths or villager underproduction');
     expect(body).toContain('Destroyed');
     expect(body).toContain('class="allocation-lane allocation-lane-destroyed"');
     expect(body).toContain('class="allocation-lane allocation-lane-float"');

@@ -125,7 +125,7 @@ describe('post-match allocation widget integration', () => {
 
     const html = renderPostMatchHtml(model);
 
-    expect(html).toContain('Allocation lead and mix over time');
+    expect(html).toContain('Resource state over time');
     expect(html).toContain('<a class="recap-link feedback-link" href="https://www.reddit.com/user/shoe7525/" target="_blank" rel="noreferrer noopener">Feedback? DM me on Reddit</a>');
     expect(html).not.toContain('<section class="panel metrics">');
     expect(html).not.toContain('Dark age');
@@ -133,6 +133,8 @@ describe('post-match allocation widget integration', () => {
     expect(html).not.toContain('Only English reached Imperial, so there was no shared Imperial window to compare.');
     expect(html).toContain('<details class="allocation-read-guide" aria-label="Allocation chart legend">');
     expect(html).toContain('<summary class="allocation-read-guide-summary">How to read this chart</summary>');
+    expect(html).toContain('<p class="section-note allocation-section-note">');
+    expect(html).toContain('.allocation-section-note {\n      max-width: none;\n      width: 100%;\n    }');
     expect(html).toContain('class="mobile-timeline-control"');
     expect(html).toContain('type="range"');
     expect(html).toContain('data-mobile-timeline-slider');
@@ -143,12 +145,13 @@ describe('post-match allocation widget integration', () => {
     expect(html).toContain('data-mobile-current-time');
     expect(html).not.toContain('Click to pin');
     expect(html).not.toContain('Esc to clear');
-    expect(html).toContain('Leader strip: current tracked-value leader by 30-second block');
-    expect(html).toContain('Economic, Technology, and Military: percentage share of current tracked pool');
-    expect(html).toContain('Overall: absolute current tracked pool value');
-    expect(html).toContain('Destroyed: cumulative value removed from the tracked deployed pool');
-    expect(html).toContain('Float (not deployed): live stockpile resources not currently committed');
-    expect(html).toContain('Opportunity lost: villagers lost plus villager underproduction');
+    expect(html).toContain("This chart shows how each player's resources became game state.");
+    expect(html).toContain('Leader strip: who has the larger current tracked deployed pool in each 30-second block');
+    expect(html).toContain("Economic, Technology, and Military: shares of each player's current net pool, not gross spending totals");
+    expect(html).toContain('Overall: total current tracked deployed value across modeled categories after destroyed value is removed');
+    expect(html).toContain('Destroyed: cumulative tracked value removed by the opponent. This is where raids and fights show lasting damage');
+    expect(html).toContain('Float: resources in the bank that have not become useful game state yet');
+    expect(html).toContain('Opportunity lost: resources missing because of villager deaths or villager underproduction');
     const leaderStrip = extractSvg(html, 'allocation-leader-strip');
     expect(leaderStrip).toContain('data-category-key="economic"');
     expect(leaderStrip).toContain('data-category-key="technology"');

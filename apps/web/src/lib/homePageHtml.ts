@@ -550,7 +550,7 @@ export function renderHomeHtml(errorText?: string | null): string {
           </div>
 
           <div class="chart-card">
-            <p class="chart-title">Allocation lead and mix over time</p>
+            <p class="chart-title">Resource state over time</p>
             <div class="chart" role="img" aria-label="Mock chart preview showing two players' allocation lines over time">
               <svg viewBox="0 0 640 190" preserveAspectRatio="none" aria-hidden="true">
                 <path d="M0,130 C70,126 120,102 180,110 C260,122 305,78 360,90 C440,108 500,116 640,82" fill="none" stroke="var(--sample-sengoku)" stroke-width="4" />

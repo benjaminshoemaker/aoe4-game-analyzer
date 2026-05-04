@@ -99,7 +99,7 @@ Priority levels:
   - Source: `DEFERRED.md`.
 
 - [ ] `P2` Add net-vs-invested basis toggle to allocation lead/mix widget
-  - Add a compact `Current net pool` / `Total investment` toggle to the `Allocation lead and mix over time` widget.
+  - Add a compact `Current net pool` / `Total investment` toggle to the `Resource state over time` widget.
   - Keep `Current net pool` as the default view; in `Total investment` mode, category values should represent `net + destroyed` so the chart answers "what did each player commit?" rather than "what is still present?"
   - Update the leader strip, category share denominators, lane labels, hover labels, and chart explainer together so the visual does not silently change meaning.
   - In invested mode, hide the standalone `Destroyed` lane or relabel it as a destroyed component to avoid double-counting against the category lanes.

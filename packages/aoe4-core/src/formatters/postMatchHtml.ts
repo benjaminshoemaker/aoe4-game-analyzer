@@ -2389,9 +2389,7 @@ export function renderPostMatchHtml(
     includeAdjustedMilitary,
   });
   const inlineHoverSnapshots = clientHoverSnapshots;
-  const destroyedGuideText = surface === 'full'
-    ? 'Destroyed: cumulative value assumed destroyed by opponent'
-    : 'Destroyed: cumulative value removed from the tracked deployed pool';
+  const destroyedGuideText = 'Destroyed: cumulative tracked value removed by the opponent. This is where raids and fights show lasting damage';
   const fullSurfaceStyles = surface === 'full' ? `
     .secondary-panel {
       padding: 0;
@@ -2708,6 +2706,11 @@ export function renderPostMatchHtml(
       color: var(--color-muted);
       font-size: 14px;
       line-height: 1.45;
+    }
+
+    .allocation-section-note {
+      max-width: none;
+      width: 100%;
     }
 
     .allocation-read-guide {
@@ -4129,34 +4132,34 @@ ${fullSurfaceNarrowStyles}
     </section>
 
     <section class="panel">
-      <h2 class="section-title">Allocation lead and mix over time</h2>
-      <p class="section-note">Bands are remapped into Economic, Technology, Military, and Other. The first three charts show share of current tracked pool; Overall is absolute current tracked pool value.</p>
+      <h2 class="section-title">Resource state over time</h2>
+      <p class="section-note allocation-section-note">This chart shows how each player's resources became game state. Economic, Technology, and Military are live net deployed value: what is still contributing at that time after destroyed value is removed. Use the lanes to find when one player's economy, tech, army, float, or losses started separating from the other player.</p>
       <details class="allocation-read-guide" aria-label="Allocation chart legend">
         <summary class="allocation-read-guide-summary">How to read this chart</summary>
         <div class="allocation-read-guide-grid">
-          <div class="allocation-read-guide-item" aria-label="Leader strip: current tracked-value leader by 30-second block">
+          <div class="allocation-read-guide-item" aria-label="Leader strip: who has the larger current tracked deployed pool in each 30-second block">
             <strong>Leader strip</strong>
-            <span>Current tracked-value leader by 30-second block.</span>
+            <span>Who has the larger current tracked deployed pool in each 30-second block.</span>
           </div>
-          <div class="allocation-read-guide-item" aria-label="Economic, Technology, and Military: percentage share of current tracked pool">
+          <div class="allocation-read-guide-item" aria-label="Economic, Technology, and Military: shares of each player's current net pool, not gross spending totals">
             <strong>Category lanes</strong>
-            <span>Economic, Technology, and Military show percentage share of current tracked pool.</span>
+            <span>Economic, Technology, and Military show what each player's live deployed value is made of. These are shares of the current net pool, not gross spending totals.</span>
           </div>
           <div class="allocation-read-guide-item" aria-label="${escapeHtml(destroyedGuideText)}">
             <strong>Destroyed lane</strong>
             <span>${escapeHtml(destroyedGuideText)}.</span>
           </div>
-          <div class="allocation-read-guide-item" aria-label="Overall: absolute current tracked pool value">
+          <div class="allocation-read-guide-item" aria-label="Overall: total current tracked deployed value across modeled categories after destroyed value is removed">
             <strong>Overall lane</strong>
-            <span>Overall: absolute current tracked pool value.</span>
+            <span>Total current tracked deployed value across the modeled categories after destroyed value is removed.</span>
           </div>
-          <div class="allocation-read-guide-item" aria-label="Float (not deployed): live stockpile resources not currently committed">
+          <div class="allocation-read-guide-item" aria-label="Float: resources in the bank that have not become useful game state yet">
             <strong>Float lane</strong>
-            <span>Float (not deployed) is live stockpile resources not currently committed.</span>
+            <span>Resources in the bank that have not become useful game state yet.</span>
           </div>
-          <div class="allocation-read-guide-item" aria-label="Opportunity lost: villagers lost plus villager underproduction by selected time">
+          <div class="allocation-read-guide-item" aria-label="Opportunity lost: resources missing because of villager deaths or villager underproduction by selected time">
             <strong>Opportunity lost lane</strong>
-            <span>Villagers lost plus villager underproduction by selected time.</span>
+            <span>Resources missing because of villager deaths or villager underproduction by selected time.</span>
           </div>
         </div>
       </details>

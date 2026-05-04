@@ -15,6 +15,7 @@ describe('home route e2e', () => {
     expect(body).toContain('View sample report');
     expect(body).toContain('Match recap');
     expect(body).toContain('Allocation timeline');
+    expect(body).toContain('Resource state over time');
     expect(body).toContain('Selected time');
     expect(body).toContain('--aoe-color-bg: #f7f2e8;');
     expect(body).toContain('--background: var(--aoe-color-bg);');
