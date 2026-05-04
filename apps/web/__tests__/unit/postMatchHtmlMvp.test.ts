@@ -492,7 +492,8 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).toContain('data-opportunity-lost-component="total"');
     expect(html).toContain('data-opportunity-lost-component-total-you');
     expect(html).toContain('data-opportunity-lost-component="low-underproduction"');
-    expect(html).toContain('<th scope="row">Under production seconds</th>');
+    expect(html).toContain('<span title="Town-center idle seconds behind expected villager production. Resource loss can be much larger because delayed villagers miss gather time after they would have existed.">TC idle seconds</span>');
+    expect(html).toContain('data-opportunity-lost-component-low-underproduction-you>0s</strong>');
     expect(html).toContain('data-opportunity-lost-component-low-underproduction-you');
     expect(html).toContain('data-band-summary-label');
     expect(html).toContain('data-band-summary-value');

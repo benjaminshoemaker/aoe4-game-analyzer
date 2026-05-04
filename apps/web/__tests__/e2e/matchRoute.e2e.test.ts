@@ -455,7 +455,8 @@ describe('matches route e2e', () => {
     expect(body).toContain('data-opportunity-lost-component="underproduction"');
     expect(body).toContain('<span title="Villager underproduction">Under-production</span>');
     expect(body).toContain('data-opportunity-lost-component="low-underproduction"');
-    expect(body).toContain('<th scope="row">Under production seconds</th>');
+    expect(body).toContain('<span title="Town-center idle seconds behind expected villager production. Resource loss can be much larger because delayed villagers miss gather time after they would have existed.">TC idle seconds</span>');
+    expect(body).toContain('data-opportunity-lost-component-low-underproduction-you>2,213s</strong>');
     expect(body).not.toContain('<th scope="row">Villager underproduction</th>');
   });
 

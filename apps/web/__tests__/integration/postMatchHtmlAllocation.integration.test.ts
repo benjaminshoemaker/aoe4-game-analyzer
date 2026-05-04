@@ -394,7 +394,8 @@ describe('post-match allocation widget integration', () => {
     expect(html).toContain('data-opportunity-lost-component="underproduction"');
     expect(html).toContain('<span title="Villager underproduction">Under-production</span>');
     expect(html).toContain('data-opportunity-lost-component="low-underproduction"');
-    expect(html).toContain('<th scope="row">Under production seconds</th>');
+    expect(html).toContain('<span title="Town-center idle seconds behind expected villager production. Resource loss can be much larger because delayed villagers miss gather time after they would have existed.">TC idle seconds</span>');
+    expect(html).toContain('data-opportunity-lost-component-low-underproduction-you>2,213s</strong>');
     expect(html).not.toContain('<th scope="row">Villager underproduction</th>');
   });
 

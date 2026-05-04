@@ -191,6 +191,9 @@ function runScriptInDom(script: string, hoverPoints: ClientHoverSnapshot[], anal
         <summary>Why this fight is notable</summary>
         <p data-significant-event-underdog-details-text></p>
       </details>
+      <strong data-opportunity-lost-component-low-underproduction-you></strong>
+      <strong data-opportunity-lost-component-low-underproduction-opponent></strong>
+      <strong data-opportunity-lost-component-low-underproduction-delta></strong>
       <div style="height: 800px;"></div>
     </aside>
     <svg>
@@ -233,8 +236,36 @@ describe('post-match interaction script formatter', () => {
     expect(script).toContain('searchParams.set');
     expect(script).toContain('searchParams.delete');
     expect(script).toContain('data-opportunity-lost-component-low-underproduction-you');
+    expect(script).toContain('formatSeconds(lowUnderproduction.you)');
+    expect(script).toContain('formatSignedSeconds(lowUnderproduction.delta)');
     expect(script).not.toContain('payloadSourceUrl');
     expect(script).not.toContain('fetch(payloadSourceUrl');
+  });
+
+  it('renders low-underproduction as seconds when hover state changes', () => {
+    const point = {
+      ...snapshot,
+      opportunityLostComponents: {
+        ...snapshot.opportunityLostComponents,
+        lowUnderproduction: {
+          you: 82,
+          opponent: 94,
+          delta: -12,
+          youShare: 0,
+          opponentShare: 0,
+          shareDelta: 0,
+        },
+      },
+    };
+    const script = buildHoverInteractionScript([point], labels);
+    const { window } = runScriptInDom(script, [point]);
+
+    expect(window.document.querySelector('[data-opportunity-lost-component-low-underproduction-you]')?.textContent)
+      .toBe('82s');
+    expect(window.document.querySelector('[data-opportunity-lost-component-low-underproduction-opponent]')?.textContent)
+      .toBe('94s');
+    expect(window.document.querySelector('[data-opportunity-lost-component-low-underproduction-delta]')?.textContent)
+      .toBe('-12s');
   });
 
   it('exposes the helpers needed to reset the hover inspector to the top on a significant event click', () => {

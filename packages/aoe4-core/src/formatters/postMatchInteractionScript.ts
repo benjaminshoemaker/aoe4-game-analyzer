@@ -309,6 +309,14 @@ export function buildHoverInteractionScript(
         return rounded > 0 ? '+' + rounded.toLocaleString('en-US') : rounded.toLocaleString('en-US');
       }
 
+      function formatSeconds(value) {
+        return formatNumber(value) + 's';
+      }
+
+      function formatSignedSeconds(value) {
+        return formatSigned(value) + 's';
+      }
+
       function formatPrecise(value, decimals) {
         var digits = Number.isFinite(decimals) ? decimals : 2;
         var numeric = Number(value);
@@ -537,9 +545,9 @@ ${adjustedHelpers}
         setText('[data-opportunity-lost-component-underproduction-you]', formatNumber(underproduction.you));
         setText('[data-opportunity-lost-component-underproduction-opponent]', formatNumber(underproduction.opponent));
         setText('[data-opportunity-lost-component-underproduction-delta]', formatSigned(underproduction.delta));
-        setText('[data-opportunity-lost-component-low-underproduction-you]', formatNumber(lowUnderproduction.you));
-        setText('[data-opportunity-lost-component-low-underproduction-opponent]', formatNumber(lowUnderproduction.opponent));
-        setText('[data-opportunity-lost-component-low-underproduction-delta]', formatSigned(lowUnderproduction.delta));
+        setText('[data-opportunity-lost-component-low-underproduction-you]', formatSeconds(lowUnderproduction.you));
+        setText('[data-opportunity-lost-component-low-underproduction-opponent]', formatSeconds(lowUnderproduction.opponent));
+        setText('[data-opportunity-lost-component-low-underproduction-delta]', formatSignedSeconds(lowUnderproduction.delta));
 
         function listHtml(entries, bandKey) {
           if (!entries || entries.length === 0) {

@@ -97,6 +97,8 @@ type AllocationCategoryAccounting = Record<
   AllocationCategoryRows
 >;
 
+const TC_IDLE_SECONDS_TOOLTIP = 'Town-center idle seconds behind expected villager production. Resource loss can be much larger because delayed villagers miss gather time after they would have existed.';
+
 const allocationCategoryDefs: AllocationCategoryDef[] = [
   { key: 'economic', label: 'Economic', bandKeys: ['economic'] },
   { key: 'technology', label: 'Technology', bandKeys: ['research', 'advancement'] },
@@ -732,6 +734,15 @@ function cumulativeUnderproductionSeconds(
   point: HoverSnapshot['villagerOpportunity']['you']
 ): number {
   return Math.max(0, Math.round(point.cumulativeUnderproductionSeconds ?? 0));
+}
+
+function formatSeconds(value: number): string {
+  return `${formatNumber(value)}s`;
+}
+
+function formatSignedSeconds(value: number): string {
+  const rounded = Math.round(Number(value) || 0);
+  return `${rounded > 0 ? '+' : ''}${formatNumber(rounded)}s`;
 }
 
 function economicRoleTotalsFromBreakdown(
@@ -1621,10 +1632,10 @@ function buildHoverInspectorHtml(
                     <td><strong data-opportunity-lost-component-underproduction-delta>${formatSigned(opportunityLostComponents.underproduction.delta)}</strong></td>
                   </tr>
                   <tr data-opportunity-lost-component="low-underproduction">
-                    <th scope="row">Under production seconds</th>
-                    <td><strong data-opportunity-lost-component-low-underproduction-you>${formatNumber(opportunityLostComponents.lowUnderproduction.you)}</strong></td>
-                    <td><strong data-opportunity-lost-component-low-underproduction-opponent>${formatNumber(opportunityLostComponents.lowUnderproduction.opponent)}</strong></td>
-                    <td><strong data-opportunity-lost-component-low-underproduction-delta>${formatSigned(opportunityLostComponents.lowUnderproduction.delta)}</strong></td>
+                    <th scope="row"><span title="${escapeHtml(TC_IDLE_SECONDS_TOOLTIP)}">TC idle seconds</span></th>
+                    <td><strong data-opportunity-lost-component-low-underproduction-you>${formatSeconds(opportunityLostComponents.lowUnderproduction.you)}</strong></td>
+                    <td><strong data-opportunity-lost-component-low-underproduction-opponent>${formatSeconds(opportunityLostComponents.lowUnderproduction.opponent)}</strong></td>
+                    <td><strong data-opportunity-lost-component-low-underproduction-delta>${formatSignedSeconds(opportunityLostComponents.lowUnderproduction.delta)}</strong></td>
                   </tr>
                 </tbody>
               </table>
