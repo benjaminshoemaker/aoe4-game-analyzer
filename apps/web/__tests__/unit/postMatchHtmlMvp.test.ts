@@ -336,6 +336,7 @@ describe('renderPostMatchHtml (web mvp)', () => {
     const html = renderPostMatchHtml(makeMvpModelFixture());
 
     expect(html).toContain('Match recap');
+    expect(html).toContain('<a class="recap-link feedback-link" href="https://www.reddit.com/user/shoe7525/" target="_blank" rel="noreferrer noopener">Feedback? DM me on Reddit</a>');
     expect(html).not.toContain('<section class="panel metrics">');
     expect(html).not.toContain('Dark age');
     expect(html).not.toContain('Feudal age');

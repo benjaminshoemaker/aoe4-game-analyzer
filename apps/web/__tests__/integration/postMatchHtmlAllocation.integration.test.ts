@@ -126,6 +126,7 @@ describe('post-match allocation widget integration', () => {
     const html = renderPostMatchHtml(model);
 
     expect(html).toContain('Allocation lead and mix over time');
+    expect(html).toContain('<a class="recap-link feedback-link" href="https://www.reddit.com/user/shoe7525/" target="_blank" rel="noreferrer noopener">Feedback? DM me on Reddit</a>');
     expect(html).not.toContain('<section class="panel metrics">');
     expect(html).not.toContain('Dark age');
     expect(html).not.toContain('Final pool delta');

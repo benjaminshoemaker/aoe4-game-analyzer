@@ -11,6 +11,7 @@ describe('home route e2e', () => {
     expect(body).toContain('AoE4World match URL');
     expect(body).toContain('See where the game turned.');
     expect(body).toContain('Post-match allocation analysis from <a href="https://aoe4world.com" target="_blank" rel="noopener noreferrer">AoE4World links</a>');
+    expect(body).toContain('<a href="https://www.reddit.com/user/shoe7525/" target="_blank" rel="noopener noreferrer">Feedback? DM me on Reddit</a>');
     expect(body).toContain('View sample report');
     expect(body).toContain('Match recap');
     expect(body).toContain('Allocation timeline');

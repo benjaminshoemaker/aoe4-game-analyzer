@@ -166,6 +166,7 @@ describe('matches route e2e', () => {
     expect(body).toContain('--color-border: var(--aoe-color-report-border);');
     expect(body).toContain('font-family: var(--aoe-font-report);');
     expect(body).not.toContain('--color-background: #f2f4ee;');
+    expect(body).toContain('<a class="recap-link feedback-link" href="https://www.reddit.com/user/shoe7525/" target="_blank" rel="noreferrer noopener">Feedback? DM me on Reddit</a>');
     expect(body).toContain('Allocation lead and mix over time');
     expect(body).not.toContain('<section class="panel metrics">');
     expect(body).not.toContain('Dark age');

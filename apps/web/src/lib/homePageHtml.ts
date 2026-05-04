@@ -5,6 +5,7 @@ const exampleUrl = 'https://aoe4world.com/.../games/...';
 const sampleMatchHref =
   '/matches/open?url=https%3A%2F%2Faoe4world.com%2Fplayers%2F8139502%2Fgames%2F229727104%3Fsig%3Db6fc4eab80fa84ff983bcb27b4af086a59a09f5d';
 const faviconHref = "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='6'%20fill='%239b2f1f'/%3E%3Cpath%20d='M8%2022h16v3H8zM10%208h12l-2%2012h-8z'%20fill='%23fff9f5'/%3E%3C/svg%3E";
+const redditFeedbackHref = 'https://www.reddit.com/user/shoe7525/';
 
 export function renderHomeHtml(errorText?: string | null): string {
   const escapedError = errorText ? escapeHtml(errorText) : '';
@@ -474,7 +475,7 @@ export function renderHomeHtml(errorText?: string | null): string {
         <span class="brand-mark" aria-hidden="true">A4</span>
         <span>AoE4 Match Analyzer</span>
       </a>
-      <div class="topbar-meta">Post-match allocation analysis from <a href="https://aoe4world.com" target="_blank" rel="noopener noreferrer">AoE4World links</a></div>
+      <div class="topbar-meta">Post-match allocation analysis from <a href="https://aoe4world.com" target="_blank" rel="noopener noreferrer">AoE4World links</a> &middot; <a href="${redditFeedbackHref}" target="_blank" rel="noopener noreferrer">Feedback? DM me on Reddit</a></div>
     </header>
 
     <main class="hero-grid">

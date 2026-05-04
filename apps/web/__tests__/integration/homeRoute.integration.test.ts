@@ -10,6 +10,8 @@ describe('home route integration', () => {
     expect(response.headers.get('cache-control')).toContain('public');
     expect(body).toContain('See where the game turned.');
     expect(body).toContain('href="https://aoe4world.com" target="_blank" rel="noopener noreferrer"');
+    expect(body).toContain('href="https://www.reddit.com/user/shoe7525/" target="_blank" rel="noopener noreferrer"');
+    expect(body).toContain('Feedback? DM me on Reddit');
     expect(body).toContain('View sample report');
     expect(body).toContain('/matches/open?url=https%3A%2F%2Faoe4world.com%2Fplayers%2F8139502%2Fgames%2F229727104%3Fsig%3D');
     expect(body).toContain('<form method="get" action="/matches/open"');
