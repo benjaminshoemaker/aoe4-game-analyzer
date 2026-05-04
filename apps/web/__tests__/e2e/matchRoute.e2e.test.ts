@@ -163,7 +163,8 @@ describe('matches route e2e', () => {
       gameId: 230143339,
       sig: 'abc123',
     });
-    expect(response.headers.get('cache-control')).toBe('private, max-age=300, stale-while-revalidate=3600');
+    expect(response.headers.get('cache-control')).toBe('private, max-age=0, must-revalidate');
+    expect(response.headers.get('cdn-cache-control')).toBeNull();
     expect(body).toContain('<link rel="icon" href="data:image/svg+xml');
     expect(body).toContain('--aoe-color-report-bg: #f2f4ee;');
     expect(body).toContain('--aoe-color-report-surface: #fbfcf9;');
@@ -293,7 +294,7 @@ describe('matches route e2e', () => {
     expect(mockUnstableCache).toHaveBeenCalledTimes(1);
     expect(mockUnstableCache.mock.calls[0][1]).toEqual([
       'aoe4-rendered-report-html',
-      'v8',
+      expect.stringMatching(/^v8-(?:[a-f0-9]{12}|nobuild)-(?:[a-f0-9]{12}|none)$/),
       'my-slug',
       '230143339',
       expect.stringMatching(/^sig-sha256:[a-f0-9]{64}$/),
@@ -303,7 +304,8 @@ describe('matches route e2e', () => {
       revalidate: 86400,
       tags: ['aoe4-rendered-report:my-slug:230143339'],
     }));
-    expect(second.headers.get('cache-control')).toBe('private, max-age=300, stale-while-revalidate=3600');
+    expect(second.headers.get('cache-control')).toBe('private, max-age=0, must-revalidate');
+    expect(second.headers.get('cdn-cache-control')).toBeNull();
   });
 
   it('returns player-2 perspective allocation visuals without switching line identities', async () => {
@@ -368,7 +370,10 @@ describe('matches route e2e', () => {
 
     expect(response.status).toBe(500);
     expect(body).toContain('Unable to load match (500)');
-    expect(body).toContain('bad game id');
+    // Error message is HTML-escaped so injected angle brackets survive
+    // as text rather than disappearing into the markup.
+    expect(body).toContain('bad &lt;game&gt; id');
+    expect(body).not.toContain('bad <game> id');
     expect(body).toContain('--aoe-color-bg: #f7f2e8;');
     expect(body).toContain('--background: var(--aoe-color-bg);');
     expect(body).toContain('--surface: var(--aoe-color-surface);');
@@ -424,7 +429,7 @@ describe('matches route e2e', () => {
       opponent: 0,
       delta: 1475,
     }));
-    expect(payload[0].opportunityLostComponents.low_underproduction).toEqual(expect.objectContaining({
+    expect(payload[0].opportunityLostComponents.lowUnderproduction).toEqual(expect.objectContaining({
       you: 2213,
       opponent: 0,
       delta: 2213,
@@ -449,7 +454,7 @@ describe('matches route e2e', () => {
     expect(body).toContain('<th scope="row">Total</th>');
     expect(body).toContain('data-opportunity-lost-component="underproduction"');
     expect(body).toContain('<span title="Villager underproduction">Under-production</span>');
-    expect(body).toContain('data-opportunity-lost-component="low_underproduction"');
+    expect(body).toContain('data-opportunity-lost-component="low-underproduction"');
     expect(body).toContain('<th scope="row">Under production seconds</th>');
     expect(body).not.toContain('<th scope="row">Villager underproduction</th>');
   });
@@ -483,8 +488,53 @@ describe('matches route e2e', () => {
       opponent: 0,
       delta: 120,
     }));
-    expect(at90.opportunityLostComponents.low_underproduction.you).toBe(30);
-    expect(at180.opportunityLostComponents.low_underproduction.you).toBe(120);
+    expect(at90.opportunityLostComponents.lowUnderproduction.you).toBe(30);
+    expect(at180.opportunityLostComponents.lowUnderproduction.you).toBe(120);
     expect(body).toContain('resources lost by selected time');
+  });
+
+  describe('cache headers', () => {
+    beforeEach(() => {
+      parseMatchRouteParams.mockReturnValue({ profileSlug: 'my-slug', gameId: 230143339 });
+      buildMatchHtml.mockResolvedValue('<!doctype html><html><body>ok</body></html>');
+    });
+
+    it('signed (private) responses tell browsers to revalidate and skip the CDN', async () => {
+      const request = new Request('http://localhost/matches/my-slug/230143339?sig=abc123');
+      const response = await GET(request, {
+        params: Promise.resolve({ profileSlug: 'my-slug', gameId: '230143339' }),
+      });
+
+      expect(response.headers.get('cache-control')).toBe('private, max-age=0, must-revalidate');
+      expect(response.headers.get('cdn-cache-control')).toBeNull();
+    });
+
+    it('public responses tell browsers to revalidate and let the CDN cache', async () => {
+      const request = new Request('http://localhost/matches/my-slug/230143339');
+      const response = await GET(request, {
+        params: Promise.resolve({ profileSlug: 'my-slug', gameId: '230143339' }),
+      });
+
+      expect(response.headers.get('cache-control')).toBe('public, max-age=0, must-revalidate');
+      expect(response.headers.get('cdn-cache-control')).toBe(
+        'public, s-maxage=86400, stale-while-revalidate=604800'
+      );
+    });
+
+    it('disables caching entirely in development', async () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      Object.defineProperty(process.env, 'NODE_ENV', { value: 'development', configurable: true });
+      try {
+        const request = new Request('http://localhost/matches/my-slug/230143339');
+        const response = await GET(request, {
+          params: Promise.resolve({ profileSlug: 'my-slug', gameId: '230143339' }),
+        });
+
+        expect(response.headers.get('cache-control')).toBe('no-store');
+        expect(response.headers.get('cdn-cache-control')).toBeNull();
+      } finally {
+        Object.defineProperty(process.env, 'NODE_ENV', { value: originalNodeEnv, configurable: true });
+      }
+    });
   });
 });
