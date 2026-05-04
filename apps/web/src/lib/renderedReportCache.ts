@@ -16,7 +16,9 @@ const CACHE_NAMESPACE = 'aoe4-rendered-report-html';
 // must invalidate any cached HTML.
 // v4: low_underproduction now reports inferred TC-idle seconds, crediting
 // in-progress villager training before the villager completion timestamp.
-const CACHE_VERSION = 'v4';
+// v5: significant event hover labels use the event window range instead of
+// the primary timestamp.
+const CACHE_VERSION = 'v5';
 
 type RenderedReportCacheEntry = {
   html: string;

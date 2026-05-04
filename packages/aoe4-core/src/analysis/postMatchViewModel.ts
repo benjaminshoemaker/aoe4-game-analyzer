@@ -908,8 +908,10 @@ function selectSignificantTimelineEvents(
     .sort((a, b) => a.timestamp - b.timestamp || a.id.localeCompare(b.id));
 }
 
-function significantEventLabel(event: SignificantTimelineEvent): string {
-  return `${event.victimLabel} ${event.label} ${event.timeLabel}`;
+function significantEventLabel(event: SignificantTimelineEvent, durationSeconds: number): string {
+  const boundedStart = Math.max(0, Math.min(durationSeconds, Math.min(event.windowStart, event.windowEnd)));
+  const boundedEnd = Math.max(0, Math.min(durationSeconds, Math.max(event.windowStart, event.windowEnd)));
+  return `${event.victimLabel} ${event.label} ${formatTime(boundedStart)}-${formatTime(boundedEnd)}`;
 }
 
 function eventImpactForPlayer(event: SignificantResourceLossEvent, player: 1 | 2): { grossLoss: number; villagerDeaths: number } {
@@ -2470,7 +2472,7 @@ export function buildPostMatchViewModel(params: {
           .map(marker => marker.label),
         ...significantEvents
           .filter(event => event.timestamp === timestamp)
-          .map(significantEventLabel),
+          .map(event => significantEventLabel(event, summary.duration)),
       ],
       you,
       opponent,

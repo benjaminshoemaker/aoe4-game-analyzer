@@ -580,6 +580,8 @@ describe('post-match view integration', () => {
       immediateLoss: 50,
       villagerDeaths: 1,
     }));
+    expect(point?.markers).toContain('Sengoku Daimyo Raid 1:30-2:30');
+    expect(point?.markers).not.toContain('Sengoku Daimyo Raid 2:30');
     expect(html).toContain('data-significant-event-marker');
     expect(html).toContain('data-significant-event-window');
     expect(html).toContain('class="significant-event-window"');

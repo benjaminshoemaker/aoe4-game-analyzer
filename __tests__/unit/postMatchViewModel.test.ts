@@ -345,6 +345,28 @@ describe('significant resource loss timeline events', () => {
     expect(model.trajectory.hoverSnapshots.find(snapshot => snapshot.timestamp === 120)?.significantEvent).toBeNull();
   });
 
+  it('labels significant-event hover markers with the graph-highlighted time range', () => {
+    const duration = 3 * 60;
+    const event = significantEvent({
+      id: 'fight',
+      timestamp: 160,
+      windowStart: 130,
+      windowEnd: 210,
+      kind: 'fight',
+      victimPlayer: 1,
+      grossImpact: 1000,
+    });
+
+    const model = buildPostMatchViewModel({
+      summary: summaryForSignificantEvents(duration),
+      analysis: analysisForSignificantEvents(duration, [event]),
+      perspectiveProfileId: 1,
+    });
+
+    expect(model.trajectory.hoverSnapshots.find(snapshot => snapshot.timestamp === 160)?.markers)
+      .toEqual(['English Fight 2:10-3:00']);
+  });
+
   it('writes raid and fight headlines with civilization names and carries encounter losses', () => {
     const duration = 3 * 60;
     const events = [

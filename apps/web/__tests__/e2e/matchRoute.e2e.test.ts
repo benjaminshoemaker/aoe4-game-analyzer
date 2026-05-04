@@ -280,7 +280,7 @@ describe('matches route e2e', () => {
     expect(mockUnstableCache).toHaveBeenCalledTimes(1);
     expect(mockUnstableCache.mock.calls[0][1]).toEqual([
       'aoe4-rendered-report-html',
-      'v4',
+      'v5',
       'my-slug',
       '230143339',
       expect.stringMatching(/^sig-sha256:[a-f0-9]{64}$/),
