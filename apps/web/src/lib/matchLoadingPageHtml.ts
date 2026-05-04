@@ -187,7 +187,7 @@ export function renderMatchLoadingHtml(targetHref: string): string {
       flex-wrap: wrap;
       gap: 12px;
       align-items: center;
-      margin-top: 20px;
+      margin-top: 14px;
     }
     .actions a {
       min-height: 44px;
@@ -203,16 +203,16 @@ export function renderMatchLoadingHtml(targetHref: string): string {
       font-weight: 700;
       transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
     }
-    .actions a.primary {
-      border-color: var(--aoe-color-primary-border);
-      background: var(--primary);
-      color: var(--primary-contrast);
-    }
     .actions a:hover { background: var(--aoe-color-report-control-hover); }
-    .actions a.primary:hover { background: var(--aoe-color-primary-border); }
     .actions a:focus-visible {
       outline: 2px solid var(--aoe-color-report-focus);
       outline-offset: 2px;
+    }
+    .automatic-note {
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
     }
     .skeleton-header,
     .skeleton-chart,
@@ -326,8 +326,8 @@ export function renderMatchLoadingHtml(targetHref: string): string {
         <li data-stage-index="3">Rendering report</li>
       </ol>
       <p id="long-wait-message" class="long-wait" hidden>This match is still processing. First loads can take longer; reloads are usually faster.</p>
+      <p class="automatic-note">Opening automatically.</p>
       <div class="actions">
-        <a class="primary" href="${escapedTarget}">Open match report</a>
         <a href="/">Back to URL entry</a>
       </div>
     </section>
@@ -356,7 +356,7 @@ export function renderMatchLoadingHtml(targetHref: string): string {
     </section>
   </main>
   <noscript>
-    <p>JavaScript is required to continue automatically. <a href="${escapedTarget}">Open the match report</a>.</p>
+    <p>JavaScript is required to continue automatically. <a href="${escapedTarget}">Continue to the match report</a>.</p>
   </noscript>
   <script>
     (function () {

@@ -11,7 +11,10 @@ describe('match loading route integration', () => {
     expect(response.headers.get('cache-control')).toBe('no-store');
     expect(body).toContain('Building match report');
     expect(body).toContain('aria-label="Match report preview skeleton"');
+    expect(body).toContain('Opening automatically');
     expect(body).toContain('/matches/my-slug/230143339?sig=abc123');
+    expect(body).not.toContain('<a class="primary" href=');
+    expect(body).not.toContain('>Open match report<');
     expect(body).not.toContain('/_next/static/chunks/');
   });
 

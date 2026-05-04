@@ -15,7 +15,10 @@ describe('match loading page', () => {
     expect(html).toContain('This match is still processing.');
     expect(html).toContain('prefers-reduced-motion');
     expect(html).toContain('window.location.replace(targetHref)');
+    expect(html).toContain('Opening automatically');
     expect(html).toContain('"\\/matches\\/my-slug\\/230143339?sig=abc123"');
+    expect(html).not.toContain('<a class="primary" href=');
+    expect(html).not.toContain('>Open match report<');
     expect(html).not.toContain('>abc123<');
     expect(html).not.toContain('/_next/static/chunks/');
     expect(html).not.toContain('self.__next_f');
