@@ -117,20 +117,57 @@ const snapshot: ClientHoverSnapshot = {
   },
 };
 
-function runTooltipScriptInDom(script: string): {
+const eventSnapshot: ClientHoverSnapshot = {
+  ...snapshot,
+  timestamp: 150,
+  timeLabel: '2:30',
+  strategyX: 240,
+  significantEvent: {
+    id: 'evt-1',
+    timestamp: 150,
+    timeLabel: '2:30',
+    label: 'Raid',
+    description: 'Lost a villager',
+    headline: 'Lost a villager',
+    kind: 'raid',
+    victim: 'opponent',
+    victimLabel: 'Player Two',
+    victimCivilization: 'French',
+    actorLabel: 'Player One',
+    actorCivilization: 'English',
+    player1Civilization: 'English',
+    player1Label: 'Player One',
+    player2Civilization: 'French',
+    player2Label: 'Player Two',
+    villagerDeaths: 1,
+    immediateLoss: 50,
+    grossLoss: 50,
+    pctOfDeployed: 5,
+    villagerOpportunityLoss: 0,
+    encounterLosses: { player1: [], player2: [] },
+    playerImpacts: {
+      player1: { grossLoss: 0, immediateLoss: 0, pctOfDeployed: 0, villagerOpportunityLoss: 0 },
+      player2: { grossLoss: 50, immediateLoss: 50, pctOfDeployed: 5, villagerOpportunityLoss: 0 },
+    },
+    preEncounterArmies: null,
+  } as any,
+  markers: ['Raid'],
+};
+
+function runScriptInDom(script: string, hoverPoints: ClientHoverSnapshot[], analyticsCapture?: jest.Mock): {
   window: any;
-  bandButton: HTMLElement;
-  helpButton: HTMLElement;
-  tooltip: HTMLElement;
+  inspector: HTMLElement;
+  marker: HTMLElement;
+  hoverRect: HTMLElement;
 } {
   const { JSDOM } = require('jsdom') as typeof import('jsdom');
   const html = `<!doctype html><html><body>
-    <aside id="hover-inspector" class="hover-inspector">
+    <aside id="hover-inspector" class="hover-inspector" style="position: sticky; max-height: 300px; overflow: auto;">
       <div data-hover-field="timeLabel">0:00</div>
       <div data-hover-context></div>
       <div class="destroyed-row-label">
         <button type="button" class="band-toggle" data-band-key="militaryDestroyed" aria-pressed="false">
-          <span class="legend-dot destroyed-dot"></span><span data-destroyed-row-label>Military destroyed</span>
+          <span data-destroyed-row-tooltip>Military destroyed</span>
         </button>
         <button
           type="button"
@@ -142,19 +179,49 @@ function runTooltipScriptInDom(script: string): {
         >?</button>
         <span id="destroyed-row-tooltip-military" class="destroyed-row-tooltip" role="tooltip" hidden>Destroyed rows help.</span>
       </div>
+      <button type="button" class="band-toggle" data-band-key="economic" aria-pressed="false">Economic</button>
+      <button type="button" class="allocation-category-toggle" data-allocation-category-toggle="military" aria-expanded="false">Military</button>
+      <input type="range" data-mobile-timeline-slider value="0" />
+      <button type="button" data-mobile-timeline-step="1">Next</button>
+      <details data-mobile-details open>
+        <summary>Event details</summary>
+      </details>
+      <button type="button" data-significant-event-underdog-toggle>Why notable</button>
+      <details data-significant-event-underdog-details>
+        <summary>Why this fight is notable</summary>
+        <p data-significant-event-underdog-details-text></p>
+      </details>
+      <div style="height: 800px;"></div>
     </aside>
-    <script id="post-match-hover-data" type="application/json">${JSON.stringify([snapshot])}</script>
+    <svg>
+      <rect class="hover-target strategy-hover-target" data-hover-timestamp="150" x="0" y="40" width="20" height="200" />
+      <rect class="hover-target strategy-hover-target" data-hover-timestamp="0" x="20" y="40" width="20" height="200" />
+      <g class="significant-event-marker hover-target" data-significant-event-marker data-hover-timestamp="150" tabindex="0" role="button">
+        <rect class="significant-event-hit" x="5" y="14" width="20" height="20" fill="transparent" pointer-events="all" />
+        <circle class="significant-event-dot" cx="15" cy="24" r="10" />
+      </g>
+    </svg>
+    <a class="recap-link" href="https://aoe4world.com/players/1/games/2?sig=private-token">AoE4World summary</a>
+    <a class="recap-link feedback-link" href="https://www.reddit.com/user/shoe7525/">Feedback? DM me on Reddit</a>
+    <script id="post-match-hover-data" type="application/json">${JSON.stringify(hoverPoints)}</script>
   </body></html>`;
   const dom = new JSDOM(html, { runScripts: 'outside-only' });
   const win = dom.window;
+  if (analyticsCapture) {
+    (win as any).aoe4Analytics = { capture: analyticsCapture };
+  }
+  // Stub scrollIntoView, which JSDOM does not implement.
+  win.HTMLElement.prototype.scrollIntoView = function () {
+    (this as any).__scrolledIntoView = true;
+  };
   const scriptMatch = script.match(/<script>([\s\S]*?)<\/script>\s*$/);
   if (!scriptMatch) throw new Error('script body not found');
   win.eval(scriptMatch[1]);
   return {
     window: win,
-    bandButton: win.document.querySelector('.band-toggle[data-band-key="militaryDestroyed"]')! as HTMLElement,
-    helpButton: win.document.querySelector('[data-destroyed-help-button]')! as HTMLElement,
-    tooltip: win.document.getElementById('destroyed-row-tooltip-military')! as HTMLElement,
+    inspector: win.document.getElementById('hover-inspector')!,
+    marker: win.document.querySelector('[data-significant-event-marker]')! as HTMLElement,
+    hoverRect: win.document.querySelector('.strategy-hover-target[data-hover-timestamp="150"]')! as HTMLElement,
   };
 }
 
@@ -170,32 +237,156 @@ describe('post-match interaction script formatter', () => {
     expect(script).not.toContain('fetch(payloadSourceUrl');
   });
 
+  it('exposes the helpers needed to reset the hover inspector to the top on a significant event click', () => {
+    const script = buildHoverInteractionScript([snapshot], labels);
+
+    expect(script).toContain('function resetInspectorScrollToTop()');
+    expect(script).toContain("document.querySelectorAll('.hover-inspector').forEach");
+    expect(script).toContain('inspector.scrollTop = 0;');
+    // Robust handler: detects a significant-event click both directly via the
+    // marker's data attribute AND via the snapshot when a sibling hover target
+    // intercepted the pointer.
+    expect(script).toContain('function shouldResetInspectorScrollForChartClick(target, timestamp)');
+    expect(script).toContain("target.hasAttribute('data-significant-event-marker')");
+    expect(script).toContain('snapshotHasSignificantEventAtTimestamp(nearest)');
+    expect(script).toContain("selectTimestamp(selectedTimestamp, true, shouldResetInspectorScroll, 'chart');");
+  });
+
   it('opens destroyed-row help only after the help icon is clicked', () => {
     const script = buildHoverInteractionScript([snapshot], labels);
-    const dom = runTooltipScriptInDom(script);
+    const dom = runScriptInDom(script, [snapshot]);
+    const bandButton = dom.window.document.querySelector('.band-toggle[data-band-key="militaryDestroyed"]') as HTMLElement;
+    const button = dom.window.document.querySelector('[data-destroyed-help-button]') as HTMLElement;
+    const tooltip = dom.window.document.getElementById('destroyed-row-tooltip-military') as HTMLElement;
 
-    expect(dom.helpButton.hasAttribute('data-band-key')).toBe(false);
-    expect(dom.helpButton.getAttribute('data-tooltip-open')).toBe('false');
-    expect(dom.helpButton.getAttribute('aria-expanded')).toBe('false');
-    expect(dom.tooltip.hidden).toBe(true);
+    expect(button.hasAttribute('data-band-key')).toBe(false);
+    expect(button.getAttribute('data-tooltip-open')).toBe('false');
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(tooltip.hidden).toBe(true);
 
-    dom.helpButton.dispatchEvent(new dom.window.MouseEvent('mouseenter', { bubbles: true }));
-    expect(dom.helpButton.getAttribute('data-tooltip-open')).toBe('false');
-    expect(dom.tooltip.hidden).toBe(true);
+    button.dispatchEvent(new dom.window.MouseEvent('mouseenter', { bubbles: true }));
+    expect(button.getAttribute('data-tooltip-open')).toBe('false');
+    expect(tooltip.hidden).toBe(true);
 
-    dom.bandButton.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
-    expect(dom.bandButton.getAttribute('aria-pressed')).toBe('true');
-    expect(dom.helpButton.getAttribute('data-tooltip-open')).toBe('false');
-    expect(dom.tooltip.hidden).toBe(true);
+    bandButton.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    expect(bandButton.getAttribute('aria-pressed')).toBe('true');
+    expect(button.getAttribute('data-tooltip-open')).toBe('false');
+    expect(tooltip.hidden).toBe(true);
 
-    dom.helpButton.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
-    expect(dom.helpButton.getAttribute('data-tooltip-open')).toBe('true');
-    expect(dom.helpButton.getAttribute('aria-expanded')).toBe('true');
-    expect(dom.tooltip.hidden).toBe(false);
+    button.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    expect(button.getAttribute('data-tooltip-open')).toBe('true');
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    expect(tooltip.hidden).toBe(false);
 
-    dom.helpButton.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
-    expect(dom.helpButton.getAttribute('data-tooltip-open')).toBe('false');
-    expect(dom.helpButton.getAttribute('aria-expanded')).toBe('false');
-    expect(dom.tooltip.hidden).toBe(true);
+    button.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    expect(button.getAttribute('data-tooltip-open')).toBe('false');
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(tooltip.hidden).toBe(true);
+  });
+
+  it('resets inspector scroll when a click on the strategy-hover-target overlaps a significant event timestamp', () => {
+    const script = buildHoverInteractionScript([eventSnapshot, snapshot], labels);
+    const dom = runScriptInDom(script, [eventSnapshot, snapshot]);
+    dom.inspector.scrollTop = 200;
+    expect(dom.inspector.scrollTop).toBe(200);
+
+    // Clicking the strategy-hover-target that shares the event's timestamp
+    // (i.e. the typical interception scenario when the user clicks on the
+    // marker stem) must still reset the inspector scrollTop to 0.
+    dom.hoverRect.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    expect(dom.inspector.scrollTop).toBe(0);
+    expect(dom.window.document.body.getAttribute('data-hover-pinned')).toBe('true');
+  });
+
+  it('resets inspector scroll when the marker <g> click handler runs directly', () => {
+    const script = buildHoverInteractionScript([eventSnapshot, snapshot], labels);
+    const dom = runScriptInDom(script, [eventSnapshot, snapshot]);
+    dom.inspector.scrollTop = 150;
+
+    dom.marker.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    expect(dom.inspector.scrollTop).toBe(0);
+  });
+
+  it('does not reset inspector scroll when the user clicks a snapshot column without a significant event', () => {
+    const script = buildHoverInteractionScript([eventSnapshot, snapshot], labels);
+    const dom = runScriptInDom(script, [eventSnapshot, snapshot]);
+    dom.inspector.scrollTop = 175;
+    const noEventRect = dom.window.document.querySelector(
+      '.strategy-hover-target[data-hover-timestamp="0"]'
+    ) as HTMLElement;
+    noEventRect.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    expect(dom.inspector.scrollTop).toBe(175);
+  });
+
+  it('falls back to scrollIntoView when the inspector is not sticky (responsive layout)', () => {
+    const script = buildHoverInteractionScript([eventSnapshot, snapshot], labels);
+    const dom = runScriptInDom(script, [eventSnapshot, snapshot]);
+    // Switch to the responsive-layout case: position: static.
+    dom.inspector.setAttribute('style', 'position: static; max-height: none;');
+    dom.inspector.scrollTop = 0;
+
+    dom.marker.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    expect((dom.inspector as any).__scrolledIntoView).toBe(true);
+  });
+
+  it('captures explicit analytics events for selected timestamps and controls', () => {
+    const script = buildHoverInteractionScript([eventSnapshot, snapshot], labels);
+    const capture = jest.fn();
+    const dom = runScriptInDom(script, [eventSnapshot, snapshot], capture);
+
+    dom.hoverRect.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    expect(capture).toHaveBeenCalledWith('timestamp selected', expect.objectContaining({
+      timestamp: 150,
+      time_label: '2:30',
+      source: 'chart',
+      has_significant_event: true,
+    }));
+
+    const economicBand = dom.window.document.querySelector('.band-toggle[data-band-key="economic"]') as HTMLElement;
+    economicBand.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    expect(capture).toHaveBeenCalledWith('band filter changed', expect.objectContaining({
+      band_key: 'economic',
+    }));
+
+    const categoryButton = dom.window.document.querySelector('[data-allocation-category-toggle="military"]') as HTMLElement;
+    categoryButton.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    expect(capture).toHaveBeenCalledWith('allocation category toggled', expect.objectContaining({
+      category_key: 'military',
+      expanded: true,
+    }));
+
+    const eventHelp = dom.window.document.querySelector('[data-significant-event-underdog-toggle]') as HTMLElement;
+    eventHelp.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    expect(capture).toHaveBeenCalledWith('event explanation opened', expect.objectContaining({
+      timestamp: 150,
+      significant_event_id: 'evt-1',
+    }));
+
+    const mobileSlider = dom.window.document.querySelector('[data-mobile-timeline-slider]') as HTMLInputElement;
+    mobileSlider.value = '1';
+    mobileSlider.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    expect(capture).toHaveBeenCalledWith('mobile timeline changed', expect.objectContaining({
+      source: 'mobile-slider',
+      timestamp: 0,
+      target_index: 1,
+    }));
+
+    const mobileStep = dom.window.document.querySelector('[data-mobile-timeline-step="1"]') as HTMLElement;
+    mobileStep.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    expect(capture).toHaveBeenCalledWith('mobile timeline changed', expect.objectContaining({
+      source: 'mobile-step',
+      step: 1,
+    }));
+
+    const summaryLink = dom.window.document.querySelector('.recap-link:not(.feedback-link)') as HTMLElement;
+    summaryLink.addEventListener('click', (event) => event.preventDefault(), { once: true });
+    summaryLink.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, cancelable: true }));
+    expect(capture).toHaveBeenCalledWith('match outbound link clicked', expect.objectContaining({
+      link_kind: 'aoe4world-summary',
+      destination_host: 'aoe4world.com',
+      destination_path: '/players/1/games/2',
+      timestamp: 0,
+    }));
+    expect(JSON.stringify(capture.mock.calls)).not.toContain('private-token');
   });
 });

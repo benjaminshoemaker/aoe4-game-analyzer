@@ -39,6 +39,12 @@ function extractSvg(html: string, id: string): string {
   return match[0];
 }
 
+function extractInspectorTable(html: string): string {
+  const match = html.match(/<table class="inspector-table">[\s\S]*?<\/table>/);
+  if (!match) throw new Error('Expected inspector table');
+  return match[0];
+}
+
 describe('post-match view integration', () => {
   beforeEach(() => {
     nock.cleanAll();
@@ -187,6 +193,7 @@ describe('post-match view integration', () => {
     expect(html).toContain('data-hover-field="allocationCategory.military.destroyed.delta"');
     expect(html).toContain('data-hover-field="allocationCategory.military.investment.delta"');
     expect(html).toContain('data-hover-field="allocation.float.delta"');
+    expect(extractInspectorTable(html)).not.toContain('class="legend-dot');
     expect(html).toContain('data-economic-role-filter="resourceGenerator"');
     expect(html).toContain('data-economic-role-filter="resourceInfrastructure"');
     expect(html).toContain('data-allocation-investment-category="economic"');
@@ -197,7 +204,6 @@ describe('post-match view integration', () => {
     expect(html).toContain('function combinedInvestmentBreakdown(point, category)');
     expect(html).toContain('function syncDestroyedRowVisibility(point)');
     expect(html).toContain('data-destroyed-row-category="economic" data-destroyed-row-empty="true" hidden');
-    expect(html).toContain('Advancement destroyed');
     const destroyedRowTooltip = 'Destroyed rows show value destroyed for the team in that column, not by that team. The opponent destroyed that value.';
     expect(html.split(`data-destroyed-tooltip-copy="${destroyedRowTooltip}"`).length - 1).toBe(4);
     expect(html.split(`class="destroyed-row-label"`).length - 1).toBe(4);
@@ -209,6 +215,7 @@ describe('post-match view integration', () => {
     expect(html).toContain('background: #1f2a1f;');
     expect(html).not.toContain('class="band-toggle destroyed-row-help-toggle"');
     expect(html).not.toContain('.band-toggle:hover .destroyed-row-tooltip');
+    expect(html).toContain('Advancement destroyed');
     expect(html).not.toContain('Technology destroyed');
     expect(html).not.toContain('data-inspector-row="destroyed"');
     expect(html).not.toContain('data-band-key="destroyed"');
@@ -586,11 +593,26 @@ describe('post-match view integration', () => {
     expect(point?.markers).toContain('Sengoku Daimyo Raid 1:30-2:30');
     expect(point?.markers).not.toContain('Sengoku Daimyo Raid 2:30');
     expect(html).toContain('data-significant-event-marker');
+    expect(extractSvg(html, 'allocation-comparison')).toMatch(/data-significant-event-marker[\s\S]*?<circle class="significant-event-dot"[^>]*fill="#378ADD"/);
     expect(html).toContain('data-significant-event-window');
     expect(html).toContain('class="significant-event-window"');
     expect(html).toContain('display="none"');
+    // The marker stem must be rendered outside the clickable <g> so that
+    // auto-targeted bbox-center clicks (and imprecise user clicks) land on
+    // the visible icon instead of being intercepted by the strategy-hover
+    // rect underneath.
+    expect(html).toMatch(/<g class="significant-event-stems"[^>]*>[\s\S]*?<line class="significant-event-stem"/);
+    expect(html).toContain('<rect class="significant-event-hit"');
+    // Click handler delegates to a robust helper that also detects the
+    // significant-event timestamp via the snapshot, so a click intercepted by
+    // a sibling hover-target with the same timestamp still resets scroll.
+    expect(html).toContain('function shouldResetInspectorScrollForChartClick(target, timestamp)');
+    expect(html).toContain('snapshotHasSignificantEventAtTimestamp(nearest)');
     expect(html).toContain('function syncSignificantEventWindowSpotlight(point)');
     expect(html).toContain("document.querySelectorAll('[data-significant-event-window]').forEach");
+    expect(html).toContain('var shouldResetInspectorScroll = shouldResetInspectorScrollForChartClick(target, selectedTimestamp);');
+    expect(html).toContain('if (shouldResetInspectorScroll) resetInspectorScrollToTop();');
+    expect(html).toContain("inspector.scrollIntoView({ block: 'start', inline: 'nearest', behavior: 'auto' });");
     expect(html).toMatch(/<details class="event-impact" data-significant-event(?: hidden)? open>/);
     expect(html).toContain('<summary class="event-impact-heading">Event impact</summary>');
     expect(html).toContain('Event impact');

@@ -9,6 +9,7 @@ import { buildPostMatchHoverPayload, renderPostMatchHtml } from '@aoe4/analyzer-
 import { escapeHtml } from '@aoe4/analyzer-core/formatters/sharedFormatters';
 import { embeddedAoeTokenCss } from './designTokens';
 import { fetchGameSummaryFromApi, GameSummary } from '@aoe4/analyzer-core/parser/gameSummaryParser';
+import { buildMatchAnalyticsProperties, buildPostHogAnalyticsScript } from './posthogAnalytics';
 import { buildWebVitalsScript } from './webVitals';
 
 export interface MatchPageParams {
@@ -139,6 +140,11 @@ export async function buildMatchHtml(params: MatchPageParams): Promise<string> {
     const model = await buildMatchModel(params);
     return renderPostMatchHtml(model, {
       webVitalsScript: buildWebVitalsScript('/api/web-vitals'),
+      analyticsScript: buildPostHogAnalyticsScript({
+        surface: 'match',
+        baseProperties: buildMatchAnalyticsProperties(params, model),
+        initialEventName: 'match viewed',
+      }),
     });
   } catch (error) {
     if (error instanceof UnsupportedMatchError) {

@@ -18,7 +18,10 @@ const CACHE_NAMESPACE = 'aoe4-rendered-report-html';
 // in-progress villager training before the villager completion timestamp.
 // v5: significant event hover labels use the event window range instead of
 // the primary timestamp.
-const CACHE_VERSION = 'v5';
+// v6: PostHog bootstrap syntax fix and local analytics delivery.
+// v7: engagement, acquisition, mobile timeline, and outbound analytics events.
+// v8: outcome header now leads with player label (e.g. "washed up · Sengoku Daimyo · defeated 25:03").
+const CACHE_VERSION = 'v8';
 
 type RenderedReportCacheEntry = {
   html: string;

@@ -17,6 +17,12 @@ function extractAllocationLane(html: string, key: string): string {
   return match[0];
 }
 
+function extractInspectorTable(html: string): string {
+  const match = html.match(/<table class="inspector-table">[\s\S]*?<\/table>/);
+  if (!match) throw new Error('Expected inspector table');
+  return match[0];
+}
+
 function extractHoverData(html: string): any[] {
   const match = html.match(/<script id="post-match-hover-data" type="application\/json">([\s\S]*?)<\/script>/);
   if (!match) throw new Error('post-match hover data not found');
@@ -718,6 +724,7 @@ describe('renderPostMatchHtml', () => {
     expect(html).toContain('data-hover-field="allocationCategory.military.destroyed.delta"');
     expect(html).toContain('data-hover-field="allocationCategory.military.investment.delta"');
     expect(html).toContain('data-hover-field="allocation.float.delta"');
+    expect(extractInspectorTable(html)).not.toContain('class="legend-dot');
     expect(html).not.toContain('data-inspector-row="destroyed"');
     expect(html).not.toContain('data-band-key="destroyed"');
     expect(html).toContain('data-allocation-category-accounting="military-destroyed"');

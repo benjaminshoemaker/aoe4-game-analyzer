@@ -646,4 +646,13 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(opponentAgeMarker).toContain('stroke="#378ADD"');
     expect(opponentAgeMarker).toContain('stroke-dasharray="7 5"');
   });
+
+  it('can inject the PostHog analytics script before match interactions', () => {
+    const html = renderPostMatchHtml(makeMvpModelFixture(), {
+      analyticsScript: 'window.__analyticsReady = true;',
+    } as any);
+
+    expect(html).toContain('<script id="posthog-analytics">window.__analyticsReady = true;</script>');
+    expect(html.indexOf('id="posthog-analytics"')).toBeLessThan(html.indexOf('post-match-hover-data'));
+  });
 });

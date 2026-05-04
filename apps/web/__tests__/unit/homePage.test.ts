@@ -16,6 +16,12 @@ describe('HomePage form', () => {
     expect(html).toContain('type="text"');
     expect(html).toContain('inputmode="url"');
     expect(html).toContain('placeholder="https://aoe4world.com/.../games/..."');
+    expect(html).toContain('id="posthog-analytics"');
+    expect(html).toContain('posthog.init');
+    expect(html).toContain('autocapture: false');
+    expect(html).toContain('disable_session_recording: true');
+    expect(html).toContain('match url submitted');
+    expect(html).toContain('sample report opened');
     expect(html).not.toContain('type="url"');
     expect(html).toContain('min-height: 44px');
     expect(html).toContain('min-width: 44px');
@@ -31,7 +37,7 @@ describe('HomePage form', () => {
     expect(html).toContain('Post-match allocation analysis from <a href="https://aoe4world.com" target="_blank" rel="noopener noreferrer">AoE4World links</a>');
     expect(html).toContain('<a href="https://www.reddit.com/user/shoe7525/" target="_blank" rel="noopener noreferrer">Feedback? DM me on Reddit</a>');
     expect(html).toContain('View sample report');
-    expect(html).toContain('/matches/open?url=https%3A%2F%2Faoe4world.com%2Fplayers%2F8139502%2Fgames%2F229727104%3Fsig%3Db6fc4eab80fa84ff983bcb27b4af086a59a09f5d');
+    expect(html).toContain('/matches/8139502/229727104?sig=b6fc4eab80fa84ff983bcb27b4af086a59a09f5d&t=1191');
     expect(html).toContain('Dry Arabia &middot; 25:03');
     expect(html).toContain('washed up &middot; Sengoku Daimyo');
     expect(html).toContain('2k and still no hands &middot; Macedonian Dynasty');

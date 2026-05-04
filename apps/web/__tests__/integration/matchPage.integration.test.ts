@@ -96,7 +96,13 @@ describe('buildMatchHtml integration', () => {
     });
     expect(renderPostMatchHtml).toHaveBeenCalledWith(model, {
       webVitalsScript: expect.stringContaining('/api/web-vitals'),
+      analyticsScript: expect.stringContaining('match viewed'),
     });
+    const renderOptions = renderPostMatchHtml.mock.calls[0][1];
+    expect(renderOptions.analyticsScript).toContain('"game_id":230143339');
+    expect(renderOptions.analyticsScript).toContain('"has_sig":true');
+    expect(renderOptions.analyticsScript).toContain('match engagement summary');
+    expect(renderOptions.analyticsScript).not.toContain('abc123');
     expect(html).toBe('<html>ok</html>');
   });
 

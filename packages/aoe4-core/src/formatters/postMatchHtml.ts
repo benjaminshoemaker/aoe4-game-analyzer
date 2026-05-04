@@ -281,6 +281,7 @@ export type ClientHoverSnapshot = Pick<
 
 interface RenderPostMatchHtmlOptions {
   surface?: 'web-mvp' | 'full';
+  analyticsScript?: string;
   webVitalsScript?: string;
 }
 
@@ -1399,7 +1400,7 @@ function buildHoverInspectorHtml(
         <tr class="band-row${selectedClass}" data-allocation-category-child="${categoryKey}"${collapsed ? ' hidden' : ''}>
           <th>
             <button type="button" class="band-toggle" data-band-key="${band.key}" aria-pressed="${isSelected ? 'true' : 'false'}">
-              <span class="legend-dot" style="background:${band.color}"></span>${escapeHtml(band.label)}
+              ${escapeHtml(band.label)}
             </button>
           </th>
           <td data-cell-label="${youCellLabel}" data-hover-field="you.${band.key}">${formatNumber(snapshot.you[band.key])}</td>
@@ -1423,7 +1424,7 @@ function buildHoverInspectorHtml(
           <th>
             <div class="destroyed-row-label">
               <button type="button" class="band-toggle" data-band-key="${destroyedBandKey}" aria-pressed="false">
-                <span class="legend-dot destroyed-dot"></span><span data-destroyed-row-label>${escapeHtml(label)}</span>
+                <span data-destroyed-row-label>${escapeHtml(label)}</span>
               </button>
               <button type="button" class="event-impact-help-button destroyed-row-help-button" data-destroyed-help-button data-destroyed-tooltip-copy="${escapeHtml(destroyedRowTooltip)}" data-tooltip-open="false" aria-expanded="false" aria-controls="destroyed-row-tooltip-${category.key}" aria-label="What does ${escapeHtml(label)} mean?" title="What does ${escapeHtml(label)} mean?">?</button>
               <span id="destroyed-row-tooltip-${category.key}" class="destroyed-row-tooltip" role="tooltip" hidden>${escapeHtml(destroyedRowTooltip)}</span>
@@ -1443,7 +1444,7 @@ function buildHoverInspectorHtml(
         <tr class="band-row allocation-category-accounting-row allocation-category-investment-row" data-allocation-category-child="${category.key}" data-allocation-category-accounting="${category.key}-investment"${collapsed ? ' hidden' : ''}>
           <th>
             <button type="button" class="band-toggle" data-band-key="${investmentBandKey}" data-allocation-investment-category="${category.key}" aria-pressed="false">
-              <span class="legend-dot" style="background:${bandByKey.get(category.bandKeys[0])?.color ?? '#9AA3B2'}"></span>Total ${escapeHtml(category.label)} Investment
+              Total ${escapeHtml(category.label)} Investment
             </button>
           </th>
           <td data-cell-label="${youCellLabel}" data-hover-field="allocationCategory.${category.key}.investment.you">${formatNumber(row.you)}</td>
@@ -1465,7 +1466,7 @@ function buildHoverInspectorHtml(
         <tr class="band-row allocation-category-accounting-row allocation-category-investment-row" data-allocation-category-child="economic" data-allocation-category-accounting="${accountingKey}"${collapsed ? ' hidden' : ''}>
           <th>
             <button type="button" class="band-toggle" data-band-key="economic" data-economic-role-filter="${roleFilter}" aria-pressed="false">
-              <span class="legend-dot" style="background:${bandByKey.get('economic')?.color ?? '#5DCAA5'}"></span>${escapeHtml(label)}
+              ${escapeHtml(label)}
             </button>
           </th>
           <td data-cell-label="${youCellLabel}" data-hover-field="allocationCategory.economic.${basis}.you">${formatNumber(row.you)}</td>
@@ -1482,7 +1483,7 @@ function buildHoverInspectorHtml(
         <tr class="band-row inspector-opportunity-lost-row" data-inspector-row="opportunityLost">
           <th>
             <button type="button" class="band-toggle" data-band-key="opportunityLost" aria-pressed="false" title="${escapeHtml(tooltip)}">
-              <span class="legend-dot opportunity-lost-dot"></span><span data-opportunity-lost-tooltip title="${escapeHtml(tooltip)}">Opportunity lost by selected time</span>
+              <span data-opportunity-lost-tooltip title="${escapeHtml(tooltip)}">Opportunity lost by selected time</span>
             </button>
           </th>
           <td data-cell-label="${youCellLabel}" data-hover-field="allocation.opportunityLost.you">${formatNumber(row.you)}</td>
@@ -1561,7 +1562,7 @@ function buildHoverInspectorHtml(
                 <tr class="band-row inspector-float-row" data-inspector-row="float">
                   <th>
                     <button type="button" class="band-toggle" data-band-key="float" aria-pressed="false">
-                      <span class="legend-dot float-dot"></span>Float (not deployed)
+                      Float (not deployed)
                     </button>
                   </th>
                   <td data-cell-label="${youCellLabel}" data-hover-field="allocation.float.you">${formatNumber(allocation.float.you)}</td>
@@ -2812,18 +2813,6 @@ export function renderPostMatchHtml(
       display: inline-block;
     }
 
-    .destroyed-dot {
-      background: #a85e42;
-    }
-
-    .opportunity-lost-dot {
-      background: #C56C52;
-    }
-
-    .float-dot {
-      background: #9C7A35;
-    }
-
     .chart-head {
       font-size: 12px;
       margin: 10px 0 5px;
@@ -3369,6 +3358,7 @@ export function renderPostMatchHtml(
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      position: relative;
       width: 100%;
       margin: -6px 0;
       padding: 6px 4px;
@@ -3518,11 +3508,6 @@ export function renderPostMatchHtml(
     [data-significant-event-underdog-toggle]:focus-visible {
       outline: 2px solid var(--color-focus);
       outline-offset: 2px;
-    }
-
-    .inspector-table th:first-child .legend-dot {
-      margin-right: 6px;
-      vertical-align: -1px;
     }
 
     .inspector-total-row th,
@@ -4126,7 +4111,7 @@ ${fullSurfaceNarrowStyles}
             <span class="civ-chip"><span class="swatch" style="background:${escapeHtml(playerLabels.opponent.color)}"></span>${escapeHtml(playerLabels.opponent.label)}</span>
           </div>
         </div>
-        <div class="outcome">${escapeHtml(model.header.outcome)}</div>
+        <div class="outcome">${escapeHtml(playerLabels.you.label)} · ${escapeHtml(model.header.outcome.toLowerCase())}</div>
       </div>
       ${model.deferredBanner ? `<div class="banner" style="margin-top:12px">${escapeHtml(model.deferredBanner)}</div>` : ''}
     </section>
@@ -4190,6 +4175,7 @@ ${fullSurfaceNarrowStyles}
     ${surface === 'full' ? buildFullSurfaceSections(model, hoverSnapshots, defaultHoverSnapshot, playerLabels) : ''}
 
   </main>
+  ${options.analyticsScript ? `<script id="posthog-analytics">${options.analyticsScript}</script>` : ''}
   ${buildHoverInteractionScript(inlineHoverSnapshots, playerLabels, { includeAdjustedMilitary })}
   ${options.webVitalsScript ? `<script id="web-vitals-monitor">${options.webVitalsScript}</script>` : ''}
 </body>

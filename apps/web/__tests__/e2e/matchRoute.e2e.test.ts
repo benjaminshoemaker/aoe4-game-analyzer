@@ -37,6 +37,12 @@ function extractAllocationLane(html: string, key: string): string {
   return match[0];
 }
 
+function extractInspectorTable(html: string): string {
+  const match = html.match(/<table class="inspector-table">[\s\S]*?<\/table>/);
+  if (!match) throw new Error('Expected inspector table');
+  return match[0];
+}
+
 function extractHoverPayload(html: string): any[] {
   const payloadMatch = html.match(/<script id="post-match-hover-data" type="application\/json">([\s\S]*?)<\/script>/);
   if (!payloadMatch) throw new Error('Expected post-match hover data payload');
@@ -136,7 +142,9 @@ describe('matches route e2e', () => {
     } as const;
     (model.trajectory as any).significantEvents = [significantEvent];
     (model.trajectory.hoverSnapshots[0] as any).significantEvent = significantEvent;
-    buildMatchHtml.mockResolvedValue(renderPostMatchHtml(model));
+    buildMatchHtml.mockResolvedValue(renderPostMatchHtml(model, {
+      analyticsScript: 'window.__analyticsReady = true; window.__analyticsEvent = "match engagement summary";',
+    }));
 
     const request = new Request('http://localhost/matches/my-slug/230143339?sig=abc123');
     const response = await GET(request, {
@@ -178,6 +186,9 @@ describe('matches route e2e', () => {
     expect(body).toContain('data-mobile-timeline-slider');
     expect(body).toContain('data-mobile-timeline-step="-1"');
     expect(body).toContain('data-mobile-timeline-step="1"');
+    expect(body).toContain('mobile timeline changed');
+    expect(body).toContain('match outbound link clicked');
+    expect(body).toContain('match engagement summary');
     expect(body).toContain('data-mobile-summary="overall"');
     expect(body).toContain('data-mobile-current-time');
     expect(body).toContain('.band-toggle,\n    .allocation-category-toggle,\n    .band-sub-link {\n      min-height: 36px;');
@@ -226,6 +237,7 @@ describe('matches route e2e', () => {
     expect(body).toContain('data-total-pool-tooltip');
     expect(body).toContain('Total net pool');
     expect(body).toContain('data-hover-field="allocation.opportunityLost.delta"');
+    expect(extractInspectorTable(body)).not.toContain('class="legend-dot');
     expect(body).toContain('data-significant-event-marker');
     expect(body).toMatch(/<details class="event-impact" data-significant-event(?: hidden)? open>/);
     expect(body).toContain('<summary class="event-impact-heading">Event impact</summary>');
@@ -281,7 +293,7 @@ describe('matches route e2e', () => {
     expect(mockUnstableCache).toHaveBeenCalledTimes(1);
     expect(mockUnstableCache.mock.calls[0][1]).toEqual([
       'aoe4-rendered-report-html',
-      'v5',
+      'v8',
       'my-slug',
       '230143339',
       expect.stringMatching(/^sig-sha256:[a-f0-9]{64}$/),

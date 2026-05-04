@@ -1,14 +1,16 @@
 import { escapeHtml } from '@aoe4/analyzer-core/formatters/sharedFormatters';
 import { embeddedAoeTokenCss } from './designTokens';
+import { buildHomePostHogAnalyticsScript } from './posthogAnalytics';
 
 const exampleUrl = 'https://aoe4world.com/.../games/...';
 const sampleMatchHref =
-  '/matches/open?url=https%3A%2F%2Faoe4world.com%2Fplayers%2F8139502%2Fgames%2F229727104%3Fsig%3Db6fc4eab80fa84ff983bcb27b4af086a59a09f5d';
+  '/matches/8139502/229727104?sig=b6fc4eab80fa84ff983bcb27b4af086a59a09f5d&t=1191';
 const faviconHref = "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='6'%20fill='%239b2f1f'/%3E%3Cpath%20d='M8%2022h16v3H8zM10%208h12l-2%2012h-8z'%20fill='%23fff9f5'/%3E%3C/svg%3E";
 const redditFeedbackHref = 'https://www.reddit.com/user/shoe7525/';
 
 export function renderHomeHtml(errorText?: string | null): string {
   const escapedError = errorText ? escapeHtml(errorText) : '';
+  const analyticsScript = buildHomePostHogAnalyticsScript();
 
   return `<!doctype html>
 <html lang="en">
@@ -487,7 +489,7 @@ export function renderHomeHtml(errorText?: string | null): string {
           state, and fight windows that shaped the result.
         </p>
 
-        <form method="get" action="/matches/open" class="form-card">
+        <form method="get" action="/matches/open" class="form-card" data-analytics-match-form>
           <label for="match-url">AoE4World match URL</label>
           <div class="input-row">
             <input id="match-url" type="text" inputmode="url" name="url" placeholder="${exampleUrl}" required />
@@ -497,7 +499,7 @@ export function renderHomeHtml(errorText?: string | null): string {
         </form>
 
         <div class="cta-row" aria-label="Sample report">
-          <a class="sample-link" href="${sampleMatchHref}">View sample report</a>
+          <a class="sample-link" href="${sampleMatchHref}" data-analytics-sample-report>View sample report</a>
           <span class="sample-note">Dry Arabia &middot; 25:03 &middot; washed up vs 2k and still no hands</span>
         </div>
 
@@ -567,14 +569,15 @@ export function renderHomeHtml(errorText?: string | null): string {
               <span>Macedonian military and technology deployment separates before the decisive fight windows.</span>
             </div>
             <div class="selected-card">
-              <strong>Why the preview matters</strong>
-              <span>The sample link shows the real report before users need to find their own match URL.</span>
+              <strong>Why 19:51 matters</strong>
+              <span>Economy and military deployment are almost even here. The next four minutes are where the game opens decisively.</span>
             </div>
           </div>
         </div>
       </aside>
     </main>
   </div>
+  ${analyticsScript ? `<script id="posthog-analytics">${analyticsScript}</script>` : ''}
 </body>
 </html>`;
 }

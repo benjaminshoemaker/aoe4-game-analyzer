@@ -53,6 +53,12 @@ const allocation = {
   opportunityLost: row(0, 25),
 } satisfies Record<AllocationGraphKey, ReturnType<typeof row>>;
 
+function extractSignificantEventMarker(svg: string): string {
+  const match = svg.match(/<g class="significant-event-marker hover-target"[\s\S]*?<\/g>/);
+  if (!match) throw new Error('Expected significant event marker');
+  return match[0];
+}
+
 const significantEvent = {
   id: 'loss-1',
   timestamp: 30,
@@ -114,6 +120,7 @@ describe('post-match allocation chart SVG builders', () => {
     expect(html).toContain('data-hover-timestamp="30"');
     expect(html).toContain('data-age-marker="Player One Feudal"');
     expect(html).toContain('data-significant-event-marker');
+    expect(extractSignificantEventMarker(html)).toMatch(/<circle class="significant-event-dot"[^>]*fill="#D85A30"/);
     expect(html).toContain('data-significant-event-window');
     expect(html).toContain('data-significant-event-id="loss-1"');
     expect(html).toContain('class="significant-event-window"');

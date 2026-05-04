@@ -50,7 +50,7 @@ It is better on desktop too. I made an effort to support mobile, but this is a d
 
 ## A real example
 
-For an example, I am using a recent Beasty vs Core game that Beasty lost: [AoE4World match](https://aoe4world.com/players/8139502-Beasty/games/229727104?sig=b6fc4eab80fa84ff983bcb27b4af086a59a09f5d).
+For an example, I am using a recent Beasty vs Core game that Beasty lost: [AoE4World match](https://aoe4world.com/players/8139502-Beasty/games/229727104?sig=b6fc4eab80fa84ff983bcb27b4af086a59a09f5d). In the report the players show under their AoE4World handles, *washed up* (Beasty, Sengoku) and *2k and still no hands* (Core, Macedonian).
 
 The game is also on YouTube, which helps because you can watch the replay alongside the data: [YouTube video](https://youtu.be/1WXwG3PiVCA?si=8SiSz48REitV5Htt&t=2580)
 

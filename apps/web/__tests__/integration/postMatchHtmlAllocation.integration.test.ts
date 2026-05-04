@@ -140,6 +140,8 @@ describe('post-match allocation widget integration', () => {
     expect(html).toContain('data-mobile-timeline-slider');
     expect(html).toContain('data-mobile-timeline-step="-1"');
     expect(html).toContain('data-mobile-timeline-step="1"');
+    expect(html).toContain('mobile timeline changed');
+    expect(html).toContain('match outbound link clicked');
     expect(html).toContain('data-mobile-summary="overall"');
     expect(html).toContain('data-mobile-details');
     expect(html).toContain('data-mobile-current-time');

@@ -1,5 +1,10 @@
 import { GET } from '../../src/app/route';
 
+function extractExecutableScripts(html: string): string[] {
+  return Array.from(html.matchAll(/<script(?![^>]*type="application\/json")[^>]*>([\s\S]*?)<\/script>/g))
+    .map((match) => match[1]);
+}
+
 describe('home route e2e', () => {
   it('renders validation errors without adding client-side route assets', async () => {
     const response = await GET(new Request('http://localhost/?error=Invalid%20AoE4World%20URL'));
@@ -17,6 +22,12 @@ describe('home route e2e', () => {
     expect(body).toContain('Allocation timeline');
     expect(body).toContain('Resource state over time');
     expect(body).toContain('Selected time');
+    expect(body).toContain('id="posthog-analytics"');
+    expect(body).toContain('posthog.init');
+    expect(body).toContain('home match url submitted');
+    expect(body).toContain('home match url rejected');
+    expect(body).toContain('home outbound link clicked');
+    expect(body).toContain('home engagement summary');
     expect(body).toContain('--aoe-color-bg: #f7f2e8;');
     expect(body).toContain('--background: var(--aoe-color-bg);');
     expect(body).toContain('--surface: var(--aoe-color-surface);');
@@ -29,5 +40,11 @@ describe('home route e2e', () => {
     expect(body).not.toContain('--background: #f7f2e8;');
     expect(body).not.toContain('/_next/static/chunks/');
     expect(body).not.toContain('self.__next_f');
+
+    const scripts = extractExecutableScripts(body);
+    expect(scripts.length).toBeGreaterThan(0);
+    for (const script of scripts) {
+      expect(() => new Function(script)).not.toThrow();
+    }
   });
 });

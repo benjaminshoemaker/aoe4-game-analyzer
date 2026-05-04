@@ -36,6 +36,15 @@
 
 ---
 
+## PostHog analytics
+- The web app uses PostHog for product analytics. The shared browser analytics bootstrap lives in `apps/web/src/lib/posthogAnalytics.ts`.
+- Local development analytics are intentionally sent to PostHog, not suppressed. Local rows should be labeled with `app_environment = local`, `is_local_environment = true`, and `app_hostname = localhost`.
+- Match analytics should include stable match identity where applicable: `game_id`, `profile_slug`, and `has_sig`.
+- Signature query params are private. Analytics may send `has_sig`, but must never send raw `sig` values or URLs/referrers containing raw, encoded, or nested `sig` query params.
+- When changing analytics, cover the behavior with unit, integration, and e2e tests, then verify with PostHog MCP against recent localhost events when possible.
+
+---
+
 ## AoE4World API global considerations
 - Treat API docs as guidance, not a strict contract; always verify behavior against live responses.
 - Always send a descriptive non-browser User-Agent for automated calls.

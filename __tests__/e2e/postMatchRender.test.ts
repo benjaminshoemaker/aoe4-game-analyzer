@@ -38,6 +38,12 @@ function extractSvg(html: string, id: string): string {
   return match[0];
 }
 
+function extractInspectorTable(html: string): string {
+  const match = html.match(/<table class="inspector-table">[\s\S]*?<\/table>/);
+  if (!match) throw new Error('Expected inspector table');
+  return match[0];
+}
+
 describe('post-match render CLI end-to-end', () => {
   beforeEach(() => {
     if (fs.existsSync(outputPath)) {
@@ -107,6 +113,7 @@ describe('post-match render CLI end-to-end', () => {
     expect(html).toContain('data-hover-field="allocationCategory.military.destroyed.delta"');
     expect(html).toContain('data-hover-field="allocationCategory.military.investment.delta"');
     expect(html).toContain('data-hover-field="allocation.float.delta"');
+    expect(extractInspectorTable(html)).not.toContain('class="legend-dot');
     expect(html).not.toContain('data-inspector-row="destroyed"');
     expect(html).not.toContain('data-band-key="destroyed"');
     expect(html).toContain('data-allocation-category-accounting="military-destroyed"');
@@ -316,11 +323,21 @@ describe('post-match render CLI end-to-end', () => {
     expect(point?.markers).toContain('Sengoku Daimyo Raid 1:30-2:30');
     expect(point?.markers).not.toContain('Sengoku Daimyo Raid 2:30');
     expect(html).toContain('data-significant-event-marker');
+    expect(extractSvg(html, 'allocation-comparison')).toMatch(/data-significant-event-marker[\s\S]*?<circle class="significant-event-dot"[^>]*fill="#378ADD"/);
     expect(html).toContain('data-significant-event-window');
     expect(html).toContain('class="significant-event-window"');
     expect(html).toContain('display="none"');
+    // Stem rendered outside the clickable marker <g> so that the marker bbox
+    // is exactly the icon (no transparent strategy-hover rect interception).
+    expect(html).toMatch(/<g class="significant-event-stems"[^>]*>[\s\S]*?<line class="significant-event-stem"/);
+    expect(html).toContain('<rect class="significant-event-hit"');
+    expect(html).toContain('function shouldResetInspectorScrollForChartClick(target, timestamp)');
+    expect(html).toContain('snapshotHasSignificantEventAtTimestamp(nearest)');
     expect(html).toContain('function syncSignificantEventWindowSpotlight(point)');
     expect(html).toContain("document.querySelectorAll('[data-significant-event-window]').forEach");
+    expect(html).toContain('var shouldResetInspectorScroll = shouldResetInspectorScrollForChartClick(target, selectedTimestamp);');
+    expect(html).toContain('if (shouldResetInspectorScroll) resetInspectorScrollToTop();');
+    expect(html).toContain("inspector.scrollIntoView({ block: 'start', inline: 'nearest', behavior: 'auto' });");
     expect(html).toMatch(/<details class="event-impact" data-significant-event(?: hidden)? open>/);
     expect(html).toContain('<summary class="event-impact-heading">Event impact</summary>');
     expect(html).toContain('Event impact');

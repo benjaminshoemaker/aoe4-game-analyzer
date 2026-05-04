@@ -246,6 +246,60 @@ export function buildHoverInteractionScript(
         opportunityLost: { label: 'Opportunity lost', mode: 'absolute' }
       };
 
+      function trackAnalyticsEvent(eventName, properties) {
+        if (!window.aoe4Analytics || typeof window.aoe4Analytics.capture !== 'function') return;
+        window.aoe4Analytics.capture(eventName, properties || {});
+      }
+
+      function safePointIndex(index) {
+        if (hoverData.length === 0) return 0;
+        return Math.max(0, Math.min(hoverData.length - 1, Number(index) || 0));
+      }
+
+      function analyticsPointProperties(point, source) {
+        var event = point && point.significantEvent ? point.significantEvent : null;
+        return {
+          timestamp: point ? point.timestamp : null,
+          time_label: point ? point.timeLabel : '',
+          source: source || 'unknown',
+          has_significant_event: !!event,
+          significant_event_id: event ? event.id || '' : '',
+          significant_event_kind: event ? event.kind || '' : ''
+        };
+      }
+
+      function compactText(value) {
+        return String(value || '').replace(/\\s+/g, ' ').trim().slice(0, 80);
+      }
+
+      function outboundLinkProperties(link, linkKind) {
+        var destinationHost = '';
+        var destinationPath = '';
+        try {
+          var url = new URL(link.href, window.location.href);
+          destinationHost = url.hostname;
+          destinationPath = url.pathname;
+        } catch (_error) {}
+        return {
+          link_kind: linkKind || 'external',
+          destination_host: destinationHost,
+          destination_path: destinationPath,
+          link_text: compactText(link.textContent),
+          timestamp: currentTimestamp
+        };
+      }
+
+      function trackMobileTimelineChanged(point, source, targetIndex, extraProperties) {
+        var properties = Object.assign(
+          analyticsPointProperties(point, source),
+          {
+            target_index: targetIndex
+          },
+          extraProperties || {}
+        );
+        trackAnalyticsEvent('mobile timeline changed', properties);
+      }
+
       function formatNumber(value) {
         return Math.round(Number(value) || 0).toLocaleString('en-US');
       }
@@ -617,7 +671,7 @@ ${adjustedHelpers}
         button.setAttribute('data-tooltip-open', isOpen ? 'true' : 'false');
         button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
         var tooltipId = button.getAttribute('aria-controls') || '';
-        var tooltip = tooltipId ? document.getElementById(tooltipId) : null;
+        var tooltip = tooltipId ? document.getElementById(tooltipId) : button.querySelector('.destroyed-row-tooltip');
         if (tooltip) tooltip.hidden = !isOpen;
       }
 
@@ -916,21 +970,75 @@ ${adjustedUpdate}
         syncMobileTimeline(point);
       }
 
-      function selectPointByIndex(index, shouldUpdateUrl) {
+      function resetInspectorScrollToTop() {
+        document.querySelectorAll('.hover-inspector').forEach(function (inspector) {
+          // Reset internal scroll first so the inspector shows the eyebrow,
+          // selected time, and event impact at the top regardless of where
+          // the user had previously scrolled.
+          if (typeof inspector.scrollTo === 'function') {
+            inspector.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+          }
+          inspector.scrollTop = 0;
+
+          // Determine the scrolling ancestor for this inspector. When the
+          // inspector is sticky (desktop layout), its own .scrollTop was the
+          // relevant container. When the inspector is static (responsive
+          // layout), the scrollable container is normally the document, but
+          // some embeds nest the report inside another scroll container.
+          var style = window.getComputedStyle ? window.getComputedStyle(inspector) : null;
+          var isSticky = !!style && style.position === 'sticky';
+          if (isSticky) return;
+
+          if (typeof inspector.scrollIntoView === 'function') {
+            try {
+              inspector.scrollIntoView({ block: 'start', inline: 'nearest', behavior: 'auto' });
+            } catch (_error) {
+              inspector.scrollIntoView(true);
+            }
+          }
+        });
+      }
+
+      function pointHasSignificantEvent(point) {
+        return !!(point && point.significantEvent);
+      }
+
+      function snapshotHasSignificantEventAtTimestamp(timestamp) {
+        if (timestamp === null || timestamp === undefined) return false;
+        return pointHasSignificantEvent(byTimestamp.get(String(timestamp)));
+      }
+
+      function selectPointByIndex(index, shouldUpdateUrl, shouldResetInspectorScroll, analyticsSource) {
         if (hoverData.length === 0) return;
-        var safeIndex = Math.max(0, Math.min(hoverData.length - 1, Number(index) || 0));
+        var safeIndex = safePointIndex(index);
         var point = hoverData[safeIndex];
         if (!point) return;
         pinned = true;
         document.body.setAttribute('data-hover-pinned', 'true');
         updateInspector(point.timestamp);
+        if (shouldResetInspectorScroll) resetInspectorScrollToTop();
         if (shouldUpdateUrl) replaceTimestampInUrl(point.timestamp);
+        if (analyticsSource) {
+          trackAnalyticsEvent('timestamp selected', analyticsPointProperties(point, analyticsSource));
+        }
       }
 
-      function selectTimestamp(timestamp, shouldUpdateUrl) {
+      function selectTimestamp(timestamp, shouldUpdateUrl, shouldResetInspectorScroll, analyticsSource) {
         var nearest = nearestTimestamp(Number(timestamp));
         if (nearest === null) return;
-        selectPointByIndex(pointIndexForTimestamp(nearest), shouldUpdateUrl);
+        selectPointByIndex(pointIndexForTimestamp(nearest), shouldUpdateUrl, shouldResetInspectorScroll, analyticsSource);
+      }
+
+      function shouldResetInspectorScrollForChartClick(target, timestamp) {
+        // Direct hit on the marker <g>.
+        if (target && target.hasAttribute && target.hasAttribute('data-significant-event-marker')) {
+          return true;
+        }
+        // Fallback: the click landed on a sibling hover target that shares
+        // the same timestamp as a significant event (e.g. when a stem-area
+        // click was intercepted by the transparent strategy-hover rect).
+        var nearest = nearestTimestamp(Number(timestamp));
+        return snapshotHasSignificantEventAtTimestamp(nearest);
       }
 
       function scheduleInspector(timestamp) {
@@ -963,6 +1071,13 @@ ${adjustedUpdate}
           if (currentTimestamp !== null) {
             updateInspector(currentTimestamp);
           }
+          trackAnalyticsEvent('band filter changed', {
+            band_key: key,
+            band_label: bandLabels[key] || key,
+            investment_category: selectedInvestmentCategory || '',
+            economic_role_filter: selectedEconomicRoleFilter || '',
+            timestamp: currentTimestamp
+          });
         });
       });
 
@@ -981,6 +1096,11 @@ ${adjustedUpdate}
           if (!key) return;
           var collapsed = button.getAttribute('aria-expanded') !== 'false';
           setCategoryCollapsed(key, collapsed);
+          trackAnalyticsEvent('allocation category toggled', {
+            category_key: key,
+            expanded: !collapsed,
+            timestamp: currentTimestamp
+          });
         });
       });
 
@@ -1010,14 +1130,20 @@ ${adjustedUpdate}
 
       document.querySelectorAll('[data-mobile-timeline-slider]').forEach(function (slider) {
         slider.addEventListener('input', function () {
-          selectPointByIndex(Number(slider.value), true);
+          var targetIndex = safePointIndex(Number(slider.value));
+          selectPointByIndex(targetIndex, true, false, 'mobile-slider');
+          trackMobileTimelineChanged(hoverData[targetIndex], 'mobile-slider', targetIndex);
         });
       });
 
       document.querySelectorAll('[data-mobile-timeline-step]').forEach(function (button) {
         button.addEventListener('click', function () {
           var step = Number(button.getAttribute('data-mobile-timeline-step') || 0);
-          selectPointByIndex(pointIndexForTimestamp(currentTimestamp) + step, true);
+          var targetIndex = safePointIndex(pointIndexForTimestamp(currentTimestamp) + step);
+          selectPointByIndex(targetIndex, true, false, 'mobile-step');
+          trackMobileTimelineChanged(hoverData[targetIndex], 'mobile-step', targetIndex, {
+            step: step
+          });
         });
       });
 
@@ -1030,11 +1156,13 @@ ${adjustedUpdate}
 
       document.querySelectorAll('[data-significant-event-underdog-toggle]').forEach(function (button) {
         button.addEventListener('click', function () {
+          var point = currentTimestamp === null ? null : byTimestamp.get(String(currentTimestamp));
           document.querySelectorAll('[data-significant-event-underdog-details]').forEach(function (details) {
             if (details.hidden) return;
             details.open = true;
             if (details.scrollIntoView) details.scrollIntoView({ block: 'nearest' });
           });
+          trackAnalyticsEvent('event explanation opened', analyticsPointProperties(point, 'event-explanation'));
         });
       });
 
@@ -1053,6 +1181,15 @@ ${adjustedUpdate}
         window.addEventListener('resize', syncMobileDetailsForViewport);
       }
 
+      document.querySelectorAll('.recap-link').forEach(function (link) {
+        link.addEventListener('click', function () {
+          var linkKind = link.classList && link.classList.contains('feedback-link')
+            ? 'feedback'
+            : 'aoe4world-summary';
+          trackAnalyticsEvent('match outbound link clicked', outboundLinkProperties(link, linkKind));
+        });
+      });
+
       document.querySelectorAll('.hover-target[data-hover-timestamp]').forEach(function (target) {
         target.addEventListener('pointerenter', function () {
           if (!pinned) scheduleInspector(target.getAttribute('data-hover-timestamp'));
@@ -1062,13 +1199,15 @@ ${adjustedUpdate}
         });
         target.addEventListener('click', function () {
           var selectedTimestamp = Number(target.getAttribute('data-hover-timestamp'));
-          selectTimestamp(selectedTimestamp, true);
+          var shouldResetInspectorScroll = shouldResetInspectorScrollForChartClick(target, selectedTimestamp);
+          selectTimestamp(selectedTimestamp, true, shouldResetInspectorScroll, 'chart');
         });
         target.addEventListener('keydown', function (event) {
           if (event.key !== 'Enter' && event.key !== ' ') return;
           event.preventDefault();
           var selectedTimestamp = Number(target.getAttribute('data-hover-timestamp'));
-          selectTimestamp(selectedTimestamp, true);
+          var shouldResetInspectorScroll = shouldResetInspectorScrollForChartClick(target, selectedTimestamp);
+          selectTimestamp(selectedTimestamp, true, shouldResetInspectorScroll, 'keyboard');
         });
       });
 
@@ -1103,4 +1242,3 @@ ${adjustedUpdate}
     }());
   </script>`;
 }
-

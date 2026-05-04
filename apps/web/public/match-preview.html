@@ -312,18 +312,6 @@
       display: inline-block;
     }
 
-    .destroyed-dot {
-      background: #a85e42;
-    }
-
-    .opportunity-lost-dot {
-      background: #C56C52;
-    }
-
-    .float-dot {
-      background: #9C7A35;
-    }
-
     .chart-head {
       font-size: 12px;
       margin: 10px 0 5px;
@@ -869,6 +857,7 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      position: relative;
       width: 100%;
       margin: -6px 0;
       padding: 6px 4px;
@@ -878,6 +867,36 @@
       font: inherit;
       cursor: pointer;
       text-align: left;
+    }
+
+    .destroyed-row-tooltip {
+      position: absolute;
+      left: 4px;
+      top: calc(100% + 6px);
+      z-index: 80;
+      width: min(300px, calc(100vw - 48px));
+      padding: 8px 10px;
+      border: 1px solid rgba(255, 249, 245, 0.22);
+      border-radius: var(--aoe-radius-sm);
+      background: #1f2a1f;
+      box-shadow: 0 10px 26px rgba(31, 42, 31, 0.28);
+      color: #fffdf9;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.35;
+      opacity: 0;
+      pointer-events: none;
+      text-align: left;
+      transform: translateY(-2px);
+      transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
+      visibility: hidden;
+      white-space: normal;
+    }
+
+    .destroyed-row-help-toggle[data-tooltip-open="true"] .destroyed-row-tooltip {
+      opacity: 1;
+      transform: translateY(0);
+      visibility: visible;
     }
 
     .band-row.is-selected th,
@@ -971,11 +990,6 @@
     [data-significant-event-underdog-toggle]:focus-visible {
       outline: 2px solid var(--color-focus);
       outline-offset: 2px;
-    }
-
-    .inspector-table th:first-child .legend-dot {
-      margin-right: 6px;
-      vertical-align: -1px;
     }
 
     .inspector-total-row th,
@@ -1942,7 +1956,7 @@
         <tr class="band-row allocation-category-accounting-row allocation-category-investment-row" data-allocation-category-child="economic" data-allocation-category-accounting="economic-resource-generation">
           <th>
             <button type="button" class="band-toggle" data-band-key="economic" data-economic-role-filter="resourceGenerator" aria-pressed="false">
-              <span class="legend-dot" style="background:#5DCAA5"></span>Resource generation
+              Resource generation
             </button>
           </th>
           <td data-cell-label="English" data-hover-field="allocationCategory.economic.resourceGeneration.you">30</td>
@@ -1953,7 +1967,7 @@
         <tr class="band-row allocation-category-accounting-row allocation-category-investment-row" data-allocation-category-child="economic" data-allocation-category-accounting="economic-resource-infrastructure">
           <th>
             <button type="button" class="band-toggle" data-band-key="economic" data-economic-role-filter="resourceInfrastructure" aria-pressed="false">
-              <span class="legend-dot" style="background:#5DCAA5"></span>Resource infrastructure
+              Resource infrastructure
             </button>
           </th>
           <td data-cell-label="English" data-hover-field="allocationCategory.economic.resourceInfrastructure.you">20</td>
@@ -1963,8 +1977,9 @@
 
         <tr class="band-row allocation-category-accounting-row allocation-category-destroyed-row" data-allocation-category-child="economic" data-allocation-category-accounting="economic-destroyed" data-destroyed-row-category="economic" data-destroyed-row-empty="true" hidden>
           <th>
-            <button type="button" class="band-toggle" data-band-key="economicDestroyed" aria-pressed="false">
-              <span class="legend-dot destroyed-dot"></span>Economic destroyed
+            <button type="button" class="band-toggle destroyed-row-help-toggle" data-band-key="economicDestroyed" data-destroyed-help-button data-destroyed-tooltip-copy="Destroyed rows show value destroyed for the team in that column, not by that team. The opponent destroyed that value." data-tooltip-open="false" aria-pressed="false" aria-expanded="false" aria-controls="destroyed-row-tooltip-economic">
+              <span data-destroyed-row-tooltip>Economic destroyed</span>
+              <span id="destroyed-row-tooltip-economic" class="destroyed-row-tooltip" role="tooltip" hidden>Destroyed rows show value destroyed for the team in that column, not by that team. The opponent destroyed that value.</span>
             </button>
           </th>
           <td data-cell-label="English" data-hover-field="allocationCategory.economic.destroyed.you">0</td>
@@ -1975,7 +1990,7 @@
         <tr class="band-row allocation-category-accounting-row allocation-category-investment-row" data-allocation-category-child="economic" data-allocation-category-accounting="economic-investment">
           <th>
             <button type="button" class="band-toggle" data-band-key="economicInvestment" data-allocation-investment-category="economic" aria-pressed="false">
-              <span class="legend-dot" style="background:#5DCAA5"></span>Total Economic Investment
+              Total Economic Investment
             </button>
           </th>
           <td data-cell-label="English" data-hover-field="allocationCategory.economic.investment.you">50</td>
@@ -1998,7 +2013,7 @@
         <tr class="band-row" data-allocation-category-child="technology" hidden>
           <th>
             <button type="button" class="band-toggle" data-band-key="research" aria-pressed="false">
-              <span class="legend-dot" style="background:#AFA9EC"></span>Research
+              Research
             </button>
           </th>
           <td data-cell-label="English" data-hover-field="you.research">100</td>
@@ -2010,7 +2025,7 @@
         <tr class="band-row" data-allocation-category-child="technology" hidden>
           <th>
             <button type="button" class="band-toggle" data-band-key="advancement" aria-pressed="false">
-              <span class="legend-dot" style="background:#88AD6A"></span>Advancement
+              Advancement
             </button>
           </th>
           <td data-cell-label="English" data-hover-field="you.advancement">500</td>
@@ -2021,8 +2036,9 @@
 
         <tr class="band-row allocation-category-accounting-row allocation-category-destroyed-row" data-allocation-category-child="technology" data-allocation-category-accounting="technology-destroyed" data-destroyed-row-category="technology" data-destroyed-row-empty="true" hidden>
           <th>
-            <button type="button" class="band-toggle" data-band-key="technologyDestroyed" aria-pressed="false">
-              <span class="legend-dot destroyed-dot"></span>Advancement destroyed
+            <button type="button" class="band-toggle destroyed-row-help-toggle" data-band-key="technologyDestroyed" data-destroyed-help-button data-destroyed-tooltip-copy="Destroyed rows show value destroyed for the team in that column, not by that team. The opponent destroyed that value." data-tooltip-open="false" aria-pressed="false" aria-expanded="false" aria-controls="destroyed-row-tooltip-technology">
+              <span data-destroyed-row-tooltip>Advancement destroyed</span>
+              <span id="destroyed-row-tooltip-technology" class="destroyed-row-tooltip" role="tooltip" hidden>Destroyed rows show value destroyed for the team in that column, not by that team. The opponent destroyed that value.</span>
             </button>
           </th>
           <td data-cell-label="English" data-hover-field="allocationCategory.technology.destroyed.you">0</td>
@@ -2033,7 +2049,7 @@
         <tr class="band-row allocation-category-accounting-row allocation-category-investment-row" data-allocation-category-child="technology" data-allocation-category-accounting="technology-investment" hidden>
           <th>
             <button type="button" class="band-toggle" data-band-key="technologyInvestment" data-allocation-investment-category="technology" aria-pressed="false">
-              <span class="legend-dot" style="background:#AFA9EC"></span>Total Technology Investment
+              Total Technology Investment
             </button>
           </th>
           <td data-cell-label="English" data-hover-field="allocationCategory.technology.investment.you">600</td>
@@ -2056,7 +2072,7 @@
         <tr class="band-row" data-allocation-category-child="military" hidden>
           <th>
             <button type="button" class="band-toggle" data-band-key="militaryCapacity" aria-pressed="false">
-              <span class="legend-dot" style="background:#EF9F27"></span>Military buildings
+              Military buildings
             </button>
           </th>
           <td data-cell-label="English" data-hover-field="you.militaryCapacity">0</td>
@@ -2068,7 +2084,7 @@
         <tr class="band-row" data-allocation-category-child="military" hidden>
           <th>
             <button type="button" class="band-toggle" data-band-key="militaryActive" aria-pressed="false">
-              <span class="legend-dot" style="background:#F0997B"></span>Mil active
+              Mil active
             </button>
           </th>
           <td data-cell-label="English" data-hover-field="you.militaryActive">168</td>
@@ -2080,7 +2096,7 @@
         <tr class="band-row" data-allocation-category-child="military" hidden>
           <th>
             <button type="button" class="band-toggle" data-band-key="defensive" aria-pressed="false">
-              <span class="legend-dot" style="background:#B4B2A9"></span>Defensive
+              Defensive
             </button>
           </th>
           <td data-cell-label="English" data-hover-field="you.defensive">0</td>
@@ -2091,8 +2107,9 @@
 
         <tr class="band-row allocation-category-accounting-row allocation-category-destroyed-row" data-allocation-category-child="military" data-allocation-category-accounting="military-destroyed" data-destroyed-row-category="military" data-destroyed-row-empty="true" hidden>
           <th>
-            <button type="button" class="band-toggle" data-band-key="militaryDestroyed" aria-pressed="false">
-              <span class="legend-dot destroyed-dot"></span>Military destroyed
+            <button type="button" class="band-toggle destroyed-row-help-toggle" data-band-key="militaryDestroyed" data-destroyed-help-button data-destroyed-tooltip-copy="Destroyed rows show value destroyed for the team in that column, not by that team. The opponent destroyed that value." data-tooltip-open="false" aria-pressed="false" aria-expanded="false" aria-controls="destroyed-row-tooltip-military">
+              <span data-destroyed-row-tooltip>Military destroyed</span>
+              <span id="destroyed-row-tooltip-military" class="destroyed-row-tooltip" role="tooltip" hidden>Destroyed rows show value destroyed for the team in that column, not by that team. The opponent destroyed that value.</span>
             </button>
           </th>
           <td data-cell-label="English" data-hover-field="allocationCategory.military.destroyed.you">0</td>
@@ -2103,7 +2120,7 @@
         <tr class="band-row allocation-category-accounting-row allocation-category-investment-row" data-allocation-category-child="military" data-allocation-category-accounting="military-investment" hidden>
           <th>
             <button type="button" class="band-toggle" data-band-key="militaryInvestment" data-allocation-investment-category="military" aria-pressed="false">
-              <span class="legend-dot" style="background:#EF9F27"></span>Total Military Investment
+              Total Military Investment
             </button>
           </th>
           <td data-cell-label="English" data-hover-field="allocationCategory.military.investment.you">168</td>
@@ -2126,7 +2143,7 @@
         <tr class="band-row" data-allocation-category-child="other" hidden>
           <th>
             <button type="button" class="band-toggle" data-band-key="populationCap" aria-pressed="false">
-              <span class="legend-dot" style="background:#7AB8E6"></span>Population cap
+              Population cap
             </button>
           </th>
           <td data-cell-label="English" data-hover-field="you.populationCap">0</td>
@@ -2137,8 +2154,9 @@
 
         <tr class="band-row allocation-category-accounting-row allocation-category-destroyed-row" data-allocation-category-child="other" data-allocation-category-accounting="other-destroyed" data-destroyed-row-category="other" data-destroyed-row-empty="true" hidden>
           <th>
-            <button type="button" class="band-toggle" data-band-key="otherDestroyed" aria-pressed="false">
-              <span class="legend-dot destroyed-dot"></span>Other destroyed
+            <button type="button" class="band-toggle destroyed-row-help-toggle" data-band-key="otherDestroyed" data-destroyed-help-button data-destroyed-tooltip-copy="Destroyed rows show value destroyed for the team in that column, not by that team. The opponent destroyed that value." data-tooltip-open="false" aria-pressed="false" aria-expanded="false" aria-controls="destroyed-row-tooltip-other">
+              <span data-destroyed-row-tooltip>Other destroyed</span>
+              <span id="destroyed-row-tooltip-other" class="destroyed-row-tooltip" role="tooltip" hidden>Destroyed rows show value destroyed for the team in that column, not by that team. The opponent destroyed that value.</span>
             </button>
           </th>
           <td data-cell-label="English" data-hover-field="allocationCategory.other.destroyed.you">0</td>
@@ -2149,7 +2167,7 @@
         <tr class="band-row allocation-category-accounting-row allocation-category-investment-row" data-allocation-category-child="other" data-allocation-category-accounting="other-investment" hidden>
           <th>
             <button type="button" class="band-toggle" data-band-key="otherInvestment" data-allocation-investment-category="other" aria-pressed="false">
-              <span class="legend-dot" style="background:#7AB8E6"></span>Total Other Investment
+              Total Other Investment
             </button>
           </th>
           <td data-cell-label="English" data-hover-field="allocationCategory.other.investment.you">0</td>
@@ -2167,7 +2185,7 @@
                 <tr class="band-row inspector-float-row" data-inspector-row="float">
                   <th>
                     <button type="button" class="band-toggle" data-band-key="float" aria-pressed="false">
-                      <span class="legend-dot float-dot"></span>Float (not deployed)
+                      Float (not deployed)
                     </button>
                   </th>
                   <td data-cell-label="English" data-hover-field="allocation.float.you">500</td>
@@ -2177,8 +2195,8 @@
 
         <tr class="band-row inspector-opportunity-lost-row" data-inspector-row="opportunityLost">
           <th>
-            <button type="button" class="band-toggle" data-band-key="opportunityLost" aria-pressed="false" title="Opportunity lost is split into Villagers lost and Villager underproduction. The bucket list shows actual villager-death windows; underproduction is shown in the summary.">
-              <span class="legend-dot opportunity-lost-dot"></span><span data-opportunity-lost-tooltip title="Opportunity lost is split into Villagers lost and Villager underproduction. The bucket list shows actual villager-death windows; underproduction is shown in the summary.">Opportunity lost</span>
+            <button type="button" class="band-toggle" data-band-key="opportunityLost" aria-pressed="false" title="Opportunity lost is split into Villagers lost and Villager underproduction. Values show resources lost by selected time. The bucket list shows actual villager-death windows; underproduction is shown in the summary.">
+              <span data-opportunity-lost-tooltip title="Opportunity lost is split into Villagers lost and Villager underproduction. Values show resources lost by selected time. The bucket list shows actual villager-death windows; underproduction is shown in the summary.">Opportunity lost by selected time</span>
             </button>
           </th>
           <td data-cell-label="English" data-hover-field="allocation.opportunityLost.you">90</td>
@@ -2236,6 +2254,12 @@
                     <td><strong data-opportunity-lost-component-underproduction-opponent>0</strong></td>
                     <td><strong data-opportunity-lost-component-underproduction-delta>0</strong></td>
                   </tr>
+                  <tr data-opportunity-lost-component="low_underproduction">
+                    <th scope="row">Under production seconds</th>
+                    <td><strong data-opportunity-lost-component-low-underproduction-you>0</strong></td>
+                    <td><strong data-opportunity-lost-component-low-underproduction-opponent>0</strong></td>
+                    <td><strong data-opportunity-lost-component-low-underproduction-delta>0</strong></td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -2280,7 +2304,7 @@
 
   </main>
 
-  <script id="post-match-hover-data" type="application/json">[{"timestamp":0,"timeLabel":"0:00","strategyX":96,"markers":[],"you":{"economic":50,"populationCap":0,"militaryCapacity":0,"militaryActive":168,"defensive":0,"research":100,"advancement":500,"total":818},"opponent":{"economic":50,"populationCap":0,"militaryCapacity":0,"militaryActive":120,"defensive":0,"research":100,"advancement":400,"total":670},"delta":{"economic":0,"populationCap":0,"militaryCapacity":0,"militaryActive":48,"defensive":0,"research":0,"advancement":100,"total":148},"allocation":{"economic":{"you":50,"opponent":50,"delta":0,"youShare":6.1,"opponentShare":7.5,"shareDelta":-1.4},"technology":{"you":600,"opponent":500,"delta":100,"youShare":73.3,"opponentShare":74.6,"shareDelta":-1.3},"military":{"you":168,"opponent":120,"delta":48,"youShare":20.5,"opponentShare":17.9,"shareDelta":2.6},"other":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"destroyed":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"overall":{"you":818,"opponent":670,"delta":148,"youShare":0,"opponentShare":0,"shareDelta":0},"float":{"you":500,"opponent":1000,"delta":-500,"youShare":0,"opponentShare":0,"shareDelta":0},"opportunityLost":{"you":90,"opponent":140,"delta":-50,"youShare":0,"opponentShare":0,"shareDelta":0}},"allocationCategory":{"economic":{"net":{"you":50,"opponent":50,"delta":0,"youShare":6.1,"opponentShare":7.5,"shareDelta":-1.4},"resourceGeneration":{"you":30,"opponent":35,"delta":-5,"youShare":60,"opponentShare":70,"shareDelta":-10},"resourceInfrastructure":{"you":20,"opponent":15,"delta":5,"youShare":40,"opponentShare":30,"shareDelta":10},"destroyed":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"investment":{"you":50,"opponent":50,"delta":0,"youShare":6.1,"opponentShare":7.5,"shareDelta":-1.4}},"technology":{"net":{"you":600,"opponent":500,"delta":100,"youShare":73.3,"opponentShare":74.6,"shareDelta":-1.3},"resourceGeneration":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"resourceInfrastructure":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"destroyed":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"investment":{"you":600,"opponent":500,"delta":100,"youShare":73.3,"opponentShare":74.6,"shareDelta":-1.3}},"military":{"net":{"you":168,"opponent":120,"delta":48,"youShare":20.5,"opponentShare":17.9,"shareDelta":2.6},"resourceGeneration":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"resourceInfrastructure":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"destroyed":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"investment":{"you":168,"opponent":120,"delta":48,"youShare":20.5,"opponentShare":17.9,"shareDelta":2.6}},"other":{"net":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"resourceGeneration":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"resourceInfrastructure":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"destroyed":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"investment":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0}}},"opportunityLostComponents":{"villagersLost":{"you":90,"opponent":140,"delta":-50,"youShare":0,"opponentShare":0,"shareDelta":0},"underproduction":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0}},"totalPoolTooltip":"Economic net + Technology net + Military net + Other net = Total pool | Investment rows reconcile net + destroyed inside each category. | English: 50 + 600 + 168 + 0 = 818 | French: 50 + 500 + 120 + 0 = 670","strategy":{"economy":{"you":6.1,"opponent":7.5,"delta":-1.4},"military":{"you":20.5,"opponent":17.9,"delta":2.6},"technology":{"you":73.3,"opponent":74.6,"delta":-1.3}},"gather":{"you":500,"opponent":480,"delta":20},"significantEvent":null,"bandBreakdown":{"economic":{"you":[{"label":"Villager","value":30,"percent":60,"count":1,"economicRole":"resourceGenerator"},{"label":"Farm","value":20,"percent":40,"count":1,"economicRole":"resourceInfrastructure"}],"opponent":[{"label":"Villager","value":35,"percent":70,"count":1,"economicRole":"resourceGenerator"},{"label":"Farm","value":15,"percent":30,"count":1,"economicRole":"resourceInfrastructure"}]},"populationCap":{"you":[],"opponent":[]},"militaryCapacity":{"you":[],"opponent":[]},"militaryActive":{"you":[],"opponent":[]},"defensive":{"you":[],"opponent":[]},"research":{"you":[],"opponent":[]},"advancement":{"you":[],"opponent":[]},"float":{"you":[{"label":"Food","value":120,"percent":24,"category":"resource-stockpile"},{"label":"Wood","value":180,"percent":36,"category":"resource-stockpile"},{"label":"Gold","value":200,"percent":40,"category":"resource-stockpile"}],"opponent":[{"label":"Food","value":600,"percent":60,"category":"resource-stockpile"},{"label":"Wood","value":400,"percent":40,"category":"resource-stockpile"}]},"opportunityLost":{"you":[{"label":"0:00-0:30","value":90,"percent":100,"count":1}],"opponent":[{"label":"0:00-0:30","value":140,"percent":100,"count":2}]}}}]</script>
+  <script id="post-match-hover-data" type="application/json">[{"timestamp":0,"timeLabel":"0:00","strategyX":96,"markers":[],"you":{"economic":50,"populationCap":0,"militaryCapacity":0,"militaryActive":168,"defensive":0,"research":100,"advancement":500,"total":818},"opponent":{"economic":50,"populationCap":0,"militaryCapacity":0,"militaryActive":120,"defensive":0,"research":100,"advancement":400,"total":670},"delta":{"economic":0,"populationCap":0,"militaryCapacity":0,"militaryActive":48,"defensive":0,"research":0,"advancement":100,"total":148},"allocation":{"economic":{"you":50,"opponent":50,"delta":0,"youShare":6.1,"opponentShare":7.5,"shareDelta":-1.4},"technology":{"you":600,"opponent":500,"delta":100,"youShare":73.3,"opponentShare":74.6,"shareDelta":-1.3},"military":{"you":168,"opponent":120,"delta":48,"youShare":20.5,"opponentShare":17.9,"shareDelta":2.6},"other":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"destroyed":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"overall":{"you":818,"opponent":670,"delta":148,"youShare":0,"opponentShare":0,"shareDelta":0},"float":{"you":500,"opponent":1000,"delta":-500,"youShare":0,"opponentShare":0,"shareDelta":0},"opportunityLost":{"you":90,"opponent":140,"delta":-50,"youShare":0,"opponentShare":0,"shareDelta":0}},"allocationCategory":{"economic":{"net":{"you":50,"opponent":50,"delta":0,"youShare":6.1,"opponentShare":7.5,"shareDelta":-1.4},"resourceGeneration":{"you":30,"opponent":35,"delta":-5,"youShare":60,"opponentShare":70,"shareDelta":-10},"resourceInfrastructure":{"you":20,"opponent":15,"delta":5,"youShare":40,"opponentShare":30,"shareDelta":10},"destroyed":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"investment":{"you":50,"opponent":50,"delta":0,"youShare":6.1,"opponentShare":7.5,"shareDelta":-1.4}},"technology":{"net":{"you":600,"opponent":500,"delta":100,"youShare":73.3,"opponentShare":74.6,"shareDelta":-1.3},"resourceGeneration":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"resourceInfrastructure":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"destroyed":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"investment":{"you":600,"opponent":500,"delta":100,"youShare":73.3,"opponentShare":74.6,"shareDelta":-1.3}},"military":{"net":{"you":168,"opponent":120,"delta":48,"youShare":20.5,"opponentShare":17.9,"shareDelta":2.6},"resourceGeneration":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"resourceInfrastructure":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"destroyed":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"investment":{"you":168,"opponent":120,"delta":48,"youShare":20.5,"opponentShare":17.9,"shareDelta":2.6}},"other":{"net":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"resourceGeneration":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"resourceInfrastructure":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"destroyed":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"investment":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0}}},"opportunityLostComponents":{"villagersLost":{"you":90,"opponent":140,"delta":-50,"youShare":0,"opponentShare":0,"shareDelta":0},"underproduction":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0},"low_underproduction":{"you":0,"opponent":0,"delta":0,"youShare":0,"opponentShare":0,"shareDelta":0}},"totalPoolTooltip":"Economic net + Technology net + Military net + Other net = Total pool | Investment rows reconcile net + destroyed inside each category. | English: 50 + 600 + 168 + 0 = 818 | French: 50 + 500 + 120 + 0 = 670","strategy":{"economy":{"you":6.1,"opponent":7.5,"delta":-1.4},"military":{"you":20.5,"opponent":17.9,"delta":2.6},"technology":{"you":73.3,"opponent":74.6,"delta":-1.3}},"gather":{"you":500,"opponent":480,"delta":20},"significantEvent":null,"bandBreakdown":{"economic":{"you":[{"label":"Villager","value":30,"percent":60,"count":1,"economicRole":"resourceGenerator"},{"label":"Farm","value":20,"percent":40,"count":1,"economicRole":"resourceInfrastructure"}],"opponent":[{"label":"Villager","value":35,"percent":70,"count":1,"economicRole":"resourceGenerator"},{"label":"Farm","value":15,"percent":30,"count":1,"economicRole":"resourceInfrastructure"}]},"populationCap":{"you":[],"opponent":[]},"militaryCapacity":{"you":[],"opponent":[]},"militaryActive":{"you":[],"opponent":[]},"defensive":{"you":[],"opponent":[]},"research":{"you":[],"opponent":[]},"advancement":{"you":[],"opponent":[]},"float":{"you":[{"label":"Food","value":120,"percent":24,"category":"resource-stockpile"},{"label":"Wood","value":180,"percent":36,"category":"resource-stockpile"},{"label":"Gold","value":200,"percent":40,"category":"resource-stockpile"}],"opponent":[{"label":"Food","value":600,"percent":60,"category":"resource-stockpile"},{"label":"Wood","value":400,"percent":40,"category":"resource-stockpile"}]},"opportunityLost":{"you":[{"label":"0:00-0:30","value":90,"percent":100,"count":1}],"opponent":[{"label":"0:00-0:30","value":140,"percent":100,"count":2}]}}}]</script>
   <script>
     (function () {
       var payloadEl = document.getElementById('post-match-hover-data');
@@ -2568,7 +2592,7 @@
         var titleEl = document.querySelector('[data-band-breakdown-title]');
         if (titleEl) {
           titleEl.textContent = selectedBand === 'opportunityLost'
-            ? 'Opportunity lost: components and death windows'
+            ? 'Opportunity lost: resources lost by selected time'
             : bandLabel + ' composition';
         }
         setText('[data-band-summary-label]', bandLabel);
@@ -2585,6 +2609,7 @@
         var opportunityTotal = (point.allocation && point.allocation.opportunityLost) || { you: 0, opponent: 0, delta: 0 };
         var villagersLost = opportunityComponents.villagersLost || { you: 0, opponent: 0, delta: 0 };
         var underproduction = opportunityComponents.underproduction || { you: 0, opponent: 0, delta: 0 };
+        var lowUnderproduction = opportunityComponents.low_underproduction || { you: 0, opponent: 0, delta: 0 };
         setText('[data-opportunity-lost-component-total-you]', formatNumber(opportunityTotal.you));
         setText('[data-opportunity-lost-component-total-opponent]', formatNumber(opportunityTotal.opponent));
         setText('[data-opportunity-lost-component-total-delta]', formatSigned(opportunityTotal.delta));
@@ -2594,6 +2619,9 @@
         setText('[data-opportunity-lost-component-underproduction-you]', formatNumber(underproduction.you));
         setText('[data-opportunity-lost-component-underproduction-opponent]', formatNumber(underproduction.opponent));
         setText('[data-opportunity-lost-component-underproduction-delta]', formatSigned(underproduction.delta));
+        setText('[data-opportunity-lost-component-low-underproduction-you]', formatNumber(lowUnderproduction.you));
+        setText('[data-opportunity-lost-component-low-underproduction-opponent]', formatNumber(lowUnderproduction.opponent));
+        setText('[data-opportunity-lost-component-low-underproduction-delta]', formatSigned(lowUnderproduction.delta));
 
         function listHtml(entries, bandKey) {
           if (!entries || entries.length === 0) {
@@ -2719,6 +2747,27 @@
             else row.classList.remove('is-selected');
           }
         });
+      }
+
+      function setDestroyedTooltipOpen(button, isOpen) {
+        button.setAttribute('data-tooltip-open', isOpen ? 'true' : 'false');
+        button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        var tooltipId = button.getAttribute('aria-controls') || '';
+        var tooltip = tooltipId ? document.getElementById(tooltipId) : button.querySelector('.destroyed-row-tooltip');
+        if (tooltip) tooltip.hidden = !isOpen;
+      }
+
+      function closeDestroyedTooltips(exceptButton) {
+        document.querySelectorAll('[data-destroyed-help-button]').forEach(function (button) {
+          if (button === exceptButton) return;
+          setDestroyedTooltipOpen(button, false);
+        });
+      }
+
+      function toggleDestroyedTooltip(button) {
+        var shouldOpen = button.getAttribute('data-tooltip-open') !== 'true';
+        closeDestroyedTooltips(button);
+        setDestroyedTooltipOpen(button, shouldOpen);
       }
 
       function isCategoryCollapsed(category) {
@@ -2988,7 +3037,45 @@
         syncMobileTimeline(point);
       }
 
-      function selectPointByIndex(index, shouldUpdateUrl) {
+      function resetInspectorScrollToTop() {
+        document.querySelectorAll('.hover-inspector').forEach(function (inspector) {
+          // Reset internal scroll first so the inspector shows the eyebrow,
+          // selected time, and event impact at the top regardless of where
+          // the user had previously scrolled.
+          if (typeof inspector.scrollTo === 'function') {
+            inspector.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+          }
+          inspector.scrollTop = 0;
+
+          // Determine the scrolling ancestor for this inspector. When the
+          // inspector is sticky (desktop layout), its own .scrollTop was the
+          // relevant container. When the inspector is static (responsive
+          // layout), the scrollable container is normally the document, but
+          // some embeds nest the report inside another scroll container.
+          var style = window.getComputedStyle ? window.getComputedStyle(inspector) : null;
+          var isSticky = !!style && style.position === 'sticky';
+          if (isSticky) return;
+
+          if (typeof inspector.scrollIntoView === 'function') {
+            try {
+              inspector.scrollIntoView({ block: 'start', inline: 'nearest', behavior: 'auto' });
+            } catch (_error) {
+              inspector.scrollIntoView(true);
+            }
+          }
+        });
+      }
+
+      function pointHasSignificantEvent(point) {
+        return !!(point && point.significantEvent);
+      }
+
+      function snapshotHasSignificantEventAtTimestamp(timestamp) {
+        if (timestamp === null || timestamp === undefined) return false;
+        return pointHasSignificantEvent(byTimestamp.get(String(timestamp)));
+      }
+
+      function selectPointByIndex(index, shouldUpdateUrl, shouldResetInspectorScroll) {
         if (hoverData.length === 0) return;
         var safeIndex = Math.max(0, Math.min(hoverData.length - 1, Number(index) || 0));
         var point = hoverData[safeIndex];
@@ -2996,13 +3083,26 @@
         pinned = true;
         document.body.setAttribute('data-hover-pinned', 'true');
         updateInspector(point.timestamp);
+        if (shouldResetInspectorScroll) resetInspectorScrollToTop();
         if (shouldUpdateUrl) replaceTimestampInUrl(point.timestamp);
       }
 
-      function selectTimestamp(timestamp, shouldUpdateUrl) {
+      function selectTimestamp(timestamp, shouldUpdateUrl, shouldResetInspectorScroll) {
         var nearest = nearestTimestamp(Number(timestamp));
         if (nearest === null) return;
-        selectPointByIndex(pointIndexForTimestamp(nearest), shouldUpdateUrl);
+        selectPointByIndex(pointIndexForTimestamp(nearest), shouldUpdateUrl, shouldResetInspectorScroll);
+      }
+
+      function shouldResetInspectorScrollForChartClick(target, timestamp) {
+        // Direct hit on the marker <g>.
+        if (target && target.hasAttribute && target.hasAttribute('data-significant-event-marker')) {
+          return true;
+        }
+        // Fallback: the click landed on a sibling hover target that shares
+        // the same timestamp as a significant event (e.g. when a stem-area
+        // click was intercepted by the transparent strategy-hover rect).
+        var nearest = nearestTimestamp(Number(timestamp));
+        return snapshotHasSignificantEventAtTimestamp(nearest);
       }
 
       function scheduleInspector(timestamp) {
@@ -3024,6 +3124,11 @@
         button.addEventListener('click', function () {
           var key = button.getAttribute('data-band-key');
           if (!key) return;
+          if (button.hasAttribute('data-destroyed-help-button')) {
+            toggleDestroyedTooltip(button);
+          } else {
+            closeDestroyedTooltips();
+          }
           selectedBand = key;
           selectedInvestmentCategory = button.getAttribute('data-allocation-investment-category') || '';
           selectedEconomicRoleFilter = key === 'economic'
@@ -3039,11 +3144,22 @@
 
       document.querySelectorAll('[data-allocation-category-toggle]').forEach(function (button) {
         button.addEventListener('click', function () {
+          closeDestroyedTooltips();
           var key = button.getAttribute('data-allocation-category-toggle');
           if (!key) return;
           var collapsed = button.getAttribute('aria-expanded') !== 'false';
           setCategoryCollapsed(key, collapsed);
         });
+      });
+
+      document.addEventListener('click', function (event) {
+        var target = event.target;
+        if (target && target.closest && target.closest('[data-destroyed-help-button]')) return;
+        closeDestroyedTooltips();
+      });
+
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') closeDestroyedTooltips();
       });
 
       document.querySelectorAll('.inspector-table-wrap').forEach(function (wrap) {
@@ -3114,13 +3230,15 @@
         });
         target.addEventListener('click', function () {
           var selectedTimestamp = Number(target.getAttribute('data-hover-timestamp'));
-          selectTimestamp(selectedTimestamp, true);
+          var shouldResetInspectorScroll = shouldResetInspectorScrollForChartClick(target, selectedTimestamp);
+          selectTimestamp(selectedTimestamp, true, shouldResetInspectorScroll);
         });
         target.addEventListener('keydown', function (event) {
           if (event.key !== 'Enter' && event.key !== ' ') return;
           event.preventDefault();
           var selectedTimestamp = Number(target.getAttribute('data-hover-timestamp'));
-          selectTimestamp(selectedTimestamp, true);
+          var shouldResetInspectorScroll = shouldResetInspectorScrollForChartClick(target, selectedTimestamp);
+          selectTimestamp(selectedTimestamp, true, shouldResetInspectorScroll);
         });
       });
 

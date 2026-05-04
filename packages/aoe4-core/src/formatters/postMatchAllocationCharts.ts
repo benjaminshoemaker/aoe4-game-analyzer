@@ -180,7 +180,8 @@ function significantEventMarkerColor(
   event: SignificantTimelineEvent,
   labels: AllocationChartPlayerLabels
 ): string {
-  return playerColor(labels, event.victim);
+  const favorablePlayer = event.victim === 'you' ? 'opponent' : 'you';
+  return playerColor(labels, favorablePlayer);
 }
 
 function significantEventMarkerGlyph(event: SignificantTimelineEvent): string {
@@ -227,21 +228,40 @@ function buildSignificantEventMarkerLayer(params: {
   if (events.length === 0) return '';
 
   const markerY = Math.max(18, params.lineStartY - 18);
-  return `<g class="significant-event-markers" aria-label="Significant loss events">
-    ${events
+  const markerRadius = 10;
+  // Stems are rendered separately from markers so the marker <g> bbox stays
+  // tight around the visible icon. Otherwise auto-targeted clicks (e.g. from
+  // Playwright, or imprecise user clicks on the stem) land on a transparent
+  // strategy-hover-target rect underneath because the stem itself has
+  // pointer-events: none.
+  const stems = events
+    .map(event => {
+      const xPos = params.x(event.timestamp);
+      const color = escapeHtml(significantEventMarkerColor(event, params.labels));
+      return `<line class="significant-event-stem" aria-hidden="true" x1="${xPos.toFixed(2)}" y1="${markerY.toFixed(2)}" x2="${xPos.toFixed(2)}" y2="${params.lineEndY.toFixed(2)}" stroke="${color}" />`;
+    })
+    .join('');
+  const markers = events
     .map(event => {
       const xPos = params.x(event.timestamp);
       const color = escapeHtml(significantEventMarkerColor(event, params.labels));
       const label = significantEventAriaLabel(event);
+      // The transparent <rect> overlays the dot so the clickable bbox is
+      // exactly the visible icon (with a small slop margin). Combined with
+      // restricting the marker <g> to icon-sized children, this guarantees
+      // bbox-center clicks land on the marker itself.
+      const hitLeft = xPos - markerRadius;
+      const hitTop = markerY - markerRadius;
+      const hitSize = markerRadius * 2;
       return `<g class="significant-event-marker hover-target" data-significant-event-marker data-hover-timestamp="${event.timestamp}" role="button" tabindex="0" aria-label="${escapeHtml(label)}">
-        <line class="significant-event-stem" x1="${xPos.toFixed(2)}" y1="${markerY.toFixed(2)}" x2="${xPos.toFixed(2)}" y2="${params.lineEndY.toFixed(2)}" stroke="${color}" />
-        <circle class="significant-event-dot" cx="${xPos.toFixed(2)}" cy="${markerY.toFixed(2)}" r="10" fill="${color}" />
+        <rect class="significant-event-hit" x="${hitLeft.toFixed(2)}" y="${hitTop.toFixed(2)}" width="${hitSize.toFixed(2)}" height="${hitSize.toFixed(2)}" fill="transparent" pointer-events="all" />
+        <circle class="significant-event-dot" cx="${xPos.toFixed(2)}" cy="${markerY.toFixed(2)}" r="${markerRadius}" fill="${color}" />
         <text class="significant-event-glyph" x="${xPos.toFixed(2)}" y="${(markerY + 3.7).toFixed(2)}" text-anchor="middle">${escapeHtml(significantEventMarkerGlyph(event))}</text>
         <title>${escapeHtml(label)}</title>
       </g>`;
     })
-    .join('')}
-  </g>`;
+    .join('');
+  return `<g class="significant-event-stems" aria-hidden="true">${stems}</g><g class="significant-event-markers" aria-label="Significant loss events">${markers}</g>`;
 }
 
 function leaderColor(leader: AllocationLeader, labels: AllocationChartPlayerLabels): string {

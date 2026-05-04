@@ -13,6 +13,9 @@ describe('post-match mobile UX integration', () => {
     expect(html).toContain('setMobileSummary(\'overall\', allocation.overall);');
     expect(html).toContain('setText(\'[data-mobile-current-time]\', point.timeLabel);');
     expect(html).toContain('document.querySelectorAll(\'[data-mobile-timeline-slider]\')');
-    expect(html).toContain('selectPointByIndex(Number(slider.value), true);');
+    expect(html).toContain('var targetIndex = safePointIndex(Number(slider.value));');
+    expect(html).toContain("selectPointByIndex(targetIndex, true, false, 'mobile-slider');");
+    expect(html).toContain("trackMobileTimelineChanged(hoverData[targetIndex], 'mobile-slider', targetIndex);");
+    expect(html).toContain("trackAnalyticsEvent('mobile timeline changed'");
   });
 });
