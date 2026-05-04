@@ -180,6 +180,11 @@ function significantEventMarkerColor(
   event: SignificantTimelineEvent,
   labels: AllocationChartPlayerLabels
 ): string {
+  // The marker is colored by the *beneficiary* of the loss event (the
+  // player who inflicted the damage), not the victim. This makes a
+  // glance at the chart answer "whose attack was this?" rather than
+  // "whose unit died?". Flipping this back to victim coloring is a
+  // UX-visible change and must be coordinated with the inspector copy.
   const favorablePlayer = event.victim === 'you' ? 'opponent' : 'you';
   return playerColor(labels, favorablePlayer);
 }

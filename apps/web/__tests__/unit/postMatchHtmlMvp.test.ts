@@ -491,7 +491,7 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).toContain('<th scope="col">Gap</th>');
     expect(html).toContain('data-opportunity-lost-component="total"');
     expect(html).toContain('data-opportunity-lost-component-total-you');
-    expect(html).toContain('data-opportunity-lost-component="low_underproduction"');
+    expect(html).toContain('data-opportunity-lost-component="low-underproduction"');
     expect(html).toContain('<th scope="row">Under production seconds</th>');
     expect(html).toContain('data-opportunity-lost-component-low-underproduction-you');
     expect(html).toContain('data-band-summary-label');
@@ -513,7 +513,7 @@ describe('renderPostMatchHtml (web mvp)', () => {
       opponent: 140,
       delta: -50,
     }));
-    expect(payload[0].opportunityLostComponents.low_underproduction).toEqual(expect.objectContaining({
+    expect(payload[0].opportunityLostComponents.lowUnderproduction).toEqual(expect.objectContaining({
       you: 0,
       opponent: 0,
       delta: 0,

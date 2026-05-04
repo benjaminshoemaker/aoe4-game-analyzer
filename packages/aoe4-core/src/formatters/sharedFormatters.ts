@@ -1,3 +1,8 @@
+// Public author profile used for the "Feedback? DM me on Reddit" links
+// rendered in both the home page and the post-match report. Defined
+// here so the URL is owned by exactly one source of truth.
+export const REDDIT_FEEDBACK_HREF = 'https://www.reddit.com/user/shoe7525/';
+
 export function escapeHtml(input: string): string {
   return input
     .replace(/&/g, '&amp;')

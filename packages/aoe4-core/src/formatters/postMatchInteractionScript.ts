@@ -527,7 +527,7 @@ ${adjustedHelpers}
         var opportunityTotal = (point.allocation && point.allocation.opportunityLost) || { you: 0, opponent: 0, delta: 0 };
         var villagersLost = opportunityComponents.villagersLost || { you: 0, opponent: 0, delta: 0 };
         var underproduction = opportunityComponents.underproduction || { you: 0, opponent: 0, delta: 0 };
-        var lowUnderproduction = opportunityComponents.low_underproduction || { you: 0, opponent: 0, delta: 0 };
+        var lowUnderproduction = opportunityComponents.lowUnderproduction || { you: 0, opponent: 0, delta: 0 };
         setText('[data-opportunity-lost-component-total-you]', formatNumber(opportunityTotal.you));
         setText('[data-opportunity-lost-component-total-opponent]', formatNumber(opportunityTotal.opponent));
         setText('[data-opportunity-lost-component-total-delta]', formatSigned(opportunityTotal.delta));

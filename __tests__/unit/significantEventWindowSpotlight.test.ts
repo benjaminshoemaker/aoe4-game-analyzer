@@ -85,7 +85,7 @@ function makeSnapshot(timestamp: number, significantEvent: ClientHoverSnapshot['
     opportunityLostComponents: {
       villagersLost: row(),
       underproduction: row(),
-      low_underproduction: row(),
+      lowUnderproduction: row(),
     },
     totalPoolTooltip: 'total',
     strategy: {

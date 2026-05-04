@@ -96,7 +96,7 @@ const snapshot: ClientHoverSnapshot = {
   opportunityLostComponents: {
     villagersLost: { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 },
     underproduction: { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 },
-    low_underproduction: { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 },
+    lowUnderproduction: { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 },
   },
   totalPoolTooltip: 'total',
   strategy: {

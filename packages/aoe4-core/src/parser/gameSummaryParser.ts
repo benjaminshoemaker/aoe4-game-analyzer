@@ -80,10 +80,10 @@ export interface TimeSeriesResources {
   stoneGathered?: number[];
   woodGathered?: number[];
   oliveoilGathered?: number[];
+  // AoE4World canonical name for the per-second total-population
+  // sample. Used by villager-opportunity to lock expected growth at
+  // the population cap.
   population?: number[];
-  totalPopulation?: number[];
-  totalPop?: number[];
-  pop?: number[];
 }
 
 export interface BuildOrderEntry {
@@ -217,9 +217,6 @@ function parseTimeSeries(raw: unknown): TimeSeriesResources {
     'woodGathered',
     'oliveoilGathered',
     'population',
-    'totalPopulation',
-    'totalPop',
-    'pop'
   ] as const;
 
   optionalFields.forEach((field) => {

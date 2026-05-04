@@ -774,28 +774,23 @@ function normalizeLifecycleTimestamps(values: number[] | undefined, duration: nu
     .sort((a, b) => a - b);
 }
 
-function isJeanneTransformingVillagerItem(item: ResolvedBuildItem): boolean {
+// A villager entry is a "transforming villager" when its lifecycle
+// includes a `transformed` event (currently emitted by AoE4World for
+// Jeanne d'Arc when she switches from peasant to warrior, but the
+// detection is intentionally name-agnostic so other future
+// villager-to-military transforms work without code changes).
+function isTransformingVillagerItem(item: ResolvedBuildItem): boolean {
   if (item.type !== 'unit') return false;
   if (!isVillagerResolvedItem(item)) return false;
   if (!Array.isArray(item.originalEntry.transformed) || item.originalEntry.transformed.length === 0) return false;
-
-  const haystack = [
-    item.id,
-    item.baseId ?? '',
-    item.name,
-    item.originalEntry.id,
-    item.originalEntry.icon,
-    ...item.classes,
-  ].map(normalizeText).join(' ');
-
-  return haystack.includes('jeanne');
+  return true;
 }
 
-function expandTransformedJeanneItems(items: ResolvedBuildItem[], duration: number): ResolvedBuildItem[] {
+function expandTransformedVillagerItems(items: ResolvedBuildItem[], duration: number): ResolvedBuildItem[] {
   const expanded: ResolvedBuildItem[] = [];
 
   for (const item of items) {
-    if (!isJeanneTransformingVillagerItem(item)) {
+    if (!isTransformingVillagerItem(item)) {
       expanded.push(item);
       continue;
     }
@@ -864,7 +859,7 @@ export function buildPlayerDeployedPoolSeries(
   if (isChineseOrZhuXi(player.civilization) && !hasTrackedImperialOfficial(items)) {
     items.push(createSyntheticImperialOfficial());
   }
-  const allItems = expandTransformedJeanneItems(items, gameDuration);
+  const allItems = expandTransformedVillagerItems(items, gameDuration);
   const hasNavalMilitaryProduction = computeHasNavalMilitaryProduction(allItems);
   const militarySchoolConstructedAt = allItems
     .filter(item => item.type === 'building')

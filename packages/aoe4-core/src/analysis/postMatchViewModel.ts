@@ -332,6 +332,10 @@ export interface PostMatchViewModel {
     player1: PostMatchPlayerDisplay;
     player2: PostMatchPlayerDisplay;
     outcome: string;
+    // Lowercased copy of `outcome` (e.g. "defeated 25:03"). Exposed
+    // here so display callers don't have to apply ad-hoc casing logic
+    // — the formatter just reads whichever variant fits the surface.
+    outcomeLowercase: string;
   };
   deferredBanner: string | null;
   metricCards: {
@@ -2667,6 +2671,7 @@ export function buildPostMatchViewModel(params: {
       player1: playerDisplays.player1,
       player2: playerDisplays.player2,
       outcome: formatOutcome(summary.winReason, summary.duration),
+      outcomeLowercase: formatOutcome(summary.winReason, summary.duration).toLowerCase(),
     },
     deferredBanner: displayBanner(yourPool.deferredNotices, opponentPool.deferredNotices),
     metricCards: {

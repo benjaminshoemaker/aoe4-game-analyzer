@@ -2,6 +2,13 @@
 
 Last updated: 2026-05-03 (America/Los_Angeles)
 
+- [ ] `P1` Stop hard-coding the PostHog write key as a default in `apps/web/src/lib/posthogAnalytics.ts`
+  - The current `DEFAULT_POSTHOG_TOKEN` is a `phc_*` write-only key, so it is not a credential leak, but anyone who forks the repo will silently feed analytics events into the upstream project unless they set `NEXT_PUBLIC_POSTHOG_TOKEN`.
+  - Make the default empty string so `buildPostHogAnalyticsScript` short-circuits when no env var is configured. Update `postHogConfigFromEnv` and the unit tests that assert the default token value (`apps/web/__tests__/unit/posthogAnalytics.test.ts`).
+  - When you flip the default, also confirm the deploy-time env wiring (Vercel preview + production) sets `NEXT_PUBLIC_POSTHOG_TOKEN` so analytics keep flowing.
+  - Source: code review on the cache+analytics branch (2026-05-03).
+
+
 This is the feature backlog for follow-up work after the current v1 post-match implementation.
 Correctness fixes, bug work, API reliability, and civ-specific accounting gaps live in `BUGS_FIXES.md`.
 Completed or no-longer-open items live in `COMPLETED_NEXT_STEPS.md`.

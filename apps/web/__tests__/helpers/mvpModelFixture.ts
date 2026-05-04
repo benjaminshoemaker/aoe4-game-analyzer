@@ -132,6 +132,7 @@ export function makeMvpModelFixture(): PostMatchViewModel {
         color: '#D85A30',
       },
       outcome: 'Defeated 10:00',
+      outcomeLowercase: 'defeated 10:00',
     },
     deferredBanner: null,
     metricCards: {

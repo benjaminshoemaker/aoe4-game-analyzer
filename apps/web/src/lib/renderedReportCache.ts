@@ -12,16 +12,64 @@ export const RENDERED_REPORT_CACHE_REVALIDATE_SECONDS = 24 * 60 * 60;
 const MEMORY_CACHE_TTL_MS = 5 * 60 * 1000;
 const MEMORY_CACHE_LIMIT = 25;
 const CACHE_NAMESPACE = 'aoe4-rendered-report-html';
-// Bumped whenever the rendered HTML / inline script changes in a way that
-// must invalidate any cached HTML.
-// v4: low_underproduction now reports inferred TC-idle seconds, crediting
-// in-progress villager training before the villager completion timestamp.
-// v5: significant event hover labels use the event window range instead of
-// the primary timestamp.
-// v6: PostHog bootstrap syntax fix and local analytics delivery.
-// v7: engagement, acquisition, mobile timeline, and outbound analytics events.
-// v8: outcome header now leads with player label (e.g. "washed up · Sengoku Daimyo · defeated 25:03").
-const CACHE_VERSION = 'v8';
+// CACHE_BASELINE bumps when the rendered HTML/script structure changes
+// in a way that must invalidate any cached HTML. The actual cache key
+// also folds in:
+//   - the build SHA (so deploys auto-invalidate the on-disk cache),
+//   - a hash of the env-derived analytics config (so token/host/env
+//     changes don't get stuck behind cached HTML for up to 24 h).
+// History (kept for grep-ability):
+//   v4: low_underproduction reports inferred TC-idle seconds.
+//   v5: significant event hover labels use event-window range.
+//   v6: PostHog bootstrap syntax fix and local analytics delivery.
+//   v7: engagement, acquisition, mobile timeline, outbound events.
+//   v8: outcome header leads with player label.
+const CACHE_BASELINE = 'v8';
+
+type CacheEnv = Record<string, string | undefined>;
+
+function readBuildIdentifier(env: CacheEnv): string {
+  return (
+    env.AOE4_RENDERED_REPORT_CACHE_BUILD_ID ||
+    env.VERCEL_GIT_COMMIT_SHA ||
+    env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ||
+    env.GIT_COMMIT_SHA ||
+    ''
+  ).trim();
+}
+
+function readAnalyticsIdentity(env: CacheEnv): string {
+  // Mirror what `posthogAnalytics.ts` interpolates into the rendered
+  // HTML so a token/host/env change reliably invalidates the cache.
+  // Joined into a single hash input — the separator just has to be
+  // unambiguous, so a printable delimiter is fine.
+  return [
+    env.NEXT_PUBLIC_POSTHOG_TOKEN || '',
+    env.NEXT_PUBLIC_POSTHOG_HOST || '',
+    env.NEXT_PUBLIC_POSTHOG_ENVIRONMENT ||
+      env.NEXT_PUBLIC_VERCEL_ENV ||
+      env.VERCEL_ENV ||
+      env.NODE_ENV ||
+      '',
+  ].join('|');
+}
+
+function shortHash(value: string): string {
+  if (!value) return 'none';
+  return createHash('sha256').update(value).digest('hex').slice(0, 12);
+}
+
+function computeCacheVersion(env: CacheEnv): string {
+  const buildId = readBuildIdentifier(env);
+  const analyticsHash = shortHash(readAnalyticsIdentity(env));
+  return `${CACHE_BASELINE}-${buildId ? shortHash(buildId) : 'nobuild'}-${analyticsHash}`;
+}
+
+const CACHE_VERSION = computeCacheVersion(process.env as CacheEnv);
+
+export function renderedReportCacheVersionForTests(env: CacheEnv = process.env as CacheEnv): string {
+  return computeCacheVersion(env);
+}
 
 type RenderedReportCacheEntry = {
   html: string;
@@ -51,8 +99,14 @@ export function renderedReportCacheTag(params: RenderedReportCacheIdentity): str
   return `aoe4-rendered-report:${params.profileSlug}:${params.gameId}`;
 }
 
+// Use a NUL byte as the in-memory key separator so it can never collide
+// with profile slugs, sig hashes, or version markers. Built via
+// String.fromCharCode rather than a string literal containing the byte
+// itself so tooling and git keep treating the file as text.
+const MEMORY_CACHE_KEY_SEPARATOR = String.fromCharCode(0);
+
 function memoryCacheKey(params: RenderedReportCacheIdentity): string {
-  return renderedReportCacheKeyParts(params).join('\u0000');
+  return renderedReportCacheKeyParts(params).join(MEMORY_CACHE_KEY_SEPARATOR);
 }
 
 function getMemoryCachedHtml(params: RenderedReportCacheIdentity, now: number): string | null {

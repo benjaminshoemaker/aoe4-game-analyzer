@@ -207,6 +207,7 @@ describe('renderPostMatchHtml', () => {
         player1: testPlayerDisplay('You', 'English', '#378ADD'),
         player2: testPlayerDisplay('Opponent', 'French', '#D85A30'),
         outcome: 'Defeated 10:00',
+        outcomeLowercase: 'defeated 10:00',
       },
       deferredBanner: null,
       metricCards: {
@@ -954,6 +955,7 @@ describe('renderPostMatchHtml', () => {
         player1: testPlayerDisplay('You', 'Abbasid Dynasty', '#378ADD'),
         player2: testPlayerDisplay('Opponent', 'Abbasid Dynasty', '#D85A30'),
         outcome: 'Defeated 2:00',
+        outcomeLowercase: 'defeated 2:00',
       },
       deferredBanner: null,
       metricCards: {

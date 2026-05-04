@@ -25,6 +25,7 @@ import {
   formatPrecise,
   formatSigned,
   formatTime,
+  REDDIT_FEEDBACK_HREF,
   roundToTenth,
 } from './sharedFormatters';
 
@@ -56,7 +57,6 @@ const bandDefs: BandDef[] = [
 ];
 
 const faviconHref = "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='6'%20fill='%239b2f1f'/%3E%3Cpath%20d='M8%2022h16v3H8zM10%208h12l-2%2012h-8z'%20fill='%23fff9f5'/%3E%3C/svg%3E";
-const redditFeedbackHref = 'https://www.reddit.com/user/shoe7525/';
 
 type EconomicRole = 'resourceGenerator' | 'resourceInfrastructure';
 
@@ -87,7 +87,7 @@ interface AllocationComparisonRow {
 }
 
 type AllocationComparison = Record<AllocationGraphKey | AllocationCategoryKey, AllocationComparisonRow>;
-type OpportunityLostComponents = Record<'villagersLost' | 'underproduction' | 'low_underproduction', AllocationComparisonRow>;
+type OpportunityLostComponents = Record<'villagersLost' | 'underproduction' | 'lowUnderproduction', AllocationComparisonRow>;
 type AllocationCategoryBasis = 'net' | 'destroyed' | 'investment';
 type EconomicAllocationBasis = 'resourceGeneration' | 'resourceInfrastructure';
 type AllocationCategoryRows = Record<AllocationCategoryBasis, AllocationComparisonRow> &
@@ -790,7 +790,7 @@ function buildHoverSnapshots(model: PostMatchViewModel, labels: RenderPlayerLabe
         0,
         0
       ),
-      low_underproduction: buildAllocationComparisonRow(
+      lowUnderproduction: buildAllocationComparisonRow(
         'opportunityLost',
         youUnderproductionSeconds,
         opponentUnderproductionSeconds,
@@ -1620,11 +1620,11 @@ function buildHoverInspectorHtml(
                     <td><strong data-opportunity-lost-component-underproduction-opponent>${formatNumber(opportunityLostComponents.underproduction.opponent)}</strong></td>
                     <td><strong data-opportunity-lost-component-underproduction-delta>${formatSigned(opportunityLostComponents.underproduction.delta)}</strong></td>
                   </tr>
-                  <tr data-opportunity-lost-component="low_underproduction">
+                  <tr data-opportunity-lost-component="low-underproduction">
                     <th scope="row">Under production seconds</th>
-                    <td><strong data-opportunity-lost-component-low-underproduction-you>${formatNumber(opportunityLostComponents.low_underproduction.you)}</strong></td>
-                    <td><strong data-opportunity-lost-component-low-underproduction-opponent>${formatNumber(opportunityLostComponents.low_underproduction.opponent)}</strong></td>
-                    <td><strong data-opportunity-lost-component-low-underproduction-delta>${formatSigned(opportunityLostComponents.low_underproduction.delta)}</strong></td>
+                    <td><strong data-opportunity-lost-component-low-underproduction-you>${formatNumber(opportunityLostComponents.lowUnderproduction.you)}</strong></td>
+                    <td><strong data-opportunity-lost-component-low-underproduction-opponent>${formatNumber(opportunityLostComponents.lowUnderproduction.opponent)}</strong></td>
+                    <td><strong data-opportunity-lost-component-low-underproduction-delta>${formatSigned(opportunityLostComponents.lowUnderproduction.delta)}</strong></td>
                   </tr>
                 </tbody>
               </table>
@@ -4103,7 +4103,7 @@ ${fullSurfaceNarrowStyles}
           <div class="recap-heading">
             <h1 class="title">Match recap</h1>
             <a class="recap-link" href="${escapeHtml(model.header.summaryUrl)}" target="_blank" rel="noreferrer noopener">AoE4World summary</a>
-            <a class="recap-link feedback-link" href="${redditFeedbackHref}" target="_blank" rel="noreferrer noopener">Feedback? DM me on Reddit</a>
+            <a class="recap-link feedback-link" href="${REDDIT_FEEDBACK_HREF}" target="_blank" rel="noreferrer noopener">Feedback? DM me on Reddit</a>
           </div>
           <div class="meta-line">${escapeHtml(model.header.mode)} · ${escapeHtml(model.header.durationLabel)} · ${escapeHtml(model.header.map)}</div>
           <div class="chips">
@@ -4111,7 +4111,7 @@ ${fullSurfaceNarrowStyles}
             <span class="civ-chip"><span class="swatch" style="background:${escapeHtml(playerLabels.opponent.color)}"></span>${escapeHtml(playerLabels.opponent.label)}</span>
           </div>
         </div>
-        <div class="outcome">${escapeHtml(playerLabels.you.label)} · ${escapeHtml(model.header.outcome.toLowerCase())}</div>
+        <div class="outcome">${escapeHtml(playerLabels.you.label)} · ${escapeHtml(model.header.outcomeLowercase)}</div>
       </div>
       ${model.deferredBanner ? `<div class="banner" style="margin-top:12px">${escapeHtml(model.deferredBanner)}</div>` : ''}
     </section>

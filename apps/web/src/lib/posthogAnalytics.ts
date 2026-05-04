@@ -1,8 +1,15 @@
 import type { PostMatchViewModel } from '@aoe4/analyzer-core/analysis/postMatchViewModel';
+import { SAMPLE_MATCH } from './sampleMatch';
 
 const DEFAULT_POSTHOG_TOKEN = 'phc_mPGKCTfkNwcknrDkvcVBXknJ74uehvu2hhnTzmjg8A8o';
 const DEFAULT_POSTHOG_HOST = 'https://us.i.posthog.com';
 const POSTHOG_DEFAULTS_DATE = '2026-01-30';
+
+// PostHog event names intentionally use spaces (e.g. "match viewed",
+// "band filter changed") to match the in-product wording the
+// dashboards already filter on. Renaming any of these is a
+// breaking change for analytics consumers — coordinate before
+// rotating to dot/underscore conventions.
 
 type AnalyticsValue = string | number | boolean | null;
 type AnalyticsProperties = Record<string, AnalyticsValue>;
@@ -530,11 +537,11 @@ export function buildHomePostHogAnalyticsScript(): string {
 
     document.querySelectorAll('[data-analytics-sample-report]').forEach(function (link) {
       link.addEventListener('click', function () {
-        window.aoe4Analytics.capture('home sample report opened', {
-          profile_slug: '8139502',
-          game_id: 229727104,
-          has_sig: true
-        });
+        window.aoe4Analytics.capture('home sample report opened', ${escapeJsonForScript({
+          profile_slug: SAMPLE_MATCH.profileSlug,
+          game_id: SAMPLE_MATCH.gameId,
+          has_sig: true,
+        })});
       });
     });
 

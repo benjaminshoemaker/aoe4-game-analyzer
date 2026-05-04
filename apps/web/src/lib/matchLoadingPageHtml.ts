@@ -366,6 +366,8 @@ export function renderMatchLoadingHtml(targetHref: string): string {
       var stageItems = document.querySelectorAll('[data-stage-index]');
       var longWait = document.getElementById('long-wait-message');
       var index = 0;
+      var stageIntervalId = null;
+      var longWaitTimerId = null;
 
       function setStage(nextIndex) {
         index = Math.min(nextIndex, stages.length - 1);
@@ -379,15 +381,27 @@ export function renderMatchLoadingHtml(targetHref: string): string {
         }
       }
 
-      window.setInterval(function () {
+      stageIntervalId = window.setInterval(function () {
         setStage(index + 1);
       }, 2800);
 
-      window.setTimeout(function () {
+      longWaitTimerId = window.setTimeout(function () {
         if (longWait) longWait.hidden = false;
       }, 10000);
 
+      function clearTimers() {
+        if (stageIntervalId !== null) {
+          window.clearInterval(stageIntervalId);
+          stageIntervalId = null;
+        }
+        if (longWaitTimerId !== null) {
+          window.clearTimeout(longWaitTimerId);
+          longWaitTimerId = null;
+        }
+      }
+
       function navigateToReport() {
+        clearTimers();
         window.location.replace(targetHref);
       }
 

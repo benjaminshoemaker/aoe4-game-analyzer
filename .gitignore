@@ -15,3 +15,12 @@ tmp/
 # Claude Code local settings
 .claude/settings.local.json
 .vercel
+
+# Browser MCP / Playwright debug artifacts (workspace-only)
+.playwright-mcp/
+
+# Local screenshots and DOM snapshots used during UI work
+/home-*.png
+/home-snapshot.yml
+/report-*.png
+/report-snapshot.yml

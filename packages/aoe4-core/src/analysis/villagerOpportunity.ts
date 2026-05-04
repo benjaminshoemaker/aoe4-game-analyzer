@@ -146,11 +146,7 @@ function uniqueSortedTimestamps(values: number[]): number[] {
 
 function collectTotalPopulationPoints(player: PlayerSummary, duration: number): TotalPopulationPoint[] {
   const resources = player.resources;
-  const populationValues =
-    resources.population ??
-    resources.totalPopulation ??
-    resources.totalPop ??
-    resources.pop;
+  const populationValues = resources.population;
 
   if (!Array.isArray(populationValues) || populationValues.length === 0) return [];
 
@@ -506,17 +502,74 @@ function buildVillagerTrainingIntervals(
     });
   }
 
+  // The hot path scans intervals sorted by start time (cheaper than
+  // resorting by end on every query) — rely on producedVillagerTimes
+  // already being sorted, then defensively re-sort once.
+  intervals.sort((a, b) => a.start - b.start || a.end - b.end);
   return intervals;
 }
 
-function cumulativeBusyTownCenterSecondsAt(intervals: VillagerTrainingInterval[], timestamp: number): number {
-  let total = 0;
+interface VillagerTrainingPrefixSums {
+  // For each interval, the total busy-seconds from intervals whose end
+  // is at or before the timestamp anchor — used to short-circuit the
+  // common case where a query is past every interval's end.
+  intervals: VillagerTrainingInterval[];
+  // Sorted ascending by interval.end; same length as intervals.
+  endsAscending: number[];
+  // prefixDurations[i] = sum of (intervals sorted-by-end)[0..i-1].duration
+  prefixDurationsByEnd: number[];
+}
 
-  for (const interval of intervals) {
-    if (interval.start >= timestamp) continue;
-    total += Math.max(0, Math.min(timestamp, interval.end) - interval.start);
+function buildVillagerTrainingPrefixSums(
+  intervals: VillagerTrainingInterval[]
+): VillagerTrainingPrefixSums {
+  const sortedByEnd = intervals.slice().sort((a, b) => a.end - b.end || a.start - b.start);
+  const endsAscending: number[] = new Array(sortedByEnd.length);
+  const prefixDurationsByEnd: number[] = new Array(sortedByEnd.length + 1);
+  prefixDurationsByEnd[0] = 0;
+  for (let i = 0; i < sortedByEnd.length; i += 1) {
+    const interval = sortedByEnd[i];
+    endsAscending[i] = interval.end;
+    prefixDurationsByEnd[i + 1] = prefixDurationsByEnd[i] + Math.max(0, interval.end - interval.start);
   }
+  return { intervals: sortedByEnd, endsAscending, prefixDurationsByEnd };
+}
 
+function lowerBound(values: number[], target: number): number {
+  let lo = 0;
+  let hi = values.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (values[mid] < target) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+  return lo;
+}
+
+function cumulativeBusyTownCenterSecondsAt(
+  prefixSums: VillagerTrainingPrefixSums,
+  timestamp: number
+): number {
+  const { intervals, endsAscending, prefixDurationsByEnd } = prefixSums;
+  if (intervals.length === 0 || timestamp <= 0) return 0;
+
+  // Intervals whose end is fully before the query contribute their
+  // entire duration — pulled directly from the prefix-sum table.
+  const firstUnfinishedIndex = lowerBound(endsAscending, timestamp);
+  let total = prefixDurationsByEnd[firstUnfinishedIndex];
+
+  // Intervals that straddle the timestamp need a partial contribution.
+  // We only iterate intervals with end >= timestamp, which is bounded
+  // by the longest training time (a few seconds) so the linear scan is
+  // small in practice.
+  for (let i = firstUnfinishedIndex; i < intervals.length; i += 1) {
+    const interval = intervals[i];
+    if (interval.start >= timestamp) continue;
+    total += Math.max(0, timestamp - interval.start);
+  }
   return total;
 }
 
@@ -554,6 +607,9 @@ export function buildVillagerOpportunityForPlayer(params: BuildVillagerOpportuni
     producedVillagerTimes,
     productionUpgradeEvents,
     villagerTrainSeconds
+  );
+  const actualVillagerTrainingPrefixSums = buildVillagerTrainingPrefixSums(
+    actualVillagerTrainingIntervals
   );
   const timeline = uniqueSortedTimestamps([
     0,
@@ -700,7 +756,7 @@ export function buildVillagerOpportunityForPlayer(params: BuildVillagerOpportuni
     const underproductionLossPerMin = underproductionDeficit * expectedVillagerRateRpm;
     const deathLossPerMin = deathDeficit * expectedVillagerRateRpm;
     const cumulativeActualTownCenterSeconds = cumulativeBusyTownCenterSecondsAt(
-      actualVillagerTrainingIntervals,
+      actualVillagerTrainingPrefixSums,
       timestamp
     );
     const cumulativeUnderproductionSeconds = Math.max(
