@@ -1,0 +1,240 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1160" viewBox="0 0 1400 1160" role="img" aria-labelledby="title desc">
+  <title id="title">Event Window Shade Mockups</title>
+  <desc id="desc">Four visual options for showing the period of time described by clickable timeline events in the AoE4 post-match allocation chart.</desc>
+  <defs>
+    <style>
+      .page { fill: #f4f6f1; }
+      .panel { fill: #ffffff; stroke: #d7ded2; stroke-width: 1.5; }
+      .panel-title { fill: #1f2a1f; font: 800 28px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .panel-note { fill: #5b6257; font: 500 17px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .axis-label { fill: #5b6257; font: 700 14px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .lane-label { fill: #1f2a1f; font: 800 15px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .tick-label { fill: #6b7367; font: 600 13px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .grid { stroke: #e3e8df; stroke-width: 1; }
+      .baseline { stroke: #697164; stroke-width: 1.4; }
+      .you-line { fill: none; stroke: #378add; stroke-width: 3.3; stroke-linecap: round; stroke-linejoin: round; }
+      .opp-line { fill: none; stroke: #d85a30; stroke-width: 3.3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 9 7; }
+      .you-text { fill: #378add; font: 800 14px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .opp-text { fill: #d85a30; font: 800 14px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .event-stem { stroke-width: 1.7; stroke-dasharray: 4 5; opacity: .72; }
+      .event-dot { stroke: #ffffff; stroke-width: 3; }
+      .event-glyph { fill: #ffffff; font: 900 13px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-anchor: middle; dominant-baseline: central; }
+      .window-band-blue { fill: #378add; opacity: .08; }
+      .window-band-red { fill: #d85a30; opacity: .08; }
+      .window-band-blue-strong { fill: #378add; opacity: .14; }
+      .window-band-red-strong { fill: #d85a30; opacity: .14; }
+      .window-edge-blue { stroke: #378add; stroke-width: 1.4; opacity: .34; }
+      .window-edge-red { stroke: #d85a30; stroke-width: 1.4; opacity: .34; }
+      .ribbon-blue { fill: #378add; opacity: .2; }
+      .ribbon-red { fill: #d85a30; opacity: .2; }
+      .legend { fill: #41493f; font: 600 14px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    </style>
+  </defs>
+
+  <rect class="page" x="0" y="0" width="1400" height="1160"/>
+  <text x="70" y="62" class="panel-title">Clickable Event Window Shading</text>
+  <text x="70" y="96" class="panel-note">Each option keeps the existing dot as the event click target and uses the shade to show windowStart to windowEnd.</text>
+  <g transform="translate(970 68)">
+    <line x1="0" y1="0" x2="54" y2="0" class="you-line"/>
+    <text x="66" y="5" class="legend">Viewed player</text>
+    <line x1="0" y1="26" x2="54" y2="26" class="opp-line"/>
+    <text x="66" y="31" class="legend">Opponent</text>
+  </g>
+
+  <g id="option-a" transform="translate(70 130)">
+    <rect class="panel" x="0" y="0" width="610" height="455" rx="10"/>
+    <text x="28" y="42" class="panel-title">A. Persistent Window Bands</text>
+    <text x="28" y="74" class="panel-note">Always-visible light shades behind every event.</text>
+    <g transform="translate(28 104)">
+      <line x1="88" y1="24" x2="88" y2="300" class="grid"/>
+      <line x1="212" y1="24" x2="212" y2="300" class="grid"/>
+      <line x1="336" y1="24" x2="336" y2="300" class="grid"/>
+      <line x1="460" y1="24" x2="460" y2="300" class="grid"/>
+      <line x1="552" y1="24" x2="552" y2="300" class="grid"/>
+      <rect x="165" y="24" width="64" height="276" class="window-band-red"/>
+      <line x1="165" y1="24" x2="165" y2="300" class="window-edge-red"/>
+      <line x1="229" y1="24" x2="229" y2="300" class="window-edge-red"/>
+      <rect x="353" y="24" width="74" height="276" class="window-band-blue"/>
+      <line x1="353" y1="24" x2="353" y2="300" class="window-edge-blue"/>
+      <line x1="427" y1="24" x2="427" y2="300" class="window-edge-blue"/>
+
+      <text x="0" y="54" class="lane-label">Economic</text>
+      <line x1="88" y1="62" x2="552" y2="62" class="grid"/>
+      <line x1="88" y1="98" x2="552" y2="98" class="baseline"/>
+      <path d="M88 92 L150 86 L212 78 L274 70 L336 66 L398 60 L460 56 L552 50" class="you-line"/>
+      <path d="M88 82 L150 80 L212 82 L274 84 L336 80 L398 78 L460 74 L552 70" class="opp-line"/>
+
+      <text x="0" y="144" class="lane-label">Military</text>
+      <line x1="88" y1="152" x2="552" y2="152" class="grid"/>
+      <line x1="88" y1="188" x2="552" y2="188" class="baseline"/>
+      <path d="M88 184 L150 178 L212 162 L274 154 L336 158 L398 150 L460 132 L552 122" class="you-line"/>
+      <path d="M88 180 L150 164 L212 146 L274 138 L336 142 L398 156 L460 158 L552 162" class="opp-line"/>
+
+      <text x="0" y="234" class="lane-label">Overall</text>
+      <line x1="88" y1="242" x2="552" y2="242" class="grid"/>
+      <line x1="88" y1="278" x2="552" y2="278" class="baseline"/>
+      <path d="M88 260 L150 250 L212 236 L274 226 L336 220 L398 208 L460 194 L552 182" class="you-line"/>
+      <path d="M88 252 L150 242 L212 232 L274 226 L336 224 L398 228 L460 232 L552 236" class="opp-line"/>
+
+      <line x1="197" y1="12" x2="197" y2="300" class="event-stem" stroke="#d85a30"/>
+      <circle cx="197" cy="12" r="13" fill="#d85a30" class="event-dot"/>
+      <text x="197" y="12" class="event-glyph">F</text>
+      <line x1="391" y1="12" x2="391" y2="300" class="event-stem" stroke="#378add"/>
+      <circle cx="391" cy="12" r="13" fill="#378add" class="event-dot"/>
+      <text x="391" y="12" class="event-glyph">R</text>
+
+      <text x="88" y="330" class="tick-label" text-anchor="middle">0:00</text>
+      <text x="212" y="330" class="tick-label" text-anchor="middle">5:00</text>
+      <text x="336" y="330" class="tick-label" text-anchor="middle">10:00</text>
+      <text x="460" y="330" class="tick-label" text-anchor="middle">15:00</text>
+      <text x="552" y="330" class="tick-label" text-anchor="middle">20:00</text>
+    </g>
+    <text x="28" y="420" class="panel-note">Use when event count is small; simplest to understand at a glance.</text>
+  </g>
+
+  <g id="option-b" transform="translate(720 130)">
+    <rect class="panel" x="0" y="0" width="610" height="455" rx="10"/>
+    <text x="28" y="42" class="panel-title">B. Selected Spotlight</text>
+    <text x="28" y="74" class="panel-note">Only the hovered or selected event gets a strong shade.</text>
+    <g transform="translate(28 104)">
+      <line x1="88" y1="24" x2="88" y2="300" class="grid"/>
+      <line x1="212" y1="24" x2="212" y2="300" class="grid"/>
+      <line x1="336" y1="24" x2="336" y2="300" class="grid"/>
+      <line x1="460" y1="24" x2="460" y2="300" class="grid"/>
+      <line x1="552" y1="24" x2="552" y2="300" class="grid"/>
+      <rect x="353" y="24" width="74" height="276" class="window-band-blue-strong"/>
+      <line x1="353" y1="24" x2="353" y2="300" class="window-edge-blue"/>
+      <line x1="427" y1="24" x2="427" y2="300" class="window-edge-blue"/>
+
+      <text x="0" y="54" class="lane-label">Economic</text>
+      <line x1="88" y1="62" x2="552" y2="62" class="grid"/>
+      <line x1="88" y1="98" x2="552" y2="98" class="baseline"/>
+      <path d="M88 92 L150 86 L212 78 L274 70 L336 66 L398 60 L460 56 L552 50" class="you-line"/>
+      <path d="M88 82 L150 80 L212 82 L274 84 L336 80 L398 78 L460 74 L552 70" class="opp-line"/>
+
+      <text x="0" y="144" class="lane-label">Military</text>
+      <line x1="88" y1="152" x2="552" y2="152" class="grid"/>
+      <line x1="88" y1="188" x2="552" y2="188" class="baseline"/>
+      <path d="M88 184 L150 178 L212 162 L274 154 L336 158 L398 150 L460 132 L552 122" class="you-line"/>
+      <path d="M88 180 L150 164 L212 146 L274 138 L336 142 L398 156 L460 158 L552 162" class="opp-line"/>
+
+      <text x="0" y="234" class="lane-label">Overall</text>
+      <line x1="88" y1="242" x2="552" y2="242" class="grid"/>
+      <line x1="88" y1="278" x2="552" y2="278" class="baseline"/>
+      <path d="M88 260 L150 250 L212 236 L274 226 L336 220 L398 208 L460 194 L552 182" class="you-line"/>
+      <path d="M88 252 L150 242 L212 232 L274 226 L336 224 L398 228 L460 232 L552 236" class="opp-line"/>
+
+      <line x1="197" y1="12" x2="197" y2="300" class="event-stem" stroke="#d85a30" opacity=".45"/>
+      <circle cx="197" cy="12" r="11" fill="#d85a30" class="event-dot" opacity=".75"/>
+      <text x="197" y="12" class="event-glyph" opacity=".75">F</text>
+      <line x1="391" y1="12" x2="391" y2="300" class="event-stem" stroke="#378add"/>
+      <circle cx="391" cy="12" r="14" fill="#378add" class="event-dot"/>
+      <text x="391" y="12" class="event-glyph">R</text>
+
+      <text x="88" y="330" class="tick-label" text-anchor="middle">0:00</text>
+      <text x="212" y="330" class="tick-label" text-anchor="middle">5:00</text>
+      <text x="336" y="330" class="tick-label" text-anchor="middle">10:00</text>
+      <text x="460" y="330" class="tick-label" text-anchor="middle">15:00</text>
+      <text x="552" y="330" class="tick-label" text-anchor="middle">20:00</text>
+    </g>
+    <text x="28" y="420" class="panel-note">Best if many events overlap; lower constant clutter.</text>
+  </g>
+
+  <g id="option-c" transform="translate(70 630)">
+    <rect class="panel" x="0" y="0" width="610" height="455" rx="10"/>
+    <text x="28" y="42" class="panel-title">C. Top Ribbon</text>
+    <text x="28" y="74" class="panel-note">Show event span above the plot, not over the data.</text>
+    <g transform="translate(28 104)">
+      <rect x="165" y="4" width="64" height="14" rx="7" class="ribbon-red"/>
+      <rect x="353" y="4" width="74" height="14" rx="7" class="ribbon-blue"/>
+      <line x1="88" y1="34" x2="88" y2="300" class="grid"/>
+      <line x1="212" y1="34" x2="212" y2="300" class="grid"/>
+      <line x1="336" y1="34" x2="336" y2="300" class="grid"/>
+      <line x1="460" y1="34" x2="460" y2="300" class="grid"/>
+      <line x1="552" y1="34" x2="552" y2="300" class="grid"/>
+
+      <text x="0" y="64" class="lane-label">Economic</text>
+      <line x1="88" y1="72" x2="552" y2="72" class="grid"/>
+      <line x1="88" y1="108" x2="552" y2="108" class="baseline"/>
+      <path d="M88 102 L150 96 L212 88 L274 80 L336 76 L398 70 L460 66 L552 60" class="you-line"/>
+      <path d="M88 92 L150 90 L212 92 L274 94 L336 90 L398 88 L460 84 L552 80" class="opp-line"/>
+
+      <text x="0" y="154" class="lane-label">Military</text>
+      <line x1="88" y1="162" x2="552" y2="162" class="grid"/>
+      <line x1="88" y1="198" x2="552" y2="198" class="baseline"/>
+      <path d="M88 194 L150 188 L212 172 L274 164 L336 168 L398 160 L460 142 L552 132" class="you-line"/>
+      <path d="M88 190 L150 174 L212 156 L274 148 L336 152 L398 166 L460 168 L552 172" class="opp-line"/>
+
+      <text x="0" y="244" class="lane-label">Overall</text>
+      <line x1="88" y1="252" x2="552" y2="252" class="grid"/>
+      <line x1="88" y1="288" x2="552" y2="288" class="baseline"/>
+      <path d="M88 270 L150 260 L212 246 L274 236 L336 230 L398 218 L460 204 L552 192" class="you-line"/>
+      <path d="M88 262 L150 252 L212 242 L274 236 L336 234 L398 238 L460 242 L552 246" class="opp-line"/>
+
+      <line x1="197" y1="12" x2="197" y2="300" class="event-stem" stroke="#d85a30"/>
+      <circle cx="197" cy="12" r="13" fill="#d85a30" class="event-dot"/>
+      <text x="197" y="12" class="event-glyph">F</text>
+      <line x1="391" y1="12" x2="391" y2="300" class="event-stem" stroke="#378add"/>
+      <circle cx="391" cy="12" r="13" fill="#378add" class="event-dot"/>
+      <text x="391" y="12" class="event-glyph">R</text>
+
+      <text x="88" y="330" class="tick-label" text-anchor="middle">0:00</text>
+      <text x="212" y="330" class="tick-label" text-anchor="middle">5:00</text>
+      <text x="336" y="330" class="tick-label" text-anchor="middle">10:00</text>
+      <text x="460" y="330" class="tick-label" text-anchor="middle">15:00</text>
+      <text x="552" y="330" class="tick-label" text-anchor="middle">20:00</text>
+    </g>
+    <text x="28" y="420" class="panel-note">Cleanest chart; span reads as metadata rather than chart state.</text>
+  </g>
+
+  <g id="option-d" transform="translate(720 630)">
+    <rect class="panel" x="0" y="0" width="610" height="455" rx="10"/>
+    <text x="28" y="42" class="panel-title">D. Lane-Local Shading</text>
+    <text x="28" y="74" class="panel-note">Shade each lane separately so grid and labels stay clearer.</text>
+    <g transform="translate(28 104)">
+      <line x1="88" y1="24" x2="88" y2="300" class="grid"/>
+      <line x1="212" y1="24" x2="212" y2="300" class="grid"/>
+      <line x1="336" y1="24" x2="336" y2="300" class="grid"/>
+      <line x1="460" y1="24" x2="460" y2="300" class="grid"/>
+      <line x1="552" y1="24" x2="552" y2="300" class="grid"/>
+      <rect x="165" y="38" width="64" height="72" rx="5" class="window-band-red"/>
+      <rect x="165" y="128" width="64" height="72" rx="5" class="window-band-red"/>
+      <rect x="165" y="218" width="64" height="72" rx="5" class="window-band-red"/>
+      <rect x="353" y="38" width="74" height="72" rx="5" class="window-band-blue"/>
+      <rect x="353" y="128" width="74" height="72" rx="5" class="window-band-blue"/>
+      <rect x="353" y="218" width="74" height="72" rx="5" class="window-band-blue"/>
+
+      <text x="0" y="54" class="lane-label">Economic</text>
+      <line x1="88" y1="62" x2="552" y2="62" class="grid"/>
+      <line x1="88" y1="98" x2="552" y2="98" class="baseline"/>
+      <path d="M88 92 L150 86 L212 78 L274 70 L336 66 L398 60 L460 56 L552 50" class="you-line"/>
+      <path d="M88 82 L150 80 L212 82 L274 84 L336 80 L398 78 L460 74 L552 70" class="opp-line"/>
+
+      <text x="0" y="144" class="lane-label">Military</text>
+      <line x1="88" y1="152" x2="552" y2="152" class="grid"/>
+      <line x1="88" y1="188" x2="552" y2="188" class="baseline"/>
+      <path d="M88 184 L150 178 L212 162 L274 154 L336 158 L398 150 L460 132 L552 122" class="you-line"/>
+      <path d="M88 180 L150 164 L212 146 L274 138 L336 142 L398 156 L460 158 L552 162" class="opp-line"/>
+
+      <text x="0" y="234" class="lane-label">Overall</text>
+      <line x1="88" y1="242" x2="552" y2="242" class="grid"/>
+      <line x1="88" y1="278" x2="552" y2="278" class="baseline"/>
+      <path d="M88 260 L150 250 L212 236 L274 226 L336 220 L398 208 L460 194 L552 182" class="you-line"/>
+      <path d="M88 252 L150 242 L212 232 L274 226 L336 224 L398 228 L460 232 L552 236" class="opp-line"/>
+
+      <line x1="197" y1="12" x2="197" y2="300" class="event-stem" stroke="#d85a30"/>
+      <circle cx="197" cy="12" r="13" fill="#d85a30" class="event-dot"/>
+      <text x="197" y="12" class="event-glyph">F</text>
+      <line x1="391" y1="12" x2="391" y2="300" class="event-stem" stroke="#378add"/>
+      <circle cx="391" cy="12" r="13" fill="#378add" class="event-dot"/>
+      <text x="391" y="12" class="event-glyph">R</text>
+
+      <text x="88" y="330" class="tick-label" text-anchor="middle">0:00</text>
+      <text x="212" y="330" class="tick-label" text-anchor="middle">5:00</text>
+      <text x="336" y="330" class="tick-label" text-anchor="middle">10:00</text>
+      <text x="460" y="330" class="tick-label" text-anchor="middle">15:00</text>
+      <text x="552" y="330" class="tick-label" text-anchor="middle">20:00</text>
+    </g>
+    <text x="28" y="420" class="panel-note">More structured, but visually heavier than A or C.</text>
+  </g>
+</svg>
