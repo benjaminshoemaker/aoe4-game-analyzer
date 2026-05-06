@@ -1,6 +1,6 @@
-import { generateNarrative } from '../../src/analysis/llmNarrative';
-import { GameAnalysis } from '../../src/analysis/types';
-import { DeployedResourcePools } from '../../src/analysis/resourcePool';
+import { generateNarrative } from '../../packages/aoe4-core/src/analysis/llmNarrative';
+import { GameAnalysis } from '../../packages/aoe4-core/src/analysis/types';
+import { DeployedResourcePools } from '../../packages/aoe4-core/src/analysis/resourcePool';
 
 const emptyPools: DeployedResourcePools = {
   player1: {

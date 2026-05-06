@@ -294,7 +294,7 @@ describe('matches route e2e', () => {
     expect(mockUnstableCache).toHaveBeenCalledTimes(1);
     expect(mockUnstableCache.mock.calls[0][1]).toEqual([
       'aoe4-rendered-report-html',
-      expect.stringMatching(/^v8-(?:[a-f0-9]{12}|nobuild)-(?:[a-f0-9]{12}|none)$/),
+      expect.stringMatching(/^v9-(?:[a-f0-9]{12}|nobuild)-(?:[a-f0-9]{12}|none)$/),
       'my-slug',
       '230143339',
       expect.stringMatching(/^sig-sha256:[a-f0-9]{64}$/),
@@ -382,6 +382,26 @@ describe('matches route e2e', () => {
     expect(body).toContain('--muted: var(--aoe-color-muted);');
     expect(body).toContain('font-family: var(--aoe-font-display);');
     expect(body).not.toContain('background: #f7f2e8;');
+  });
+
+  it('returns the upstream match-load status when the builder exposes one', async () => {
+    parseMatchRouteParams.mockReturnValue({ profileSlug: 'my-slug', gameId: 230143339 });
+    buildMatchHtml.mockRejectedValue(Object.assign(
+      new Error('AoE4World rate limited the summary request'),
+      { status: 429 }
+    ));
+
+    const response = await GET(new Request('http://localhost/matches/my-slug/230143339?sig=abc123'), {
+      params: Promise.resolve({
+        profileSlug: 'my-slug',
+        gameId: '230143339',
+      }),
+    });
+    const body = await response.text();
+
+    expect(response.status).toBe(429);
+    expect(body).toContain('Unable to load match (429)');
+    expect(body).toContain('AoE4World rate limited the summary request');
   });
 
   it('returns opportunity-lost buckets in chronological order through the match route', async () => {

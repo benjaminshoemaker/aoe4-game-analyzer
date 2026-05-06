@@ -1,7 +1,7 @@
-import { analyzeGame } from '../../src/analysis/gameAnalysis';
-import { buildPostMatchViewModel } from '../../src/analysis/postMatchViewModel';
-import { renderPostMatchHtml } from '../../src/formatters/postMatchHtml';
-import { parseGameSummary } from '../../src/parser/gameSummaryParser';
+import { analyzeGame } from '../../packages/aoe4-core/src/analysis/gameAnalysis';
+import { buildPostMatchViewModel } from '../../packages/aoe4-core/src/analysis/postMatchViewModel';
+import { renderPostMatchHtml } from '../../packages/aoe4-core/src/formatters/postMatchHtml';
+import { parseGameSummary } from '../../packages/aoe4-core/src/parser/gameSummaryParser';
 import {
   makeAccountingFixesRawSummary,
   makeAccountingFixesStaticData,

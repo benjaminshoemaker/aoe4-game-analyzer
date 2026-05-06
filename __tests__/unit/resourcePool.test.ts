@@ -1,6 +1,6 @@
-import { buildPlayerDeployedPoolSeries, classifyResolvedItemBand, getDeferredCivilizationNotices } from '../../src/analysis/resourcePool';
-import { ResolvedBuildItem, ResolvedBuildOrder } from '../../src/parser/buildOrderResolver';
-import { PlayerSummary } from '../../src/parser/gameSummaryParser';
+import { buildPlayerDeployedPoolSeries, classifyResolvedItemBand, getDeferredCivilizationNotices } from '../../packages/aoe4-core/src/analysis/resourcePool';
+import { ResolvedBuildItem, ResolvedBuildOrder } from '../../packages/aoe4-core/src/parser/buildOrderResolver';
+import { PlayerSummary } from '../../packages/aoe4-core/src/parser/gameSummaryParser';
 
 function makeItem(overrides: Partial<ResolvedBuildItem>): ResolvedBuildItem {
   return {

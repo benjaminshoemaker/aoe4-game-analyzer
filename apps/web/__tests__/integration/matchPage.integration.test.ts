@@ -29,6 +29,13 @@ jest.mock('@aoe4/analyzer-core/analysis/winProbability', () => ({
   buildWinProbabilityExamples: (...args: unknown[]) => buildWinProbabilityExamples(...args),
 }));
 
+function oneVsOnePlayers() {
+  return [
+    { civilization: 'english', team: 1 },
+    { civilization: 'french', team: 2 },
+  ];
+}
+
 describe('buildMatchHtml integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -38,8 +45,8 @@ describe('buildMatchHtml integration', () => {
     fetchGameSummaryFromApi.mockResolvedValue({
       gameId: 231103171,
       players: [
-        { civilization: 'delhi_sultanate' },
-        { civilization: 'english' },
+        { civilization: 'delhi_sultanate', team: 1 },
+        { civilization: 'english', team: 2 },
       ],
     });
     analyzeGame.mockRejectedValue(new Error('should not analyze Delhi games'));
@@ -65,8 +72,37 @@ describe('buildMatchHtml integration', () => {
     expect(html).not.toContain('background: #f7f2e8;');
   });
 
+  it('returns a clear unsupported page for non-1:1 imports without running analysis', async () => {
+    fetchGameSummaryFromApi.mockResolvedValue({
+      gameId: 231103172,
+      players: [
+        { civilization: 'english', team: 1 },
+        { civilization: 'french', team: 1 },
+        { civilization: 'mongols', team: 2 },
+        { civilization: 'rus', team: 2 },
+      ],
+    });
+    analyzeGame.mockRejectedValue(new Error('should not analyze team games'));
+
+    const html = await buildMatchHtml({
+      profileSlug: 'my-slug',
+      gameId: 231103172,
+      sig: 'abc123',
+    });
+
+    expect(analyzeGame).not.toHaveBeenCalled();
+    expect(buildPostMatchViewModel).not.toHaveBeenCalled();
+    expect(renderPostMatchHtml).not.toHaveBeenCalled();
+    expect(html).toContain('Unsupported match type');
+    expect(html).toContain('This tool currently supports 1:1 matches only.');
+    expect(html).toContain('4 players across 2 teams');
+    expect(html).toContain('team games and free-for-all games are not handled yet');
+    expect(html).toContain('Please paste a 1:1 AoE4World match URL.');
+    expect(html).not.toContain('abc123');
+  });
+
   it('fetches summary with sig and orchestrates analysis + render', async () => {
-    const summary = { gameId: 230143339 };
+    const summary = { gameId: 230143339, players: oneVsOnePlayers() };
     const analysis = { gameId: 230143339 };
     const model = { header: { summaryUrl: 'https://aoe4world.com' } };
 
@@ -107,7 +143,7 @@ describe('buildMatchHtml integration', () => {
   });
 
   it('builds the compact hover payload through the same analysis pipeline', async () => {
-    const summary = { gameId: 230143339 };
+    const summary = { gameId: 230143339, players: oneVsOnePlayers() };
     const analysis = { gameId: 230143339 };
     const model = { header: { summaryUrl: 'https://aoe4world.com' } };
     const payload = [{ timestamp: 0 }];
@@ -127,7 +163,7 @@ describe('buildMatchHtml integration', () => {
   });
 
   it('builds win-probability training data through the same post-match model', async () => {
-    const summary = { gameId: 230143339 };
+    const summary = { gameId: 230143339, players: oneVsOnePlayers() };
     const analysis = { gameId: 230143339 };
     const model = { trajectory: { hoverSnapshots: [{ timestamp: 0 }] } };
     const examples = [{ timestampSeconds: 0, perspective: 'you' }];

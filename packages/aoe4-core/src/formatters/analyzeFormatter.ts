@@ -1,4 +1,3 @@
-import chalk from 'chalk';
 import { formatValueAdjustedMatchup } from '../data/counterMatrix';
 import {
   GameAnalysis,
@@ -9,6 +8,20 @@ import {
 } from '../analysis/types';
 import { ResourceTotals } from '../parser/gameSummaryParser';
 import { generateGameEconomicInsights, generatePhaseEconomicInsights } from '../analysis/economicInsights';
+
+const plain = (value: string): string => value;
+const chalk = {
+  green: plain,
+  red: plain,
+  gray: plain,
+  yellow: plain,
+  cyan: plain,
+  white: plain,
+  bold: Object.assign(plain, {
+    green: plain,
+    blue: plain,
+  }),
+};
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);

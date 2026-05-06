@@ -1,5 +1,5 @@
-import { auditUnknownBuildOrderBuckets } from '../../src/analysis/unknownBuildOrderAudit';
-import { parseGameSummary } from '../../src/parser/gameSummaryParser';
+import { auditUnknownBuildOrderBuckets } from '../../packages/aoe4-core/src/analysis/unknownBuildOrderAudit';
+import { parseGameSummary } from '../../packages/aoe4-core/src/parser/gameSummaryParser';
 import {
   makeUnknownBucketMechanicsFixture,
   makeUnknownBucketStaticDataCache,

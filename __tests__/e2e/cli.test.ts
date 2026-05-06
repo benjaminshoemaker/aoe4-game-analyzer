@@ -10,7 +10,6 @@ import {
 const projectRoot = path.resolve(__dirname, '..', '..');
 const cliEntry = path.resolve(projectRoot, 'src/index.ts');
 const cachePath = path.resolve(projectRoot, 'src/data/staticData.json');
-const coreDistPath = path.resolve(projectRoot, 'packages/aoe4-core/dist');
 const tsNodeRegister = require.resolve('ts-node/register');
 const setupNock = path.resolve(projectRoot, '__tests__/helpers/setupNock.ts');
 const tmpDir = path.resolve(projectRoot, 'tmp');
@@ -43,8 +42,6 @@ describe('CLI end-to-end', () => {
   });
 
   it('fetch-data downloads and caches data', () => {
-    fs.rmSync(coreDistPath, { recursive: true, force: true });
-
     const result = runCli(['fetch-data']);
 
     expect(result.status).toBe(0);

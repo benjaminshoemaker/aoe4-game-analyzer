@@ -1,7 +1,7 @@
-import { generateGameEconomicInsights, generatePhaseEconomicInsights } from '../../src/analysis/economicInsights';
-import { GameAnalysis, PhaseComparison, PlayerAnalysisSummary, IncomeSnapshot, ResourceAllocation } from '../../src/analysis/types';
-import { DeployedResourcePools } from '../../src/analysis/resourcePool';
-import { ResourceTotals, ScoreBreakdown } from '../../src/parser/gameSummaryParser';
+import { generateGameEconomicInsights, generatePhaseEconomicInsights } from '../../packages/aoe4-core/src/analysis/economicInsights';
+import { GameAnalysis, PhaseComparison, PlayerAnalysisSummary, IncomeSnapshot, ResourceAllocation } from '../../packages/aoe4-core/src/analysis/types';
+import { DeployedResourcePools } from '../../packages/aoe4-core/src/analysis/resourcePool';
+import { ResourceTotals, ScoreBreakdown } from '../../packages/aoe4-core/src/parser/gameSummaryParser';
 
 const emptyPools: DeployedResourcePools = {
   player1: {

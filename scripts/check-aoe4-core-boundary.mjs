@@ -22,8 +22,36 @@ if (!fs.existsSync(coreIndex)) {
   failures.push('packages/aoe4-core/src/index.ts is missing');
 }
 
+const corePackageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, 'packages/aoe4-core/package.json'), 'utf-8'));
+const coreExports = Object.keys(corePackageJson.exports ?? {});
+if (coreExports.length !== 1 || coreExports[0] !== '.') {
+  failures.push('packages/aoe4-core must expose only the top-level package interface');
+}
+
 if (fs.existsSync(webCopy)) {
   failures.push('apps/web/src/lib/aoe4 must not exist; web should import @aoe4/analyzer-core');
+}
+
+const rootLegacyPaths = [
+  'src/analysis',
+  'src/parser',
+  'src/formatters',
+  'src/types',
+  'src/data/counterMatrix.ts',
+  'src/data/unitCounterMatrix.ts',
+  'src/data/upgradeMappings.ts',
+  'src/data/combatValueEngine.ts',
+  'src/data/manualMappings.ts',
+  'src/data/counterMatrixConfig.json',
+  'src/data/combatAdjustedConfig.json',
+  'src/data/postMatchStoryConfig.json',
+  'src/data/resourceBandConfig.json',
+];
+
+for (const relativePath of rootLegacyPaths) {
+  if (fs.existsSync(path.join(repoRoot, relativePath))) {
+    failures.push(`${relativePath} must not exist; root src should stay a CLI adapter`);
+  }
 }
 
 const localAoe4ImportPattern = /from\s+['"](?:\.\/|\.\.\/).*aoe4\//;
@@ -31,6 +59,16 @@ for (const filePath of collectFiles(path.join(repoRoot, 'apps/web/src'))) {
   const content = fs.readFileSync(filePath, 'utf-8');
   if (localAoe4ImportPattern.test(content)) {
     failures.push(`local analyzer import in ${path.relative(repoRoot, filePath)}`);
+  }
+}
+
+const deepCoreImportPattern = /from\s+['"]@aoe4\/analyzer-core\//;
+for (const root of ['src', 'apps/web/src']) {
+  for (const filePath of collectFiles(path.join(repoRoot, root))) {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    if (deepCoreImportPattern.test(content)) {
+      failures.push(`deep core package import in ${path.relative(repoRoot, filePath)}`);
+    }
   }
 }
 

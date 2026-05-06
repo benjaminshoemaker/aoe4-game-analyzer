@@ -1,7 +1,7 @@
 import { getUnsupportedMatchMessage } from '../../src/lib/matchPage';
 import { GameSummary } from '@aoe4/analyzer-core/parser/gameSummaryParser';
 
-function summaryWithCivilizations(civilizations: string[]): GameSummary {
+function summaryWithPlayers(players: Array<{ civilization: string; team: number }>): GameSummary {
   return {
     gameId: 1,
     winReason: 'Surrender',
@@ -11,11 +11,11 @@ function summaryWithCivilizations(civilizations: string[]): GameSummary {
     duration: 600,
     startedAt: 0,
     finishedAt: 600,
-    players: civilizations.map((civilization, index) => ({
+    players: players.map(({ civilization, team }, index) => ({
       profileId: index + 1,
       name: `Player ${index + 1}`,
       civilization,
-      team: index + 1,
+      team,
       apm: 0,
       result: index === 0 ? 'win' : 'loss',
       _stats: {
@@ -52,6 +52,13 @@ function summaryWithCivilizations(civilizations: string[]): GameSummary {
   };
 }
 
+function summaryWithCivilizations(civilizations: string[]): GameSummary {
+  return summaryWithPlayers(civilizations.map((civilization, index) => ({
+    civilization,
+    team: index + 1,
+  })));
+}
+
 describe('getUnsupportedMatchMessage', () => {
   it('blocks Delhi games with a direct unsupported message', () => {
     expect(getUnsupportedMatchMessage(summaryWithCivilizations(['English', 'Delhi Sultanate'])))
@@ -62,5 +69,23 @@ describe('getUnsupportedMatchMessage', () => {
 
   it('allows non-Delhi games to continue through analysis', () => {
     expect(getUnsupportedMatchMessage(summaryWithCivilizations(['Knights Templar', 'Ayyubids']))).toBeNull();
+  });
+
+  it('blocks imported games that are not 1:1 matches with a helpful limitation message', () => {
+    expect(getUnsupportedMatchMessage(summaryWithPlayers([
+      { civilization: 'English', team: 1 },
+      { civilization: 'French', team: 1 },
+      { civilization: 'Mongols', team: 2 },
+      { civilization: 'Rus', team: 2 },
+    ]))).toBe(
+      'This tool currently supports 1:1 matches only. The imported AoE4World match appears to have 4 players across 2 teams, so team games and free-for-all games are not handled yet.'
+    );
+
+    expect(getUnsupportedMatchMessage(summaryWithPlayers([
+      { civilization: 'English', team: 1 },
+      { civilization: 'French', team: 1 },
+    ]))).toBe(
+      'This tool currently supports 1:1 matches only. The imported AoE4World match appears to have 2 players on 1 team, so team games and free-for-all games are not handled yet.'
+    );
   });
 });

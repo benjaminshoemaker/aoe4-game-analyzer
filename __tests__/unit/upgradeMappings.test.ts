@@ -3,7 +3,7 @@ import {
   getUpgradeEffectFromIcon,
   parseUnitTierFromIcon,
   tierMultipliers
-} from '../../src/data/upgradeMappings';
+} from '../../packages/aoe4-core/src/data/upgradeMappings';
 
 describe('upgradeMappings', () => {
   describe('parseUnitTierFromIcon', () => {

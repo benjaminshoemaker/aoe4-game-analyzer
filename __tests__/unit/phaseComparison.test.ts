@@ -1,7 +1,7 @@
-import { comparePhases } from '../../src/analysis/phaseComparison';
-import { GamePhases, UnifiedPhase, InflectionPoint } from '../../src/analysis/types';
-import { ResolvedBuildOrder, ResolvedBuildItem } from '../../src/parser/buildOrderResolver';
-import { TimeSeriesResources } from '../../src/parser/gameSummaryParser';
+import { comparePhases } from '../../packages/aoe4-core/src/analysis/phaseComparison';
+import { GamePhases, UnifiedPhase, InflectionPoint } from '../../packages/aoe4-core/src/analysis/types';
+import { ResolvedBuildOrder, ResolvedBuildItem } from '../../packages/aoe4-core/src/parser/buildOrderResolver';
+import { TimeSeriesResources } from '../../packages/aoe4-core/src/parser/gameSummaryParser';
 
 function makeSeries(overrides?: Partial<TimeSeriesResources>): TimeSeriesResources {
   return {

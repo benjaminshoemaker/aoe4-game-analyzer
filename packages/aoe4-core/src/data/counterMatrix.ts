@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import counterMatrixConfigJson from './counterMatrixConfig.json';
 import {
   classifyUnitByRules,
@@ -82,8 +80,6 @@ export interface PairCounterComputation {
   usedFallback: boolean;
   forcedResultReason: string | null;
 }
-
-const STATIC_DATA_PATH = path.resolve(__dirname, './staticData.json');
 
 interface CounterMatrixConfig {
   multiplierFloor: number;
@@ -246,22 +242,8 @@ interface MatchupScore {
   impactValue: number;
 }
 
-let cachedUnitIndexFromDisk: CombatUnitIndex | null = null;
-
 function normalizeIdToken(value: string): string {
   return value.toLowerCase().trim();
-}
-
-function readUnitCatalogFromDisk(): Unit[] {
-  try {
-    const raw = fs.readFileSync(STATIC_DATA_PATH, 'utf-8');
-    const parsed = JSON.parse(raw) as { units?: Unit[] } | Unit[];
-    if (Array.isArray(parsed)) return parsed;
-    if (parsed && Array.isArray(parsed.units)) return parsed.units;
-    return [];
-  } catch {
-    return [];
-  }
 }
 
 function buildUnitIndex(units: Unit[]): CombatUnitIndex {
@@ -287,11 +269,7 @@ function getUnitIndex(explicitCatalog?: Unit[]): CombatUnitIndex {
     return buildUnitIndex(explicitCatalog);
   }
 
-  if (!cachedUnitIndexFromDisk) {
-    cachedUnitIndexFromDisk = buildUnitIndex(readUnitCatalogFromDisk());
-  }
-
-  return cachedUnitIndexFromDisk;
+  return buildUnitIndex([]);
 }
 
 function stripTierSuffix(id: string): string {

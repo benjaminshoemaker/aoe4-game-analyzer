@@ -1,7 +1,7 @@
-import { buildPostMatchViewModel } from '../../src/analysis/postMatchViewModel';
-import { GameAnalysis } from '../../src/analysis/types';
-import { PoolSeriesPoint } from '../../src/analysis/resourcePool';
-import { GameSummary, PlayerSummary, ResourceTotals, TimeSeriesResources } from '../../src/parser/gameSummaryParser';
+import { buildPostMatchViewModel } from '../../packages/aoe4-core/src/analysis/postMatchViewModel';
+import { GameAnalysis } from '../../packages/aoe4-core/src/analysis/types';
+import { PoolSeriesPoint } from '../../packages/aoe4-core/src/analysis/resourcePool';
+import { GameSummary, PlayerSummary, ResourceTotals, TimeSeriesResources } from '../../packages/aoe4-core/src/parser/gameSummaryParser';
 
 const zeroTotals: ResourceTotals = { food: 0, wood: 0, gold: 0, stone: 0, total: 0 };
 const gatheredTotals: ResourceTotals = { food: 1200, wood: 900, gold: 600, stone: 300, total: 3000 };

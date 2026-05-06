@@ -4,7 +4,7 @@ import {
   classifyUnit,
   formatValueAdjustedMatchup,
   getCounterEffectiveness
-} from '../../src/data/counterMatrix';
+} from '../../packages/aoe4-core/src/data/counterMatrix';
 import {
   crossbowmanUnit,
   horsemanUnit,
@@ -17,7 +17,7 @@ import {
   valueArmySingleSpearVsKnight,
   valueArmySpearsVsKnight
 } from '../helpers/counterSamples';
-import { Unit } from '../../src/types';
+import { Unit } from '../../packages/aoe4-core/src/types';
 
 const staticUnits: Unit[] = [
   {

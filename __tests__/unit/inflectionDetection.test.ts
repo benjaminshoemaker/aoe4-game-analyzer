@@ -1,6 +1,6 @@
-import { detectInflectionPoints } from '../../src/analysis/inflectionDetection';
-import { TimeSeriesResources } from '../../src/parser/gameSummaryParser';
-import { ResolvedBuildOrder } from '../../src/parser/buildOrderResolver';
+import { detectInflectionPoints } from '../../packages/aoe4-core/src/analysis/inflectionDetection';
+import { TimeSeriesResources } from '../../packages/aoe4-core/src/parser/gameSummaryParser';
+import { ResolvedBuildOrder } from '../../packages/aoe4-core/src/parser/buildOrderResolver';
 
 function makeSeries(overrides?: Partial<TimeSeriesResources>): TimeSeriesResources {
   return {

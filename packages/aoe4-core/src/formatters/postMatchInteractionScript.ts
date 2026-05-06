@@ -748,8 +748,12 @@ ${adjustedFormatters}
           return '<li class="event-impact-loss-row event-impact-loss-row-empty">No losses</li>';
         }
         return items.map(function (item) {
+          var count = Number(item.count || 0);
+          var countLabel = item.showCount === false || count <= 0 ? '' : ' x' + formatNumber(count);
+          var detail = item.detail ? '<small class="event-impact-loss-note">' + escapeHtml(item.detail) + '</small>' : '';
+          var title = item.title ? ' title="' + escapeHtml(item.title) + '"' : '';
           return '<li class="event-impact-loss-row">' +
-            '<span class="event-impact-loss-name">' + escapeHtml(item.label || 'Loss') + ' x' + formatNumber(item.count || 0) + '</span>' +
+            '<span class="event-impact-loss-name"' + title + '>' + escapeHtml(item.label || 'Loss') + countLabel + detail + '</span>' +
             '<span class="event-impact-loss-value">' + formatNumber(item.value || 0) + '</span>' +
             '</li>';
         }).join('');

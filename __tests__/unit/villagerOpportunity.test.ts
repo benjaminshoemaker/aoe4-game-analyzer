@@ -1,9 +1,9 @@
-import { GameSummary } from '../../src/parser/gameSummaryParser';
+import { GameSummary } from '../../packages/aoe4-core/src/parser/gameSummaryParser';
 import {
   buildVillagerOpportunityForPlayer,
   VILLAGER_RATE_BASELINE_RPM,
   VILLAGER_TARGET_COUNT
-} from '../../src/analysis/villagerOpportunity';
+} from '../../packages/aoe4-core/src/analysis/villagerOpportunity';
 
 function makePlayerSummary(): GameSummary['players'][0] {
   return {

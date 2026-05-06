@@ -56,6 +56,12 @@ Priority levels:
   - Why: these can materially change effective gather rate, but the model needs an explicit inclusion policy so "villager opportunity cost" stays interpretable.
   - Source: civ-mechanics text audit and user clarification request.
 
+- [ ] `P1` Surface event-window gather disruption in Villager opportunity
+  - Reuse the event-window gather disruption signal currently shown under Event impact -> Encounter losses.
+  - Keep it separate from villager deaths and TC idle seconds so opportunity math does not double-count direct villager loss, underproduction, and temporary raid pressure.
+  - Why: once the signal has enough examples, the Villager opportunity section should show raid-pressure economic downtime alongside deaths and TC idle seconds without changing the event-window source of truth.
+  - Source: user follow-up on the 229727104 / 8:15 Yatai event.
+
 - [ ] `P1` Add defensive-context confidence heuristics
   - Infer likely defensive-overextension windows from infrastructure state + destruction clusters.
   - Why: major context modifier with limited direct telemetry.

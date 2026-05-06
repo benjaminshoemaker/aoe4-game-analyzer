@@ -1,4 +1,4 @@
-import { StaticDataCache } from '../../src/types';
+import { StaticDataCache } from '../../packages/aoe4-core/src/types';
 
 function makeResourceSeries(population?: number[]) {
   return {

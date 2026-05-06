@@ -2,8 +2,8 @@ import {
   buildAllocationCategories,
   buildAllocationLeaderSegments,
   renderPostMatchHtml
-} from '../../src/formatters/postMatchHtml';
-import { PostMatchViewModel } from '../../src/analysis/postMatchViewModel';
+} from '../../packages/aoe4-core/src/formatters/postMatchHtml';
+import { PostMatchViewModel } from '../../packages/aoe4-core/src/analysis/postMatchViewModel';
 
 function extractSvg(html: string, id: string): string {
   const match = html.match(new RegExp(`<svg id="${id}"[\\s\\S]*?</svg>`));
@@ -630,7 +630,17 @@ describe('renderPostMatchHtml', () => {
       },
       encounterLosses: {
         player1: [{ label: 'Spearman', value: 160, count: 2, band: 'militaryActive' }],
-        player2: [{ label: 'Knight', value: 240, count: 1, band: 'militaryActive' }],
+        player2: [
+          { label: 'Knight', value: 240, count: 1, band: 'militaryActive' },
+          {
+            label: 'Gather disruption',
+            value: 205,
+            count: 0,
+            band: 'economic',
+            showCount: false,
+            detail: 'Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds.',
+          },
+        ],
       },
       playerImpacts: {
         player1: {
@@ -781,6 +791,11 @@ describe('renderPostMatchHtml', () => {
     expect(html).toContain('data-significant-event-army-total="player2">640</dd>');
     expect(html).toContain('data-significant-event-loss-summary="player2"');
     expect(html).toContain('data-significant-event-loss-immediate="player2">240</dd>');
+    expect(html).toContain('Gather disruption');
+    expect(html).toContain('Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds.');
+    expect(html).toContain('<span class="event-impact-loss-value">205</span>');
+    expect(html).not.toContain('Gather disruption x0');
+    expect(html).not.toContain('Gather disruption x1');
     expect(html).toContain('data-significant-event-loss-share-label="player2">Share of French deployed</dt>');
     expect(html).not.toContain('<dt>Share of deployed</dt>');
     expect(html).not.toContain('data-hover-field="significantEvent.description"');

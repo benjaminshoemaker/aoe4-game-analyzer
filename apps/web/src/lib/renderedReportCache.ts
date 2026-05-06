@@ -24,7 +24,8 @@ const CACHE_NAMESPACE = 'aoe4-rendered-report-html';
 //   v6: PostHog bootstrap syntax fix and local analytics delivery.
 //   v7: engagement, acquisition, mobile timeline, outbound events.
 //   v8: outcome header leads with player label.
-const CACHE_BASELINE = 'v8';
+//   v9: significant event encounter losses include gather-disruption detail rows.
+const CACHE_BASELINE = 'v9';
 
 type CacheEnv = Record<string, string | undefined>;
 

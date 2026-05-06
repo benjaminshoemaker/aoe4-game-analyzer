@@ -1,5 +1,5 @@
-import { reconstructArmyAt } from '../../src/analysis/armyReconstruction';
-import { ResolvedBuildOrder } from '../../src/parser/buildOrderResolver';
+import { reconstructArmyAt } from '../../packages/aoe4-core/src/analysis/armyReconstruction';
+import { ResolvedBuildOrder } from '../../packages/aoe4-core/src/parser/buildOrderResolver';
 
 function makeResolvedBuildOrder(overrides?: Partial<ResolvedBuildOrder>): ResolvedBuildOrder {
   return {

@@ -5,9 +5,9 @@ import {
   formatUnitCounterMatrixTsv,
   formatUnitCounterProfilesTsv,
   parseUnitCatalogFromJson
-} from '../../src/data/unitCounterMatrix';
-import { evaluateUnitPairCounterMultiplier } from '../../src/data/combatValueEngine';
-import { Unit } from '../../src/types';
+} from '../../packages/aoe4-core/src/data/unitCounterMatrix';
+import { evaluateUnitPairCounterMultiplier } from '../../packages/aoe4-core/src/data/combatValueEngine';
+import { Unit } from '../../packages/aoe4-core/src/types';
 
 const fixturePath = path.resolve(__dirname, '../fixtures/unitCounterCatalog.json');
 const fixturePayload = JSON.parse(fs.readFileSync(fixturePath, 'utf-8'));

@@ -9,10 +9,16 @@ import {
   VillagerOpportunityForPlayer,
   VillagerOpportunityPoint
 } from './villagerOpportunity';
-import { SignificantResourceLossEvent, SignificantResourceLossItem, SignificantResourceLossKind } from './significantResourceLossEvents';
+import {
+  SignificantResourceLossEvent,
+  SignificantResourceLossGatherDisruption,
+  SignificantResourceLossItem,
+  SignificantResourceLossKind,
+  SignificantResourceLossPlayerImpact,
+} from './significantResourceLossEvents';
 import { isVillagerBuildOrderEntry } from './villagerClassifier';
 import { pointAtOrBefore as seriesPointAtOrBefore } from './timeSeries';
-import { formatTime } from '../formatters/sharedFormatters';
+import { formatNumber, formatTime } from '../formatters/sharedFormatters';
 
 export type BetShapeLabel =
   | 'economic-heavy'
@@ -839,6 +845,35 @@ export function buildAgeMarkers(
   );
 }
 
+function gatherDisruptionDetail(disruption: SignificantResourceLossGatherDisruption): string {
+  return `Gather/min fell from ${formatNumber(disruption.baselineRatePerMin)} to ${formatNumber(disruption.minRatePerMin)} during this event window; row value is ${formatNumber(disruption.value)} resources of shortfall, equivalent to roughly ${formatNumber(disruption.idleEquivalentVillagerSeconds)} villager-seconds.`;
+}
+
+function gatherDisruptionLossItem(
+  disruption: SignificantResourceLossGatherDisruption | undefined
+): SignificantResourceLossItem | null {
+  if (!disruption) return null;
+  return {
+    label: disruption.label,
+    value: disruption.value,
+    count: 0,
+    band: 'economic',
+    showCount: false,
+    detail: gatherDisruptionDetail(disruption),
+    title: 'Event-window gather-rate shortfall, not direct unit loss.',
+  };
+}
+
+function encounterLossesForImpact(
+  impact: SignificantResourceLossPlayerImpact | undefined
+): SignificantResourceLossItem[] {
+  if (!impact) return [];
+  const gatherDisruptionItem = gatherDisruptionLossItem(impact.gatherDisruption);
+  return gatherDisruptionItem
+    ? [...impact.losses, gatherDisruptionItem]
+    : impact.losses;
+}
+
 function buildSignificantTimelineEvents(
   events: SignificantResourceLossEvent[] | undefined,
   youIndex: 0 | 1,
@@ -875,8 +910,8 @@ function buildSignificantTimelineEvents(
         player1Label,
         player2Label,
         encounterLosses: {
-          player1: event.playerImpacts?.player1?.losses ?? event.playerImpacts?.player1?.topLosses ?? [],
-          player2: event.playerImpacts?.player2?.losses ?? event.playerImpacts?.player2?.topLosses ?? [],
+          player1: encounterLossesForImpact(event.playerImpacts?.player1),
+          player2: encounterLossesForImpact(event.playerImpacts?.player2),
         },
         timeLabel: formatTime(event.timestamp),
         headline: significantEventHeadline(event, {

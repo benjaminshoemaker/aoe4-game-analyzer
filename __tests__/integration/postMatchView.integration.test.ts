@@ -1,10 +1,10 @@
 import nock from 'nock';
 import fs from 'fs';
 import path from 'path';
-import { analyzeGame } from '../../src/analysis/gameAnalysis';
-import { parseGameSummary } from '../../src/parser/gameSummaryParser';
-import { buildPostMatchViewModel } from '../../src/analysis/postMatchViewModel';
-import { renderPostMatchHtml } from '../../src/formatters/postMatchHtml';
+import { analyzeGame } from '../../packages/aoe4-core/src/analysis/gameAnalysis';
+import { parseGameSummary } from '../../packages/aoe4-core/src/parser/gameSummaryParser';
+import { buildPostMatchViewModel } from '../../packages/aoe4-core/src/analysis/postMatchViewModel';
+import { renderPostMatchHtml } from '../../packages/aoe4-core/src/formatters/postMatchHtml';
 import { sampleUnits, sampleBuildings, sampleTechnologies } from '../helpers/testData';
 import { makeMalianCattleFixture } from '../helpers/malianCattleFixture';
 import { makeSengokuYataiFixture } from '../helpers/sengokuYataiFixture';
@@ -409,9 +409,25 @@ describe('post-match view integration', () => {
       summarySig: 'abc123sig',
     });
     const html = renderPostMatchHtml(model);
+    const hoverData = extractHoverData(html);
+    const eventPoint = hoverData.find(snapshot => snapshot.timestamp === 170);
 
     expect(html).toContain('"label":"Yatai"');
     expect(html).toContain('"value":250');
+    expect(eventPoint?.significantEvent?.playerImpacts?.player1?.gatherDisruption).toEqual(expect.objectContaining({
+      label: 'Gather disruption',
+      value: 200,
+      baselineRatePerMin: 1000,
+      minRatePerMin: 700,
+      dropPercent: 30,
+      idleEquivalentVillagerSeconds: 300,
+    }));
+    expect(eventPoint?.significantEvent?.encounterLosses?.player1).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: 'Yatai', value: 125, count: 1 }),
+      expect.objectContaining({ label: 'Gather disruption', value: 200, showCount: false }),
+    ]));
+    expect(html).toContain('Gather/min fell from 1,000 to 700 during this event window; row value is 200 resources of shortfall, equivalent to roughly 300 villager-seconds.');
+    expect(html).not.toContain('Gather disruption x0');
   });
 
   it('renders confirmed unknown-bucket mechanics as deployed pool values', async () => {

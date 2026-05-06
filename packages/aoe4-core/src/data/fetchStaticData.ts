@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { StaticDataCache, Unit, Building, Technology } from '../types';
+import { AOE4WORLD_STATIC_DATA_ENDPOINTS, buildAoe4WorldHeaders } from '../aoe4world/client';
 
 const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
-const STATIC_DATA_USER_AGENT = 'aoe4-game-analyzer-core/0.1 static-data-loader';
 let inMemoryCache: StaticDataCache | null = null;
 
 function normalizeList<T>(value: unknown): T[] {
@@ -25,14 +25,11 @@ function normalizeStaticDataCache(raw: Partial<StaticDataCache>): StaticDataCach
 }
 
 export async function fetchAndCacheStaticData(): Promise<StaticDataCache> {
-  const headers = {
-    Accept: 'application/json',
-    'User-Agent': STATIC_DATA_USER_AGENT,
-  };
+  const headers = buildAoe4WorldHeaders('static-data');
   const [unitsResponse, buildingsResponse, technologiesResponse] = await Promise.all([
-    axios.get<Unit[]>('https://data.aoe4world.com/units/all.json', { headers }),
-    axios.get<Building[]>('https://data.aoe4world.com/buildings/all.json', { headers }),
-    axios.get<Technology[]>('https://data.aoe4world.com/technologies/all.json', { headers }),
+    axios.get<Unit[]>(AOE4WORLD_STATIC_DATA_ENDPOINTS.units, { headers }),
+    axios.get<Building[]>(AOE4WORLD_STATIC_DATA_ENDPOINTS.buildings, { headers }),
+    axios.get<Technology[]>(AOE4WORLD_STATIC_DATA_ENDPOINTS.technologies, { headers }),
   ]);
 
   const cache: StaticDataCache = normalizeStaticDataCache({

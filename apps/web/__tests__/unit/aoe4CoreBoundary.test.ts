@@ -31,6 +31,14 @@ describe('web shared-core boundary', () => {
     expect(offenders).toEqual([]);
   });
 
+  it('uses only the top-level analyzer core package interface in production source', () => {
+    const offenders = collectSourceFiles(path.join(webRoot, 'src'))
+      .filter(filePath => fs.readFileSync(filePath, 'utf-8').match(/from ['"]@aoe4\/analyzer-core\//))
+      .map(filePath => path.relative(webRoot, filePath));
+
+    expect(offenders).toEqual([]);
+  });
+
   it('installs the shared analyzer core from the local package', () => {
     const packageJson = readJson('package.json');
 

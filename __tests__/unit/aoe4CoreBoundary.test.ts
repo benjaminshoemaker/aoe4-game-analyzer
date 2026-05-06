@@ -22,6 +22,45 @@ describe('AoE4 core boundary', () => {
     expect(fs.existsSync(path.join(projectRoot, 'packages/aoe4-core/package.json'))).toBe(true);
   });
 
+  it('keeps the package interface on the intentional top-level module', () => {
+    const packageJson = readJson('packages/aoe4-core/package.json');
+    expect(Object.keys(packageJson.exports)).toEqual(['.']);
+  });
+
+  it('does not keep root analyzer compatibility symlinks as an active seam', () => {
+    const legacyPaths = [
+      'src/analysis',
+      'src/parser',
+      'src/formatters',
+      'src/types',
+      'src/data/counterMatrix.ts',
+      'src/data/unitCounterMatrix.ts',
+      'src/data/upgradeMappings.ts',
+      'src/data/combatValueEngine.ts',
+      'src/data/manualMappings.ts',
+      'src/data/counterMatrixConfig.json',
+      'src/data/combatAdjustedConfig.json',
+      'src/data/postMatchStoryConfig.json',
+      'src/data/resourceBandConfig.json',
+    ];
+
+    const existingLegacyPaths = legacyPaths.filter(relativePath => fs.existsSync(path.join(projectRoot, relativePath)));
+
+    expect(existingLegacyPaths).toEqual([]);
+  });
+
+  it('keeps production callers on the top-level core package interface', () => {
+    const offenderPattern = /from ['"]@aoe4\/analyzer-core\//;
+    const offenders = [
+      ...collectSourceFiles(path.join(projectRoot, 'src')),
+      ...collectSourceFiles(path.join(projectRoot, 'apps/web/src')),
+    ]
+      .filter(filePath => offenderPattern.test(fs.readFileSync(filePath, 'utf-8')))
+      .map(filePath => path.relative(projectRoot, filePath));
+
+    expect(offenders).toEqual([]);
+  });
+
   it('does not keep a copied analyzer implementation inside the web app', () => {
     expect(fs.existsSync(path.join(projectRoot, 'apps/web/src/lib/aoe4'))).toBe(false);
   });

@@ -10,6 +10,10 @@
     "strict": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@aoe4/analyzer-core": ["packages/aoe4-core/dist/index.d.ts"]
+    },
     "types": ["node", "jest"]
   },
   "include": ["src"],

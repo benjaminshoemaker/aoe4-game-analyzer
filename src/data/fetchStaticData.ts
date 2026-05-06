@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { StaticDataCache, Unit, Building, Technology } from '../types';
+import type { Building, StaticDataCache, Technology, Unit } from '@aoe4/analyzer-core';
 
 const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const CACHE_FILE_PATH = path.resolve(__dirname, '../../src/data/staticData.json');

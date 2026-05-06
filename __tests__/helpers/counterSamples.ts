@@ -1,4 +1,4 @@
-import { Unit, UnitCount, UnitWithValue } from '../../src/types';
+import { Unit, UnitCount, UnitWithValue } from '../../packages/aoe4-core/src/types';
 
 export const spearmanUnit: Unit = {
   id: 'spearman',

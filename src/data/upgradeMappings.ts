@@ -1,1 +1,0 @@
-../../packages/aoe4-core/src/data/upgradeMappings.ts

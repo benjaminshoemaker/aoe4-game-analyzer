@@ -183,10 +183,28 @@ function runScriptInDom(script: string, hoverPoints: ClientHoverSnapshot[], anal
       <button type="button" class="allocation-category-toggle" data-allocation-category-toggle="military" aria-expanded="false">Military</button>
       <input type="range" data-mobile-timeline-slider value="0" />
       <button type="button" data-mobile-timeline-step="1">Next</button>
-      <details data-mobile-details open>
-        <summary>Event details</summary>
-      </details>
-      <button type="button" data-significant-event-underdog-toggle>Why notable</button>
+	      <details data-mobile-details open>
+	        <summary>Event details</summary>
+	      </details>
+	      <div data-significant-event-loss-heading="player1"></div>
+	      <div data-significant-event-loss-heading="player2"></div>
+	      <dl>
+	        <dt data-significant-event-loss-share-label="player1"></dt>
+	        <dd data-significant-event-loss-total="player1"></dd>
+	        <dd data-significant-event-loss-immediate="player1"></dd>
+	        <dd data-significant-event-loss-villager-opportunity="player1"></dd>
+	        <dd data-significant-event-loss-share="player1"></dd>
+	        <dt data-significant-event-loss-share-label="player2"></dt>
+	        <dd data-significant-event-loss-total="player2"></dd>
+	        <dd data-significant-event-loss-immediate="player2"></dd>
+	        <dd data-significant-event-loss-villager-opportunity="player2"></dd>
+	        <dd data-significant-event-loss-share="player2"></dd>
+	      </dl>
+	      <div data-significant-event-loss-villager-opportunity-row="player1"></div>
+	      <div data-significant-event-loss-villager-opportunity-row="player2"></div>
+	      <ul data-significant-event-loss-list="player1"></ul>
+	      <ul data-significant-event-loss-list="player2"></ul>
+	      <button type="button" data-significant-event-underdog-toggle>Why notable</button>
       <details data-significant-event-underdog-details>
         <summary>Why this fight is notable</summary>
         <p data-significant-event-underdog-details-text></p>
@@ -266,6 +284,39 @@ describe('post-match interaction script formatter', () => {
       .toBe('94s');
     expect(window.document.querySelector('[data-opportunity-lost-component-low-underproduction-delta]')?.textContent)
       .toBe('-12s');
+  });
+
+  it('renders gather disruption encounter losses without a synthetic count when hover state changes', () => {
+    const point: ClientHoverSnapshot = {
+      ...eventSnapshot,
+      significantEvent: {
+        ...eventSnapshot.significantEvent!,
+        encounterLosses: {
+          player1: [],
+          player2: [
+            { label: 'Yatai', value: 125, count: 1, band: 'economic' },
+            {
+              label: 'Gather disruption',
+              value: 205,
+              count: 0,
+              band: 'economic',
+              showCount: false,
+              detail: 'Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds.',
+            },
+          ],
+        },
+      },
+    };
+    const script = buildHoverInteractionScript([point], labels);
+    const { window } = runScriptInDom(script, [point]);
+    const player2Losses = window.document.querySelector('[data-significant-event-loss-list="player2"]')?.innerHTML ?? '';
+
+    expect(player2Losses).toContain('Yatai x1');
+    expect(player2Losses).toContain('Gather disruption');
+    expect(player2Losses).toContain('Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds.');
+    expect(player2Losses).toContain('205');
+    expect(player2Losses).not.toContain('Gather disruption x0');
+    expect(player2Losses).not.toContain('Gather disruption x1');
   });
 
   it('exposes the helpers needed to reset the hover inspector to the top on a significant event click', () => {

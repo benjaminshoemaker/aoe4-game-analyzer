@@ -1,4 +1,4 @@
-import { escapeHtml, REDDIT_FEEDBACK_HREF } from '@aoe4/analyzer-core/formatters/sharedFormatters';
+import { escapeHtml, REDDIT_FEEDBACK_HREF } from '@aoe4/analyzer-core';
 import { embeddedAoeTokenCss } from './designTokens';
 import { buildHomePostHogAnalyticsScript } from './posthogAnalytics';
 import { SAMPLE_MATCH } from './sampleMatch';

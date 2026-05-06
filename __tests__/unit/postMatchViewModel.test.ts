@@ -4,11 +4,11 @@ import {
   buildPostMatchViewModel,
   classifyBetShape,
   detectRaidEvents
-} from '../../src/analysis/postMatchViewModel';
-import { GameAnalysis } from '../../src/analysis/types';
-import { PoolSeriesPoint } from '../../src/analysis/resourcePool';
-import { SignificantResourceLossEvent } from '../../src/analysis/significantResourceLossEvents';
-import { GameSummary, PlayerSummary, ResourceTotals, TimeSeriesResources } from '../../src/parser/gameSummaryParser';
+} from '../../packages/aoe4-core/src/analysis/postMatchViewModel';
+import { GameAnalysis } from '../../packages/aoe4-core/src/analysis/types';
+import { PoolSeriesPoint } from '../../packages/aoe4-core/src/analysis/resourcePool';
+import { SignificantResourceLossEvent } from '../../packages/aoe4-core/src/analysis/significantResourceLossEvents';
+import { GameSummary, PlayerSummary, ResourceTotals, TimeSeriesResources } from '../../packages/aoe4-core/src/parser/gameSummaryParser';
 
 const zeroTotals: ResourceTotals = { food: 0, wood: 0, gold: 0, stone: 0, total: 0 };
 
@@ -434,6 +434,16 @@ describe('significant resource loss timeline events', () => {
             denominator: 1000,
             pctOfDeployed: 30,
             villagerDeaths: 0,
+            gatherDisruption: {
+              label: 'Gather disruption',
+              value: 205,
+              baselineRatePerMin: 1104,
+              minRatePerMin: 656,
+              dropPercent: 40.6,
+              idleEquivalentVillagerSeconds: 307,
+              windowStart: 60,
+              windowEnd: 120,
+            },
             losses: [{ label: 'Spearman', value: 300, count: 4, band: 'militaryActive' }],
             topLosses: [{ label: 'Spearman', value: 300, count: 4, band: 'militaryActive' }],
           },
@@ -468,7 +478,15 @@ describe('significant resource loss timeline events', () => {
       },
       encounterLosses: {
         player1: [expect.objectContaining({ label: 'Knight', count: 3, value: 700 })],
-        player2: [expect.objectContaining({ label: 'Spearman', count: 4, value: 300 })],
+        player2: [
+          expect.objectContaining({ label: 'Spearman', count: 4, value: 300 }),
+          expect.objectContaining({
+            label: 'Gather disruption',
+            value: 205,
+            showCount: false,
+            detail: 'Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds.',
+          }),
+        ],
       },
     }));
 

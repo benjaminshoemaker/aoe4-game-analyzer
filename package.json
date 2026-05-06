@@ -11,7 +11,7 @@
     "aoe4-analyze": "dist/index.js"
   },
   "scripts": {
-    "cli": "ts-node src/index.ts",
+    "cli": "npm --workspace @aoe4/analyzer-core run build && ts-node src/index.ts",
     "check:core-boundary": "node scripts/check-aoe4-core-boundary.mjs",
     "prebuild": "npm --workspace @aoe4/analyzer-core run build",
     "build": "tsc -p tsconfig.json",

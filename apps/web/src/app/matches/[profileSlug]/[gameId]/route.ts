@@ -1,4 +1,4 @@
-import { escapeHtml } from '@aoe4/analyzer-core/formatters/sharedFormatters';
+import { escapeHtml } from '@aoe4/analyzer-core';
 import { buildMatchHtml } from '../../../../lib/matchPage';
 import { embeddedAoeTokenCss } from '../../../../lib/designTokens';
 import { clearRenderedReportCacheForTests, getRenderedReportHtml } from '../../../../lib/renderedReportCache';
@@ -67,6 +67,12 @@ function errorDocument(message: string, status: number): string {
 </html>`;
 }
 
+function errorStatus(error: unknown): number {
+  const status = (error as { status?: unknown }).status;
+  if (typeof status !== 'number' || !Number.isInteger(status)) return 500;
+  return status >= 400 && status <= 599 ? status : 500;
+}
+
 export async function GET(
   request: Request,
   context: MatchRouteContext
@@ -97,9 +103,10 @@ export async function GET(
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    const html = errorDocument(message, 500);
+    const status = errorStatus(error);
+    const html = errorDocument(message, status);
     return new Response(html, {
-      status: 500,
+      status,
       headers: {
         'content-type': 'text/html; charset=utf-8',
         'cache-control': 'no-store',

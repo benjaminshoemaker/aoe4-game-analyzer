@@ -1,5 +1,5 @@
 import path from 'path';
-import { parseGameSummary, loadGameSummaryFromFile } from '../../src/parser/gameSummaryParser';
+import { parseGameSummary, loadGameSummaryFromFile } from '../../packages/aoe4-core/src/parser/gameSummaryParser';
 
 describe('gameSummaryParser', () => {
   const fixturePath = path.resolve(__dirname, '..', 'fixtures', 'sampleGameSummary.json');

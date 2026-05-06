@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { StaticDataCache } from '../../src/types';
+import { StaticDataCache } from '../../packages/aoe4-core/src/types';
 
 const splitVillagerPbgid = 6094899;
 

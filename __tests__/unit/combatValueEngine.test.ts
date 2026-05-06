@@ -3,8 +3,8 @@ import {
   evaluateUnitPairCounterComputation,
   evaluateUnitPairCounterMultiplier,
   unitMarketValueFromStaticUnit
-} from '../../src/data/combatValueEngine';
-import { Unit, UnitWithValue } from '../../src/types';
+} from '../../packages/aoe4-core/src/data/combatValueEngine';
+import { Unit, UnitWithValue } from '../../packages/aoe4-core/src/types';
 
 describe('combatValueEngine', () => {
   const spearman: Unit = {

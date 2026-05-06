@@ -1,4 +1,4 @@
-import { parseAoe4WorldGameUrl } from '@aoe4/analyzer-core/parser/aoe4WorldUrl';
+import { parseAoe4WorldGameUrl } from '@aoe4/analyzer-core';
 
 export interface CanonicalMatchTarget {
   path: string;

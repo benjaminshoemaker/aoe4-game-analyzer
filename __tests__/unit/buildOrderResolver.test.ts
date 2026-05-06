@@ -1,8 +1,8 @@
-import { buildPlayerDeployedPoolSeries } from '../../src/analysis/resourcePool';
-import { reconstructArmyAt } from '../../src/analysis/armyReconstruction';
-import { resolveAllBuildOrders } from '../../src/parser/buildOrderResolver';
-import { parseGameSummary } from '../../src/parser/gameSummaryParser';
-import { StaticDataCache } from '../../src/types';
+import { buildPlayerDeployedPoolSeries } from '../../packages/aoe4-core/src/analysis/resourcePool';
+import { reconstructArmyAt } from '../../packages/aoe4-core/src/analysis/armyReconstruction';
+import { resolveAllBuildOrders } from '../../packages/aoe4-core/src/parser/buildOrderResolver';
+import { parseGameSummary } from '../../packages/aoe4-core/src/parser/gameSummaryParser';
+import { StaticDataCache } from '../../packages/aoe4-core/src/types';
 import {
   makeSplitVillagerDeathsFixture,
   makeSplitVillagerStaticDataCache

@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { StaticDataCache } from '../../src/types';
+import { StaticDataCache } from '../../packages/aoe4-core/src/types';
 
 export function makeUnknownBucketMechanicsFixture(): any {
   const fixturePath = path.resolve(__dirname, '../fixtures/sampleGameSummary.json');

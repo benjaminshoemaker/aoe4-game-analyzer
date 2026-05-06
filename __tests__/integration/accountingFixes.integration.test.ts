@@ -1,7 +1,7 @@
-import { buildPlayerDeployedPoolSeries } from '../../src/analysis/resourcePool';
-import { buildVillagerOpportunityForPlayer } from '../../src/analysis/villagerOpportunity';
-import { resolveAllBuildOrders } from '../../src/parser/buildOrderResolver';
-import { parseGameSummary } from '../../src/parser/gameSummaryParser';
+import { buildPlayerDeployedPoolSeries } from '../../packages/aoe4-core/src/analysis/resourcePool';
+import { buildVillagerOpportunityForPlayer } from '../../packages/aoe4-core/src/analysis/villagerOpportunity';
+import { resolveAllBuildOrders } from '../../packages/aoe4-core/src/parser/buildOrderResolver';
+import { parseGameSummary } from '../../packages/aoe4-core/src/parser/gameSummaryParser';
 import {
   makeAccountingFixesRawSummary,
   makeAccountingFixesStaticData,

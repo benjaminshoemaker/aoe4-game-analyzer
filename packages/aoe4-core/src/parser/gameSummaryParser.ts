@@ -1,7 +1,6 @@
 import fs from 'fs';
 import axios from 'axios';
-
-const SUMMARY_USER_AGENT = 'aoe4-game-analyzer-core/0.1 summary-client';
+import { buildGameSummaryRequest } from '../aoe4world/client';
 
 export interface GameSummary {
   gameId: number;
@@ -310,28 +309,56 @@ export function loadGameSummaryFromFile(filePath: string): GameSummary {
   return parseGameSummary(parsed);
 }
 
-export async function fetchGameSummaryFromApi(profileId: number | string, gameId: number, sig?: string): Promise<GameSummary> {
-  const profileSlug = typeof profileId === 'string' ? profileId : String(profileId);
-  const params: Record<string, string | number | undefined> = { camelize: 'true' };
-  if (sig) {
-    params.sig = sig;
-  }
+type FetchError = Error & { response?: { status?: number; statusText?: string } };
 
-  const url = `https://aoe4world.com/players/${profileSlug}/games/${gameId}/summary`;
-  const headers = {
-    Accept: 'application/json',
-    'User-Agent': SUMMARY_USER_AGENT
-  };
+export class GameSummaryFetchError extends Error {
+  readonly status?: number;
 
-  try {
-    const response = await axios.get(url, { params, headers });
-    return parseGameSummary(response.data);
-  } catch (error) {
-    // Surface a clearer message with the attempted URL
-    const err = error as Error & { response?: { status?: number; statusText?: string } };
+  constructor(url: string, error: unknown) {
+    const err = error as FetchError;
     const status = err.response?.status;
     const statusText = err.response?.statusText;
     const detail = status ? ` (${status}${statusText ? ` ${statusText}` : ''})` : '';
-    throw new Error(`Failed to fetch ${url}${detail}: ${err.message}`);
+
+    super(`Failed to fetch ${url}${detail}: ${err.message}`);
+    this.name = 'GameSummaryFetchError';
+    this.status = status;
+  }
+}
+
+function responseStatus(error: unknown): number | undefined {
+  return (error as FetchError).response?.status;
+}
+
+function fetchErrorMessage(url: string, error: unknown): Error {
+  return new GameSummaryFetchError(url, error);
+}
+
+function shouldTrySignedSummary(error: unknown): boolean {
+  const status = responseStatus(error);
+  return status === 401 || status === 403 || status === 404 || status === 429;
+}
+
+async function requestGameSummary(profileId: number | string, gameId: number, sig?: string): Promise<GameSummary> {
+  const { url, params, headers } = buildGameSummaryRequest(profileId, gameId, sig);
+  const response = await axios.get(url, { params, headers });
+  return parseGameSummary(response.data);
+}
+
+export async function fetchGameSummaryFromApi(profileId: number | string, gameId: number, sig?: string): Promise<GameSummary> {
+  const { url: publicUrl } = buildGameSummaryRequest(profileId, gameId);
+  try {
+    return await requestGameSummary(profileId, gameId);
+  } catch (error) {
+    if (sig && shouldTrySignedSummary(error)) {
+      try {
+        return await requestGameSummary(profileId, gameId, sig);
+      } catch (signedError) {
+        const { url: signedUrl } = buildGameSummaryRequest(profileId, gameId, sig);
+        throw fetchErrorMessage(signedUrl, signedError);
+      }
+    }
+
+    throw fetchErrorMessage(publicUrl, error);
   }
 }

@@ -1,7 +1,7 @@
 import nock from 'nock';
 import fs from 'fs';
 import path from 'path';
-import { analyzeGame } from '../../src/analysis/gameAnalysis';
+import { analyzeGame } from '../../packages/aoe4-core/src/analysis/gameAnalysis';
 import { sampleUnits, sampleBuildings, sampleTechnologies } from '../helpers/testData';
 
 const fixtureData = JSON.parse(

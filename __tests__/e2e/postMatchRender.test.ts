@@ -234,9 +234,25 @@ describe('post-match render CLI end-to-end', () => {
     expect(fs.existsSync(outputPath)).toBe(true);
 
     const html = fs.readFileSync(outputPath, 'utf-8');
+    const hoverData = extractHoverData(html);
+    const eventPoint = hoverData.find(snapshot => snapshot.timestamp === 170);
     expect(html).toContain('Resource state over time');
     expect(html).toContain('"label":"Yatai"');
     expect(html).toContain('"value":250');
+    expect(eventPoint?.significantEvent?.playerImpacts?.player1?.gatherDisruption).toEqual(expect.objectContaining({
+      label: 'Gather disruption',
+      value: 200,
+      baselineRatePerMin: 1000,
+      minRatePerMin: 700,
+      dropPercent: 30,
+      idleEquivalentVillagerSeconds: 300,
+    }));
+    expect(eventPoint?.significantEvent?.encounterLosses?.player1).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: 'Yatai', value: 125, count: 1 }),
+      expect.objectContaining({ label: 'Gather disruption', value: 200, showCount: false }),
+    ]));
+    expect(html).toContain('Gather/min fell from 1,000 to 700 during this event window; row value is 200 resources of shortfall, equivalent to roughly 300 villager-seconds.');
+    expect(html).not.toContain('Gather disruption x0');
   });
 
   it('renders confirmed unknown-bucket mechanics in deployed pool breakdowns', () => {

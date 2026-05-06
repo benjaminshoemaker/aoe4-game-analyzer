@@ -7,18 +7,28 @@ import fs from 'fs';
 import path from 'path';
 import { Command } from 'commander';
 import chalk from 'chalk';
+import {
+  analyzeGame,
+  auditUnknownBuildOrderBuckets,
+  buildPostMatchViewModel,
+  calculateValueAdjustedMatchup,
+  classifyUnit,
+  fetchGameSummaryFromApi,
+  formatGameAnalysis,
+  formatValueAdjustedMatchup,
+  getUpgradeEffect,
+  loadGameSummaryFromFile,
+  parseGameSummary,
+  parseUnitCatalogFromJson,
+  parseUnitTierFromIcon,
+  renderPostMatchHtml,
+  resolveAllBuildOrders,
+  Unit,
+  UnitWithValue,
+  validateAllItemsResolved,
+  writeUnitCounterMatrixArtifacts,
+} from '@aoe4/analyzer-core';
 import { forceRefreshStaticData, loadStaticData } from './data/fetchStaticData';
-import { calculateValueAdjustedMatchup, classifyUnit, formatValueAdjustedMatchup } from './data/counterMatrix';
-import { parseUnitCatalogFromJson, writeUnitCounterMatrixArtifacts } from './data/unitCounterMatrix';
-import { getUpgradeEffect, parseUnitTierFromIcon } from './data/upgradeMappings';
-import { fetchGameSummaryFromApi, loadGameSummaryFromFile, parseGameSummary } from './parser/gameSummaryParser';
-import { resolveAllBuildOrders, validateAllItemsResolved } from './parser/buildOrderResolver';
-import { Unit, UnitWithValue } from './types';
-import { analyzeGame } from './analysis/gameAnalysis';
-import { formatGameAnalysis } from './formatters/analyzeFormatter';
-import { buildPostMatchViewModel } from './analysis/postMatchViewModel';
-import { renderPostMatchHtml } from './formatters/postMatchHtml';
-import { auditUnknownBuildOrderBuckets } from './analysis/unknownBuildOrderAudit';
 
 function createRng(seed: string): () => number {
   let state = 0;

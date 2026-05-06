@@ -1,5 +1,5 @@
-import { identifyPhases, getAgeUpTime } from '../../src/analysis/phaseIdentification';
-import { PlayerSummary } from '../../src/parser/gameSummaryParser';
+import { identifyPhases, getAgeUpTime } from '../../packages/aoe4-core/src/analysis/phaseIdentification';
+import { PlayerSummary } from '../../packages/aoe4-core/src/parser/gameSummaryParser';
 
 function makePlayer(actions: Record<string, number[]>, overrides?: Partial<PlayerSummary>): PlayerSummary {
   return {

@@ -1,7 +1,7 @@
-import { buildCombatAdjustedSeries } from '../../src/analysis/combatAdjustedMilitary';
-import { ResolvedBuildItem, ResolvedBuildOrder } from '../../src/parser/buildOrderResolver';
-import { Technology, Unit, UnitWithValue } from '../../src/types';
-import { evaluateCombatValue } from '../../src/data/combatValueEngine';
+import { buildCombatAdjustedSeries } from '../../packages/aoe4-core/src/analysis/combatAdjustedMilitary';
+import { ResolvedBuildItem, ResolvedBuildOrder } from '../../packages/aoe4-core/src/parser/buildOrderResolver';
+import { Technology, Unit, UnitWithValue } from '../../packages/aoe4-core/src/types';
+import { evaluateCombatValue } from '../../packages/aoe4-core/src/data/combatValueEngine';
 
 function makeUnit(params: {
   id: string;

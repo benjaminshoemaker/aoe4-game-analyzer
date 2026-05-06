@@ -1,4 +1,4 @@
-import { escapeHtml } from '@aoe4/analyzer-core/formatters/sharedFormatters';
+import { escapeHtml } from '@aoe4/analyzer-core';
 import { embeddedAoeTokenCss } from './designTokens';
 
 const baseOrigin = 'http://aoe4.local';

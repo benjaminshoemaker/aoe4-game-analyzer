@@ -1,4 +1,4 @@
-import { StaticDataCache, Unit, Building, Technology } from '../../src/types';
+import { StaticDataCache, Unit, Building, Technology } from '../../packages/aoe4-core/src/types';
 
 export const sampleUnits: Unit[] = [
   {

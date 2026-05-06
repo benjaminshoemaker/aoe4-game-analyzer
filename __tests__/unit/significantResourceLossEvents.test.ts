@@ -1,7 +1,7 @@
-import { detectSignificantResourceLossEvents } from '../../src/analysis/significantResourceLossEvents';
-import { GameSummary, PlayerSummary, TimeSeriesResources } from '../../src/parser/gameSummaryParser';
-import { ResolvedBuildOrder } from '../../src/parser/buildOrderResolver';
-import { DeployedResourcePools, PoolSeriesPoint } from '../../src/analysis/resourcePool';
+import { detectSignificantResourceLossEvents } from '../../packages/aoe4-core/src/analysis/significantResourceLossEvents';
+import { GameSummary, PlayerSummary, TimeSeriesResources } from '../../packages/aoe4-core/src/parser/gameSummaryParser';
+import { ResolvedBuildOrder } from '../../packages/aoe4-core/src/parser/buildOrderResolver';
+import { DeployedResourcePools, GatherRatePoint, PoolSeriesPoint } from '../../packages/aoe4-core/src/analysis/resourcePool';
 
 const zeroTotals = { food: 0, wood: 0, gold: 0, stone: 0, total: 0 };
 const zeroScores = { total: 0, military: 0, economy: 0, technology: 0, society: 0 };
@@ -75,14 +75,20 @@ function point(timestamp: number, total: number): PoolSeriesPoint {
   };
 }
 
-function pools(duration: number, p1Total: number, p2Total: number): DeployedResourcePools {
+function pools(
+  duration: number,
+  p1Total: number,
+  p2Total: number,
+  p1GatherRateSeries: GatherRatePoint[] = [],
+  p2GatherRateSeries: GatherRatePoint[] = []
+): DeployedResourcePools {
   return {
     player1: {
       profileId: 1,
       playerName: 'You',
       civilization: 'english',
       deferredNotices: [],
-      gatherRateSeries: [],
+      gatherRateSeries: p1GatherRateSeries,
       bandItemDeltas: [],
       bandItemSnapshots: [],
       series: [point(0, p1Total), point(duration, p1Total)],
@@ -93,7 +99,7 @@ function pools(duration: number, p1Total: number, p2Total: number): DeployedReso
       playerName: 'Opponent',
       civilization: 'french',
       deferredNotices: [],
-      gatherRateSeries: [],
+      gatherRateSeries: p2GatherRateSeries,
       bandItemDeltas: [],
       bandItemSnapshots: [],
       series: [point(0, p2Total), point(duration, p2Total)],
@@ -244,6 +250,74 @@ describe('detectSignificantResourceLossEvents', () => {
       playerImpacts: {
         player1: expect.objectContaining({ immediateLoss: 240, grossLoss: 240 }),
         player2: expect.objectContaining({ immediateLoss: 160, grossLoss: 160 }),
+      },
+    }));
+  });
+
+  it('attaches event-window gather disruption to the affected side without changing event ranking loss', () => {
+    const yatai = {
+      originalEntry: {
+        id: 'yatai',
+        icon: 'icons/races/sengoku/units/yatai',
+        pbgid: 8,
+        type: 'Unit' as const,
+        finished: [0],
+        constructed: [],
+        destroyed: [120],
+      },
+      type: 'unit' as const,
+      id: 'yatai',
+      name: 'Yatai',
+      cost: { food: 0, wood: 125, gold: 0, stone: 0, total: 125 },
+      tier: 1,
+      tierMultiplier: 1,
+      classes: ['yatai'],
+      produced: [0],
+      destroyed: [120],
+      civs: ['sg'],
+    };
+
+    const events = detectSignificantResourceLossEvents({
+      summary: summary(300),
+      deployedResourcePools: pools(
+        300,
+        1000,
+        1000,
+        [
+          { timestamp: 0, ratePerMin: 1000 },
+          { timestamp: 60, ratePerMin: 1000 },
+          { timestamp: 80, ratePerMin: 700 },
+          { timestamp: 120, ratePerMin: 700 },
+        ],
+        [
+          { timestamp: 0, ratePerMin: 900 },
+          { timestamp: 60, ratePerMin: 900 },
+          { timestamp: 120, ratePerMin: 900 },
+        ]
+      ),
+      player1Build: { startingAssets: [], resolved: [yatai], unresolved: [] },
+      player2Build: emptyBuild(),
+    });
+
+    expect(events[0]).toEqual(expect.objectContaining({
+      victimPlayer: 1,
+      grossLoss: 125,
+      grossImpact: 125,
+      playerImpacts: {
+        player1: expect.objectContaining({
+          immediateLoss: 125,
+          grossLoss: 125,
+          gatherDisruption: expect.objectContaining({
+            value: 200,
+            baselineRatePerMin: 1000,
+            minRatePerMin: 700,
+            dropPercent: 30,
+            idleEquivalentVillagerSeconds: 300,
+          }),
+        }),
+        player2: expect.objectContaining({
+          gatherDisruption: undefined,
+        }),
       },
     }));
   });

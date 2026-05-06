@@ -1,4 +1,4 @@
-import { parseAoe4WorldGameUrl } from '../../src/parser/aoe4WorldUrl';
+import { parseAoe4WorldGameUrl } from '../../packages/aoe4-core/src/parser/aoe4WorldUrl';
 
 describe('parseAoe4WorldGameUrl', () => {
   it('parses canonical aoe4world URL with signature', () => {

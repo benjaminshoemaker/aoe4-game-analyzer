@@ -1,5 +1,5 @@
-import { calculateValueAdjustedMatchup } from '../../src/data/counterMatrix';
-import { MatchupDetail } from '../../src/types';
+import { calculateValueAdjustedMatchup } from '../../packages/aoe4-core/src/data/counterMatrix';
+import { MatchupDetail } from '../../packages/aoe4-core/src/types';
 import { valueArmyOne, valueArmyTwo } from '../helpers/counterSamples';
 
 describe('calculateValueAdjustedMatchup integration', () => {

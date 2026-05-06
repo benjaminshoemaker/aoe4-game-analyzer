@@ -1,19 +1,22 @@
 import resourceBandConfigJson from '../data/resourceBandConfig.json';
 import { ResolvedBuildItem, ResolvedBuildOrder } from '../parser/buildOrderResolver';
 import { GameSummary, PlayerSummary } from '../parser/gameSummaryParser';
-import { classifyResolvedItemBand, DeployedResourcePools, PlayerDeployedPoolSeries, PoolBand } from './resourcePool';
+import { classifyResolvedItemBand, DeployedResourcePools, GatherRatePoint, PlayerDeployedPoolSeries, PoolBand } from './resourcePool';
 import {
   buildLifecycleEvents,
   findFallbackLifecycleContext as findSharedFallbackLifecycleContext,
   LifecycleEvent,
   unitLineKey,
 } from './resourceLifecycle';
-import { buildVillagerOpportunityForPlayer, VillagerOpportunityForPlayer } from './villagerOpportunity';
+import { buildVillagerOpportunityForPlayer, VILLAGER_RATE_BASELINE_RPM, VillagerOpportunityForPlayer } from './villagerOpportunity';
 import { isVillagerBuildOrderEntry } from './villagerClassifier';
 
 export const SIGNIFICANT_RESOURCE_LOSS_THRESHOLD = 0.075;
 export const SIGNIFICANT_RESOURCE_LOSS_WINDOW_SECONDS = 60;
 export const SIGNIFICANT_RESOURCE_LOSS_MIN_GROSS = 100;
+const GATHER_DISRUPTION_MIN_BASELINE_RATE = 300;
+const GATHER_DISRUPTION_MIN_DROP_RATIO = 0.10;
+const GATHER_DISRUPTION_MIN_SHORTFALL = 100;
 
 export type SignificantResourceLossKind = 'raid' | 'fight' | 'loss';
 
@@ -22,6 +25,20 @@ export interface SignificantResourceLossItem {
   value: number;
   count: number;
   band: PoolBand;
+  showCount?: boolean;
+  detail?: string;
+  title?: string;
+}
+
+export interface SignificantResourceLossGatherDisruption {
+  label: string;
+  value: number;
+  baselineRatePerMin: number;
+  minRatePerMin: number;
+  dropPercent: number;
+  idleEquivalentVillagerSeconds: number;
+  windowStart: number;
+  windowEnd: number;
 }
 
 export interface SignificantResourceMilitarySituation {
@@ -36,6 +53,7 @@ export interface SignificantResourceLossPlayerImpact {
   denominator: number;
   pctOfDeployed: number;
   villagerDeaths: number;
+  gatherDisruption?: SignificantResourceLossGatherDisruption;
   losses: SignificantResourceLossItem[];
   topLosses: SignificantResourceLossItem[];
 }
@@ -121,6 +139,7 @@ interface WindowImpact {
   immediateLoss: number;
   villagerOpportunityLoss: number;
   villagerDeaths: number;
+  gatherDisruption?: SignificantResourceLossGatherDisruption;
   grossLoss: number;
   denominator: number;
   pct: number;
@@ -319,6 +338,63 @@ function valueAtOrBefore(series: PlayerDeployedPoolSeries['series'], timestamp: 
     candidate = point;
   }
   return candidate?.total ?? 0;
+}
+
+function gatherRateAtOrBefore(series: GatherRatePoint[], timestamp: number): number {
+  let candidate = series[0];
+  for (const point of series) {
+    if (point.timestamp > timestamp) break;
+    candidate = point;
+  }
+  return candidate?.ratePerMin ?? 0;
+}
+
+function gatherDisruptionForWindow(
+  series: GatherRatePoint[],
+  start: number,
+  end: number
+): SignificantResourceLossGatherDisruption | undefined {
+  if (series.length === 0 || end <= start) return undefined;
+
+  const baselineRatePerMin = gatherRateAtOrBefore(series, start);
+  if (baselineRatePerMin < GATHER_DISRUPTION_MIN_BASELINE_RATE) return undefined;
+
+  const boundaries = [
+    start,
+    ...series
+      .map(point => point.timestamp)
+      .filter(timestamp => timestamp > start && timestamp < end),
+    end,
+  ].sort((a, b) => a - b);
+
+  let shortfall = 0;
+  let minRatePerMin = baselineRatePerMin;
+  for (let i = 0; i < boundaries.length - 1; i += 1) {
+    const segmentStart = boundaries[i];
+    const segmentEnd = boundaries[i + 1];
+    const ratePerMin = gatherRateAtOrBefore(series, segmentStart);
+    minRatePerMin = Math.min(minRatePerMin, ratePerMin);
+    shortfall += Math.max(0, baselineRatePerMin - ratePerMin) * ((segmentEnd - segmentStart) / 60);
+  }
+  minRatePerMin = Math.min(minRatePerMin, gatherRateAtOrBefore(series, end));
+
+  const dropRatio = baselineRatePerMin > 0
+    ? Math.max(0, (baselineRatePerMin - minRatePerMin) / baselineRatePerMin)
+    : 0;
+  if (dropRatio < GATHER_DISRUPTION_MIN_DROP_RATIO || shortfall < GATHER_DISRUPTION_MIN_SHORTFALL) {
+    return undefined;
+  }
+
+  return {
+    label: 'Gather disruption',
+    value: Math.round(shortfall),
+    baselineRatePerMin: Math.round(baselineRatePerMin),
+    minRatePerMin: Math.round(minRatePerMin),
+    dropPercent: Number((dropRatio * 100).toFixed(1)),
+    idleEquivalentVillagerSeconds: Math.round((shortfall / VILLAGER_RATE_BASELINE_RPM) * 60),
+    windowStart: start,
+    windowEnd: end,
+  };
 }
 
 function collectVillagerDeathTimes(player: PlayerSummary): number[] {
@@ -600,6 +676,7 @@ function evaluateWindowImpact(context: LossContext, start: number, end: number):
   const immediateLoss = immediateEvents.reduce((sum, event) => sum + event.value, 0);
   const deathsInWindow = context.villagerDeathTimes.filter(timestamp => timestamp >= start && timestamp <= end);
   const villagerOpportunityLoss = context.opportunityCostForWindow(start, end, deathsInWindow);
+  const gatherDisruption = gatherDisruptionForWindow(context.pool.gatherRateSeries, start, end);
   const grossLoss = immediateLoss + villagerOpportunityLoss;
   const denominator = valueAtOrBefore(context.pool.series, start);
   const pct = denominator > 0 ? grossLoss / denominator : 0;
@@ -610,6 +687,7 @@ function evaluateWindowImpact(context: LossContext, start: number, end: number):
     immediateLoss,
     villagerOpportunityLoss,
     villagerDeaths: deathsInWindow.length,
+    gatherDisruption,
     grossLoss,
     denominator,
     pct,
@@ -756,6 +834,7 @@ export function detectSignificantResourceLossEvents(params: DetectSignificantRes
           denominator: Math.round(player1Impact.denominator),
           pctOfDeployed: Number((player1Impact.pct * 100).toFixed(1)),
           villagerDeaths: player1Impact.villagerDeaths,
+          gatherDisruption: player1Impact.gatherDisruption,
           losses: player1Impact.losses,
           topLosses: player1Impact.topLosses,
         },
@@ -766,6 +845,7 @@ export function detectSignificantResourceLossEvents(params: DetectSignificantRes
           denominator: Math.round(player2Impact.denominator),
           pctOfDeployed: Number((player2Impact.pct * 100).toFixed(1)),
           villagerDeaths: player2Impact.villagerDeaths,
+          gatherDisruption: player2Impact.gatherDisruption,
           losses: player2Impact.losses,
           topLosses: player2Impact.topLosses,
         },

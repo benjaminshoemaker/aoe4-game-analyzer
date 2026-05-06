@@ -1,6 +1,6 @@
-import { BuildOrderEntry } from '../../src/parser/gameSummaryParser';
-import { ResolvedBuildItem } from '../../src/parser/buildOrderResolver';
-import { isVillagerBuildOrderEntry, isVillagerResolvedItem } from '../../src/analysis/villagerClassifier';
+import { BuildOrderEntry } from '../../packages/aoe4-core/src/parser/gameSummaryParser';
+import { ResolvedBuildItem } from '../../packages/aoe4-core/src/parser/buildOrderResolver';
+import { isVillagerBuildOrderEntry, isVillagerResolvedItem } from '../../packages/aoe4-core/src/analysis/villagerClassifier';
 
 describe('villagerClassifier', () => {
   it('detects villager-like build-order units via id/icon tokens', () => {
