@@ -136,7 +136,7 @@ function build(items: ResolvedBuildItem[]): ResolvedBuildOrder {
 }
 
 describe('detectSignificantResourceLossEvents (web)', () => {
-  it('captures fight pre-encounter armies at the detected window start', () => {
+  it('captures fight armies at the detected window start and end', () => {
     const longbowmen = unit({
       id: 'longbowman',
       name: 'Longbowman',
@@ -172,6 +172,16 @@ describe('detectSignificantResourceLossEvents (web)', () => {
         player2: {
           totalValue: 480,
           units: [expect.objectContaining({ label: 'Knight', value: 480, count: 2 })],
+        },
+      },
+      postEncounterArmies: {
+        player1: {
+          totalValue: 320,
+          units: [expect.objectContaining({ label: 'Longbowman', value: 320, count: 4 })],
+        },
+        player2: {
+          totalValue: 240,
+          units: [expect.objectContaining({ label: 'Knight', value: 240, count: 1 })],
         },
       },
     }));

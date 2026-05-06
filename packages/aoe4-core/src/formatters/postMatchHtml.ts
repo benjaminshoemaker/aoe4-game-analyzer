@@ -825,7 +825,7 @@ function significantEventArmyRowsHtml(
 function significantEventLossValue(
   event: SignificantTimelineEvent | null,
   playerKey: SignificantEventPlayerKey,
-  metric: 'grossLoss' | 'immediateLoss' | 'villagerOpportunityLoss' | 'pctOfDeployed'
+  metric: 'grossLoss' | 'immediateLoss' | 'villagerOpportunityLoss' | 'denominator'
 ): number {
   if (!event) return 0;
   const impact = event.playerImpacts?.[playerKey];
@@ -839,23 +839,58 @@ function significantEventLossValue(
   return 0;
 }
 
+function significantEventGatherDisruption(
+  event: SignificantTimelineEvent | null,
+  playerKey: SignificantEventPlayerKey
+): NonNullable<SignificantTimelineEvent['playerImpacts']>['player1']['gatherDisruption'] | undefined {
+  return event?.playerImpacts?.[playerKey]?.gatherDisruption;
+}
+
+function significantEventGatherDisruptionDetail(
+  event: SignificantTimelineEvent | null,
+  playerKey: SignificantEventPlayerKey
+): string {
+  const disruption = significantEventGatherDisruption(event, playerKey);
+  if (!disruption) return '';
+  return `Gather/min fell from ${formatNumber(disruption.baselineRatePerMin)} to ${formatNumber(disruption.minRatePerMin)} during this event window; row value is ${formatNumber(disruption.value)} resources of shortfall, equivalent to roughly ${formatNumber(disruption.idleEquivalentVillagerSeconds)} villager-seconds.`;
+}
+
+function significantEventDisplayedTotalLoss(
+  event: SignificantTimelineEvent | null,
+  playerKey: SignificantEventPlayerKey
+): number {
+  return significantEventLossValue(event, playerKey, 'grossLoss') +
+    (significantEventGatherDisruption(event, playerKey)?.value ?? 0);
+}
+
+function significantEventDisplayedPctOfDeployed(
+  event: SignificantTimelineEvent | null,
+  playerKey: SignificantEventPlayerKey
+): number {
+  const denominator = significantEventLossValue(event, playerKey, 'denominator');
+  if (denominator <= 0) return 0;
+  return (significantEventDisplayedTotalLoss(event, playerKey) / denominator) * 100;
+}
+
 function significantEventLossSummaryHtml(
   event: SignificantTimelineEvent | null,
-  playerKey: SignificantEventPlayerKey,
-  playerLabel: string
+  playerKey: SignificantEventPlayerKey
 ): string {
-  const totalLoss = significantEventLossValue(event, playerKey, 'grossLoss');
+  const totalLoss = significantEventDisplayedTotalLoss(event, playerKey);
   const immediateLoss = significantEventLossValue(event, playerKey, 'immediateLoss');
+  const gatherDisruption = significantEventGatherDisruption(event, playerKey);
+  const gatherDisruptionDetail = significantEventGatherDisruptionDetail(event, playerKey);
   const villagerOpportunityLoss = significantEventLossValue(event, playerKey, 'villagerOpportunityLoss');
-  const pctOfDeployed = significantEventLossValue(event, playerKey, 'pctOfDeployed');
+  const pctOfDeployed = significantEventDisplayedPctOfDeployed(event, playerKey);
+  const gatherHiddenAttr = event && gatherDisruption ? '' : ' hidden';
   const opportunityHiddenAttr = event && villagerOpportunityLoss > 0 ? '' : ' hidden';
-  const shareLabel = `Share of ${playerLabel} deployed`;
   return `
                   <dl class="event-impact-loss-summary" data-significant-event-loss-summary="${playerKey}">
                     <div><dt>Total loss</dt><dd data-significant-event-loss-total="${playerKey}">${event ? formatNumber(totalLoss) : ''}</dd></div>
                     <div><dt>Immediate loss</dt><dd data-significant-event-loss-immediate="${playerKey}">${event ? formatNumber(immediateLoss) : ''}</dd></div>
+                    <div data-significant-event-loss-gather-disruption-row="${playerKey}"${gatherHiddenAttr}><dt><span>Gather disruption</span><button type="button" class="event-impact-help-button event-impact-inline-help-button" data-significant-event-loss-gather-disruption-help="${playerKey}" aria-label="What is gather disruption?" title="${escapeHtml(gatherDisruptionDetail)}">?</button></dt><dd data-significant-event-loss-gather-disruption="${playerKey}">${event && gatherDisruption ? formatNumber(gatherDisruption.value) : ''}</dd></div>
                     <div data-significant-event-loss-villager-opportunity-row="${playerKey}"${opportunityHiddenAttr}><dt><span data-villager-opportunity-event-tooltip title="${escapeHtml(significantVillagerOpportunityTooltip)}">Villager opportunity</span></dt><dd data-significant-event-loss-villager-opportunity="${playerKey}">${event ? formatNumber(villagerOpportunityLoss) : ''}</dd></div>
-                    <div><dt data-significant-event-loss-share-label="${playerKey}">${escapeHtml(shareLabel)}</dt><dd data-significant-event-loss-share="${playerKey}">${event ? `${formatPrecise(pctOfDeployed, 1)}%` : ''}</dd></div>
+                    <div><dt data-significant-event-loss-share-label="${playerKey}">Share of Deployed Resources Lost</dt><dd data-significant-event-loss-share="${playerKey}">${event ? `${formatPrecise(pctOfDeployed, 1)}%` : ''}</dd></div>
                   </dl>`;
 }
 
@@ -867,21 +902,26 @@ function significantEventLossesHtml(event: SignificantTimelineEvent | null): str
               <div class="event-impact-loss-detail-title">Encounter losses</div>
               <div class="event-impact-loss-columns">
                 <div class="event-impact-loss-column">
-                  <div class="event-impact-loss-column-heading" data-significant-event-loss-heading="player1">${escapeHtml(player1Label)} losses</div>
-                  ${significantEventLossSummaryHtml(event, 'player1', player1Label)}
+                  <div class="event-impact-loss-column-heading" data-significant-event-loss-heading="player1">${escapeHtml(player1Label)}</div>
+                  ${significantEventLossSummaryHtml(event, 'player1')}
                   <ul class="event-impact-loss-list" data-significant-event-loss-list="player1">${significantEventLossRowsHtml(event?.encounterLosses?.player1 ?? [])}</ul>
                 </div>
                 <div class="event-impact-loss-column">
-                  <div class="event-impact-loss-column-heading" data-significant-event-loss-heading="player2">${escapeHtml(player2Label)} losses</div>
-                  ${significantEventLossSummaryHtml(event, 'player2', player2Label)}
+                  <div class="event-impact-loss-column-heading" data-significant-event-loss-heading="player2">${escapeHtml(player2Label)}</div>
+                  ${significantEventLossSummaryHtml(event, 'player2')}
                   <ul class="event-impact-loss-list" data-significant-event-loss-list="player2">${significantEventLossRowsHtml(event?.encounterLosses?.player2 ?? [])}</ul>
                 </div>
               </div>
             </div>`;
 }
 
-function significantEventArmyValue(event: SignificantTimelineEvent | null, playerKey: SignificantEventPlayerKey): number {
-  return event?.preEncounterArmies?.[playerKey]?.totalValue ?? 0;
+function significantEventArmyValue(
+  event: SignificantTimelineEvent | null,
+  playerKey: SignificantEventPlayerKey,
+  phase: 'start' | 'end'
+): number {
+  const armies = phase === 'start' ? event?.preEncounterArmies : event?.postEncounterArmies;
+  return armies?.[playerKey]?.totalValue ?? 0;
 }
 
 function significantEventTitleHtml(event: SignificantTimelineEvent | null): string {
@@ -894,27 +934,45 @@ function significantEventTitleHtml(event: SignificantTimelineEvent | null): stri
             </div>`;
 }
 
-function significantEventPreEncounterArmiesHtml(event: SignificantTimelineEvent | null): string {
+function significantEventWindowArmiesHtml(event: SignificantTimelineEvent | null): string {
   const player1Label = event?.player1Label ?? event?.player1Civilization ?? 'Player 1';
   const player2Label = event?.player2Label ?? event?.player2Civilization ?? 'Player 2';
-  const hiddenAttr = event?.kind === 'fight' && event.preEncounterArmies ? '' : ' hidden';
+  const hiddenAttr = event?.kind === 'fight' && (event.preEncounterArmies || event.postEncounterArmies) ? '' : ' hidden';
   return `
             <div class="event-impact-loss-detail event-impact-army-detail" data-significant-event-armies${hiddenAttr}>
-              <div class="event-impact-loss-detail-title">Pre-encounter armies</div>
+              <div class="event-impact-loss-detail-title">Event window armies</div>
+              <div class="event-impact-army-phase-label">Window start</div>
               <div class="event-impact-loss-columns">
                 <div class="event-impact-loss-column">
-                  <div class="event-impact-loss-column-heading" data-significant-event-army-heading="player1">${escapeHtml(player1Label)} army before fight</div>
+                  <div class="event-impact-loss-column-heading" data-significant-event-army-heading="player1">${escapeHtml(player1Label)} Army</div>
                   <dl class="event-impact-loss-summary">
-                    <div><dt>Active military</dt><dd data-significant-event-army-total="player1">${event ? formatNumber(significantEventArmyValue(event, 'player1')) : ''}</dd></div>
+                    <div><dt>Active military</dt><dd data-significant-event-army-total="player1">${event ? formatNumber(significantEventArmyValue(event, 'player1', 'start')) : ''}</dd></div>
                   </dl>
                   <ul class="event-impact-loss-list" data-significant-event-army-list="player1">${significantEventArmyRowsHtml(event?.preEncounterArmies?.player1.units)}</ul>
                 </div>
                 <div class="event-impact-loss-column">
-                  <div class="event-impact-loss-column-heading" data-significant-event-army-heading="player2">${escapeHtml(player2Label)} army before fight</div>
+                  <div class="event-impact-loss-column-heading" data-significant-event-army-heading="player2">${escapeHtml(player2Label)} Army</div>
                   <dl class="event-impact-loss-summary">
-                    <div><dt>Active military</dt><dd data-significant-event-army-total="player2">${event ? formatNumber(significantEventArmyValue(event, 'player2')) : ''}</dd></div>
+                    <div><dt>Active military</dt><dd data-significant-event-army-total="player2">${event ? formatNumber(significantEventArmyValue(event, 'player2', 'start')) : ''}</dd></div>
                   </dl>
                   <ul class="event-impact-loss-list" data-significant-event-army-list="player2">${significantEventArmyRowsHtml(event?.preEncounterArmies?.player2.units)}</ul>
+                </div>
+              </div>
+              <div class="event-impact-army-phase-label">Window end</div>
+              <div class="event-impact-loss-columns">
+                <div class="event-impact-loss-column">
+                  <div class="event-impact-loss-column-heading" data-significant-event-army-end-heading="player1">${escapeHtml(player1Label)} Army</div>
+                  <dl class="event-impact-loss-summary">
+                    <div><dt>Active military</dt><dd data-significant-event-army-end-total="player1">${event ? formatNumber(significantEventArmyValue(event, 'player1', 'end')) : ''}</dd></div>
+                  </dl>
+                  <ul class="event-impact-loss-list" data-significant-event-army-end-list="player1">${significantEventArmyRowsHtml(event?.postEncounterArmies?.player1.units)}</ul>
+                </div>
+                <div class="event-impact-loss-column">
+                  <div class="event-impact-loss-column-heading" data-significant-event-army-end-heading="player2">${escapeHtml(player2Label)} Army</div>
+                  <dl class="event-impact-loss-summary">
+                    <div><dt>Active military</dt><dd data-significant-event-army-end-total="player2">${event ? formatNumber(significantEventArmyValue(event, 'player2', 'end')) : ''}</dd></div>
+                  </dl>
+                  <ul class="event-impact-loss-list" data-significant-event-army-end-list="player2">${significantEventArmyRowsHtml(event?.postEncounterArmies?.player2.units)}</ul>
                 </div>
               </div>
             </div>`;
@@ -940,7 +998,7 @@ function buildSignificantEventImpactHtml(event: SignificantTimelineEvent | null)
           <details class="event-impact" data-significant-event${hiddenAttr} open>
             <summary class="event-impact-heading">Event impact</summary>
             ${significantEventTitleHtml(event)}
-            ${significantEventPreEncounterArmiesHtml(event)}
+            ${significantEventWindowArmiesHtml(event)}
             ${significantEventLossesHtml(event)}
             ${significantEventUnderdogDetailsHtml(event)}
           </details>`;
@@ -2834,6 +2892,13 @@ export function renderPostMatchHtml(
       cursor: pointer;
     }
 
+    .event-impact-inline-help-button {
+      width: 12px;
+      height: 12px;
+      padding: 0;
+      font-size: 8px;
+    }
+
     .event-impact-underdog-details {
       margin-top: 8px;
       padding-top: 7px;
@@ -2903,6 +2968,9 @@ export function renderPostMatchHtml(
     }
 
     .event-impact-loss-summary dt {
+      display: flex;
+      align-items: center;
+      gap: 4px;
       min-width: 0;
       color: var(--color-muted);
       font-size: 9.5px;

@@ -625,6 +625,22 @@ describe('renderPostMatchHtml', () => {
           ],
         },
       },
+      postEncounterArmies: {
+        player1: {
+          totalValue: 1140,
+          units: [
+            { label: 'Longbowman', value: 960, count: 12, band: 'militaryActive' },
+            { label: 'Spearman', value: 180, count: 2, band: 'militaryActive' },
+          ],
+        },
+        player2: {
+          totalValue: 400,
+          units: [
+            { label: 'Knight', value: 240, count: 1, band: 'militaryActive' },
+            { label: 'Archer', value: 160, count: 2, band: 'militaryActive' },
+          ],
+        },
+      },
       favorableUnderdogFight: {
         details: 'French won this encounter despite having significantly fewer deployed military resources than English. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where French found an advantage, healing, stronger micro, or a favorable unit matchup.',
       },
@@ -638,7 +654,7 @@ describe('renderPostMatchHtml', () => {
             count: 0,
             band: 'economic',
             showCount: false,
-            detail: 'Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds.',
+            title: 'Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds.',
           },
         ],
       },
@@ -660,6 +676,16 @@ describe('renderPostMatchHtml', () => {
           denominator: 670,
           pctOfDeployed: 35.8,
           villagerDeaths: 0,
+          gatherDisruption: {
+            label: 'Gather disruption',
+            value: 205,
+            baselineRatePerMin: 1104,
+            minRatePerMin: 656,
+            dropPercent: 40.6,
+            idleEquivalentVillagerSeconds: 307,
+            windowStart: 60,
+            windowEnd: 120,
+          },
           losses: [{ label: 'Knight', value: 240, count: 1, band: 'militaryActive' }],
           topLosses: [{ label: 'Knight', value: 240, count: 1, band: 'militaryActive' }],
         },
@@ -784,20 +810,37 @@ describe('renderPostMatchHtml', () => {
     expect(html).toContain('French took a favorable fight against English, despite significantly fewer deployed military resources.');
     expect(html).toContain('Why this fight is notable');
     expect(html).toContain('French won this encounter despite having significantly fewer deployed military resources than English.');
-    expect(html).toContain('Pre-encounter armies');
-    expect(html.indexOf('Pre-encounter armies')).toBeLessThan(html.indexOf('Encounter losses'));
+    expect(html).toContain('Event window armies');
+    expect(html.indexOf('Event window armies')).toBeLessThan(html.indexOf('Encounter losses'));
     expect(html.indexOf('Why this fight is notable')).toBeGreaterThan(html.indexOf('Encounter losses'));
+    expect(html).toContain('data-significant-event-army-heading="player1">English Army</div>');
+    expect(html).toContain('data-significant-event-army-heading="player2">French Army</div>');
+    expect(html).toContain('data-significant-event-army-end-heading="player1">English Army</div>');
+    expect(html).toContain('data-significant-event-army-end-heading="player2">French Army</div>');
+    expect(html).not.toContain('army at window start');
+    expect(html).not.toContain('army at window end');
     expect(html).toContain('data-significant-event-army-total="player1">1,300</dd>');
     expect(html).toContain('data-significant-event-army-total="player2">640</dd>');
+    expect(html).toContain('data-significant-event-army-end-total="player1">1,140</dd>');
+    expect(html).toContain('data-significant-event-army-end-total="player2">400</dd>');
     expect(html).toContain('data-significant-event-loss-summary="player2"');
+    expect(html).toContain('data-significant-event-loss-heading="player2">French</div>');
+    expect(html).not.toContain('French losses');
+    expect(html).toContain('data-significant-event-loss-total="player2">445</dd>');
     expect(html).toContain('data-significant-event-loss-immediate="player2">240</dd>');
+    expect(html).toContain('data-significant-event-loss-gather-disruption-row="player2"');
+    expect(html).toContain('data-significant-event-loss-gather-disruption="player2">205</dd>');
     expect(html).toContain('Gather disruption');
-    expect(html).toContain('Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds.');
+    expect(html).toContain('data-significant-event-loss-gather-disruption-help="player2"');
+    expect(html).toContain('title="Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds."');
+    expect(html).not.toContain('event-impact-loss-note">Gather/min fell from 1,104 to 656');
     expect(html).toContain('<span class="event-impact-loss-value">205</span>');
     expect(html).not.toContain('Gather disruption x0');
     expect(html).not.toContain('Gather disruption x1');
-    expect(html).toContain('data-significant-event-loss-share-label="player2">Share of French deployed</dt>');
-    expect(html).not.toContain('<dt>Share of deployed</dt>');
+    expect(html).toContain('.event-impact-inline-help-button {\n      width: 12px;');
+    expect(html).toContain('height: 12px;');
+    expect(html).toContain('data-significant-event-loss-share-label="player2">Share of Deployed Resources Lost</dt>');
+    expect(html).not.toContain('Share of French deployed');
     expect(html).not.toContain('data-hover-field="significantEvent.description"');
     expect(html).not.toContain('data-hover-field="significantEvent.grossLoss"');
     expect(html).not.toContain('data-hover-field="significantEvent.topLosses"');

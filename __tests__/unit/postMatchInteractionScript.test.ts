@@ -192,11 +192,19 @@ function runScriptInDom(script: string, hoverPoints: ClientHoverSnapshot[], anal
 	        <dt data-significant-event-loss-share-label="player1"></dt>
 	        <dd data-significant-event-loss-total="player1"></dd>
 	        <dd data-significant-event-loss-immediate="player1"></dd>
+	        <div data-significant-event-loss-gather-disruption-row="player1" hidden>
+	          <button type="button" data-significant-event-loss-gather-disruption-help="player1"></button>
+	          <dd data-significant-event-loss-gather-disruption="player1"></dd>
+	        </div>
 	        <dd data-significant-event-loss-villager-opportunity="player1"></dd>
 	        <dd data-significant-event-loss-share="player1"></dd>
 	        <dt data-significant-event-loss-share-label="player2"></dt>
 	        <dd data-significant-event-loss-total="player2"></dd>
 	        <dd data-significant-event-loss-immediate="player2"></dd>
+	        <div data-significant-event-loss-gather-disruption-row="player2" hidden>
+	          <button type="button" data-significant-event-loss-gather-disruption-help="player2"></button>
+	          <dd data-significant-event-loss-gather-disruption="player2"></dd>
+	        </div>
 	        <dd data-significant-event-loss-villager-opportunity="player2"></dd>
 	        <dd data-significant-event-loss-share="player2"></dd>
 	      </dl>
@@ -204,6 +212,20 @@ function runScriptInDom(script: string, hoverPoints: ClientHoverSnapshot[], anal
 	      <div data-significant-event-loss-villager-opportunity-row="player2"></div>
 	      <ul data-significant-event-loss-list="player1"></ul>
 	      <ul data-significant-event-loss-list="player2"></ul>
+	      <div data-significant-event-armies hidden>
+	        <div data-significant-event-army-heading="player1"></div>
+	        <dd data-significant-event-army-total="player1"></dd>
+	        <ul data-significant-event-army-list="player1"></ul>
+	        <div data-significant-event-army-heading="player2"></div>
+	        <dd data-significant-event-army-total="player2"></dd>
+	        <ul data-significant-event-army-list="player2"></ul>
+	        <div data-significant-event-army-end-heading="player1"></div>
+	        <dd data-significant-event-army-end-total="player1"></dd>
+	        <ul data-significant-event-army-end-list="player1"></ul>
+	        <div data-significant-event-army-end-heading="player2"></div>
+	        <dd data-significant-event-army-end-total="player2"></dd>
+	        <ul data-significant-event-army-end-list="player2"></ul>
+	      </div>
 	      <button type="button" data-significant-event-underdog-toggle>Why notable</button>
       <details data-significant-event-underdog-details>
         <summary>Why this fight is notable</summary>
@@ -286,7 +308,7 @@ describe('post-match interaction script formatter', () => {
       .toBe('-12s');
   });
 
-  it('renders gather disruption encounter losses without a synthetic count when hover state changes', () => {
+  it('renders gather disruption under immediate loss without a synthetic count when hover state changes', () => {
     const point: ClientHoverSnapshot = {
       ...eventSnapshot,
       significantEvent: {
@@ -301,22 +323,107 @@ describe('post-match interaction script formatter', () => {
               count: 0,
               band: 'economic',
               showCount: false,
-              detail: 'Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds.',
+              title: 'Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds.',
             },
           ],
+        },
+        playerImpacts: {
+          player1: {
+            grossLoss: 0,
+            immediateLoss: 0,
+            pctOfDeployed: 0,
+            villagerOpportunityLoss: 0,
+            denominator: 1000,
+            villagerDeaths: 0,
+            losses: [],
+            topLosses: [],
+          },
+          player2: {
+            grossLoss: 125,
+            immediateLoss: 125,
+            pctOfDeployed: 5,
+            villagerOpportunityLoss: 0,
+            denominator: 1000,
+            villagerDeaths: 0,
+            losses: [{ label: 'Yatai', value: 125, count: 1, band: 'economic' }],
+            topLosses: [{ label: 'Yatai', value: 125, count: 1, band: 'economic' }],
+            gatherDisruption: {
+              label: 'Gather disruption',
+              value: 205,
+              baselineRatePerMin: 1104,
+              minRatePerMin: 656,
+              dropPercent: 40.6,
+              idleEquivalentVillagerSeconds: 307,
+              windowStart: 60,
+              windowEnd: 120,
+            },
+          },
         },
       },
     };
     const script = buildHoverInteractionScript([point], labels);
     const { window } = runScriptInDom(script, [point]);
     const player2Losses = window.document.querySelector('[data-significant-event-loss-list="player2"]')?.innerHTML ?? '';
+    const gatherRow = window.document.querySelector('[data-significant-event-loss-gather-disruption-row="player2"]') as HTMLElement;
+    const gatherValue = window.document.querySelector('[data-significant-event-loss-gather-disruption="player2"]') as HTMLElement;
+    const gatherHelp = window.document.querySelector('[data-significant-event-loss-gather-disruption-help="player2"]') as HTMLElement;
 
     expect(player2Losses).toContain('Yatai x1');
     expect(player2Losses).toContain('Gather disruption');
-    expect(player2Losses).toContain('Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds.');
-    expect(player2Losses).toContain('205');
+    expect(player2Losses).toContain('event-impact-loss-value">205</span>');
+    expect(player2Losses).not.toContain('event-impact-loss-note');
+    expect(window.document.querySelector('[data-significant-event-loss-total="player2"]')?.textContent).toBe('330');
+    expect(window.document.querySelector('[data-significant-event-loss-immediate="player2"]')?.textContent).toBe('125');
+    expect(gatherRow.hidden).toBe(false);
+    expect(gatherValue.textContent).toBe('205');
+    expect(gatherHelp.getAttribute('title')).toBe('Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds.');
+    expect(window.document.querySelector('[data-significant-event-loss-share-label="player2"]')?.textContent).toBe('Share of Deployed Resources Lost');
     expect(player2Losses).not.toContain('Gather disruption x0');
     expect(player2Losses).not.toContain('Gather disruption x1');
+  });
+
+  it('renders event-window start and end armies when hover state changes', () => {
+    const point: ClientHoverSnapshot = {
+      ...eventSnapshot,
+      significantEvent: {
+        ...eventSnapshot.significantEvent!,
+        kind: 'fight',
+        preEncounterArmies: {
+          player1: {
+            totalValue: 1300,
+            units: [{ label: 'Longbowman', value: 960, count: 12, band: 'militaryActive' }],
+          },
+          player2: {
+            totalValue: 640,
+            units: [{ label: 'Knight', value: 480, count: 2, band: 'militaryActive' }],
+          },
+        },
+        postEncounterArmies: {
+          player1: {
+            totalValue: 1140,
+            units: [{ label: 'Longbowman', value: 960, count: 12, band: 'militaryActive' }],
+          },
+          player2: {
+            totalValue: 400,
+            units: [{ label: 'Knight', value: 240, count: 1, band: 'militaryActive' }],
+          },
+        },
+      } as any,
+    };
+    const script = buildHoverInteractionScript([point], labels);
+    const { window } = runScriptInDom(script, [point]);
+
+    expect(window.document.querySelector('[data-significant-event-armies]')?.hidden).toBe(false);
+    expect(window.document.querySelector('[data-significant-event-army-heading="player1"]')?.textContent)
+      .toBe('Player One Army');
+    expect(window.document.querySelector('[data-significant-event-army-total="player1"]')?.textContent)
+      .toBe('1,300');
+    expect(window.document.querySelector('[data-significant-event-army-end-heading="player2"]')?.textContent)
+      .toBe('Player Two Army');
+    expect(window.document.querySelector('[data-significant-event-army-end-total="player2"]')?.textContent)
+      .toBe('400');
+    expect(window.document.querySelector('[data-significant-event-army-end-list="player2"]')?.innerHTML)
+      .toContain('Knight x1');
   });
 
   it('exposes the helpers needed to reset the hover inspector to the top on a significant event click', () => {

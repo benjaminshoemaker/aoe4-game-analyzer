@@ -90,6 +90,22 @@ describe('post-match allocation widget integration', () => {
           ],
         },
       },
+      postEncounterArmies: {
+        player1: {
+          totalValue: 1140,
+          units: [
+            { label: 'Longbowman', value: 960, count: 12, band: 'militaryActive' },
+            { label: 'Spearman', value: 180, count: 2, band: 'militaryActive' },
+          ],
+        },
+        player2: {
+          totalValue: 400,
+          units: [
+            { label: 'Knight', value: 240, count: 1, band: 'militaryActive' },
+            { label: 'Archer', value: 160, count: 2, band: 'militaryActive' },
+          ],
+        },
+      },
       favorableUnderdogFight: {
         details: 'French won this encounter despite having significantly fewer deployed military resources than English. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where French found an advantage, healing, stronger micro, or a favorable unit matchup.',
       },
@@ -180,15 +196,17 @@ describe('post-match allocation widget integration', () => {
     expect(html).toContain('French took a favorable fight against English, despite significantly fewer deployed military resources.');
     expect(html).toContain('Why this fight is notable');
     expect(html).toContain('French won this encounter despite having significantly fewer deployed military resources than English.');
-    expect(html).toContain('Pre-encounter armies');
-    expect(html.indexOf('Pre-encounter armies')).toBeLessThan(html.indexOf('Encounter losses'));
+    expect(html).toContain('Event window armies');
+    expect(html.indexOf('Event window armies')).toBeLessThan(html.indexOf('Encounter losses'));
     expect(html.indexOf('Why this fight is notable')).toBeGreaterThan(html.indexOf('Encounter losses'));
     expect(html).toContain('data-significant-event-army-total="player1">1,300</dd>');
     expect(html).toContain('data-significant-event-army-total="player2">640</dd>');
+    expect(html).toContain('data-significant-event-army-end-total="player1">1,140</dd>');
+    expect(html).toContain('data-significant-event-army-end-total="player2">400</dd>');
     expect(html).toContain('data-significant-event-loss-summary="player2"');
     expect(html).toContain('data-significant-event-loss-total="player2">240</dd>');
     expect(html).toContain('data-significant-event-loss-immediate="player2">240</dd>');
-    expect(html).toContain('data-significant-event-loss-share-label="player2">Share of French deployed</dt>');
+    expect(html).toContain('data-significant-event-loss-share-label="player2">Share of Deployed Resources Lost</dt>');
     expect(html).not.toContain('<dt>Share of deployed</dt>');
     expect(html).not.toContain('data-hover-field="significantEvent.description"');
     expect(html).not.toContain('data-hover-field="significantEvent.grossLoss"');
@@ -291,6 +309,13 @@ describe('post-match allocation widget integration', () => {
       units: [
         expect.objectContaining({ label: 'Longbowman', value: 960, count: 12 }),
         expect.objectContaining({ label: 'Spearman', value: 340, count: 4 }),
+      ],
+    });
+    expect(payload[0].significantEvent.postEncounterArmies.player2).toEqual({
+      totalValue: 400,
+      units: [
+        expect.objectContaining({ label: 'Knight', value: 240, count: 1 }),
+        expect.objectContaining({ label: 'Archer', value: 160, count: 2 }),
       ],
     });
     expect(payload[0].significantEvent.favorableUnderdogFight).toEqual({

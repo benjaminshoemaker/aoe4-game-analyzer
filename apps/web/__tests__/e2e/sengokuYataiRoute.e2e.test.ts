@@ -125,6 +125,85 @@ function makeSummary(resourceData = resources) {
   });
 }
 
+function makeFightWindowSummary() {
+  const resourceData = {
+    ...structuredClone(resources),
+    timestamps: [0, 60, 90, 120, 150, 180, 240],
+    food: [0, 0, 0, 0, 0, 0, 0],
+    gold: [0, 0, 0, 0, 0, 0, 0],
+    stone: [0, 0, 0, 0, 0, 0, 0],
+    wood: [0, 0, 0, 0, 0, 0, 0],
+    total: [0, 0, 0, 0, 0, 0, 0],
+    military: [0, 0, 0, 0, 0, 0, 0],
+    economy: [0, 0, 0, 0, 0, 0, 0],
+    technology: [0, 0, 0, 0, 0, 0, 0],
+    society: [0, 0, 0, 0, 0, 0, 0],
+  };
+
+  return parseGameSummary({
+    gameId: 229727105,
+    winReason: 'Surrender',
+    mapName: 'Dry Arabia',
+    mapBiome: 'Desert',
+    leaderboard: 'rm_1v1',
+    duration: 240,
+    startedAt: 0,
+    finishedAt: 240,
+    players: [
+      {
+        profileId: 8139502,
+        name: 'Beasty',
+        civilization: 'english',
+        team: 1,
+        apm: 0,
+        result: 'win',
+        _stats: zeroStats,
+        actions: {},
+        scores: zeroScores,
+        totalResourcesGathered: zeroTotals,
+        totalResourcesSpent: zeroTotals,
+        resources: structuredClone(resourceData),
+        buildOrder: [
+          {
+            id: 'longbowman',
+            icon: 'icons/races/english/units/longbowman',
+            pbgid: 1002,
+            type: 'Unit',
+            finished: [60],
+            constructed: [],
+            destroyed: [],
+          },
+        ],
+      },
+      {
+        profileId: 2,
+        name: 'Opponent',
+        civilization: 'french',
+        team: 2,
+        apm: 0,
+        result: 'loss',
+        _stats: zeroStats,
+        actions: {},
+        scores: zeroScores,
+        totalResourcesGathered: zeroTotals,
+        totalResourcesSpent: zeroTotals,
+        resources: structuredClone(resourceData),
+        buildOrder: [
+          {
+            id: 'knight',
+            icon: 'icons/races/french/units/knight',
+            pbgid: 1001,
+            type: 'Unit',
+            finished: [60, 60],
+            constructed: [],
+            destroyed: [150],
+          },
+        ],
+      },
+    ],
+  });
+}
+
 describe('Sengoku Yatai match route e2e', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -134,6 +213,64 @@ describe('Sengoku Yatai match route e2e', () => {
       buildings: [],
       technologies: [],
     });
+  });
+
+  it('returns fight context on hover-data snapshots inside the event window', async () => {
+    mockLoadStaticData.mockResolvedValue({
+      fetchedAt: new Date().toISOString(),
+      units: [
+        {
+          id: 'knight',
+          name: 'Knight',
+          pbgid: 1001,
+          icon: 'icons/races/french/units/knight',
+          costs: { food: 140, wood: 0, gold: 100, stone: 0, total: 240 },
+          classes: ['cavalry', 'military'],
+          civs: ['fr'],
+        },
+        {
+          id: 'longbowman',
+          name: 'Longbowman',
+          pbgid: 1002,
+          icon: 'icons/races/english/units/longbowman',
+          costs: { food: 40, wood: 50, gold: 0, stone: 0, total: 90 },
+          classes: ['archer', 'military'],
+          civs: ['en'],
+        },
+      ],
+      buildings: [],
+      technologies: [],
+    });
+    mockFetchGameSummaryFromApi.mockImplementation(() => Promise.resolve(makeFightWindowSummary()));
+
+    const hoverResponse = await GET_HOVER_DATA(
+      new Request('http://localhost/matches/8139502-Beasty/229727105/hover-data?sig=b6fc'),
+      {
+        params: Promise.resolve({
+          profileSlug: '8139502-Beasty',
+          gameId: '229727105',
+        }),
+      }
+    );
+    const hoverPayload = await hoverResponse.json();
+    const interiorSnapshot = hoverPayload.hoverSnapshots.find((point: { timestamp: number }) => point.timestamp === 180);
+
+    expect(hoverResponse.status).toBe(200);
+    expect(interiorSnapshot?.significantEvent).toEqual(expect.objectContaining({
+      kind: 'fight',
+      windowStart: 150,
+      windowEnd: 210,
+      preEncounterArmies: expect.objectContaining({
+        player2: expect.objectContaining({
+          units: [expect.objectContaining({ label: 'Knight', count: 2, value: 480 })],
+        }),
+      }),
+      postEncounterArmies: expect.objectContaining({
+        player2: expect.objectContaining({
+          units: [expect.objectContaining({ label: 'Knight', count: 1, value: 240 })],
+        }),
+      }),
+    }));
   });
 
   it('renders Yatai in the economic deployed pool breakdown for the match route', async () => {

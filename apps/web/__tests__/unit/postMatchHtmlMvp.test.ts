@@ -244,6 +244,22 @@ describe('renderPostMatchHtml (web mvp)', () => {
           ],
         },
       },
+      postEncounterArmies: {
+        player1: {
+          totalValue: 1140,
+          units: [
+            { label: 'Longbowman', value: 960, count: 12, band: 'militaryActive' },
+            { label: 'Spearman', value: 180, count: 2, band: 'militaryActive' },
+          ],
+        },
+        player2: {
+          totalValue: 400,
+          units: [
+            { label: 'Knight', value: 240, count: 1, band: 'militaryActive' },
+            { label: 'Archer', value: 160, count: 2, band: 'militaryActive' },
+          ],
+        },
+      },
       favorableUnderdogFight: {
         details: 'French won this encounter despite having significantly fewer deployed military resources than English. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where French found an advantage, healing, stronger micro, or a favorable unit matchup.',
       },
@@ -282,7 +298,7 @@ describe('renderPostMatchHtml (web mvp)', () => {
     const eventIndex = html.indexOf('Event impact');
     const visibleHeadline = '<span data-hover-field="significantEvent.label">French took a favorable fight against English, despite significantly fewer deployed military resources.</span>';
     const headlineIndex = html.indexOf(visibleHeadline);
-    const armyIndex = html.indexOf('Pre-encounter armies');
+    const armyIndex = html.indexOf('Event window armies');
     const lossesIndex = html.indexOf('Encounter losses');
     const underdogDetailsIndex = html.indexOf('Why this fight is notable');
     const allocationIndex = html.indexOf('data-inspector-section="allocation"');
@@ -300,24 +316,31 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).toContain('data-significant-event-underdog-details');
     expect(html).toContain('Why this fight is notable');
     expect(html).toContain('French won this encounter despite having significantly fewer deployed military resources than English.');
-    expect(html).toContain('Pre-encounter armies');
-    expect(html).toContain('English army before fight');
-    expect(html).toContain('French army before fight');
+    expect(html).toContain('Event window armies');
+    expect(html).toContain('Window start');
+    expect(html).toContain('Window end');
+    expect(html).toContain('English Army');
+    expect(html).toContain('French Army');
     expect(html).toContain('data-significant-event-army-total="player1">1,300</dd>');
     expect(html).toContain('data-significant-event-army-total="player2">640</dd>');
+    expect(html).toContain('data-significant-event-army-end-total="player1">1,140</dd>');
+    expect(html).toContain('data-significant-event-army-end-total="player2">400</dd>');
     expect(html).toContain('Longbowman x12');
     expect(html).toContain('Knight x2');
+    expect(html).toContain('Knight x1');
     expect(html).toContain('Encounter losses');
     expect(html).toContain('data-significant-event-losses');
-    expect(html).toContain('English losses');
-    expect(html).toContain('French losses');
+    expect(html).toContain('data-significant-event-loss-heading="player1">English</div>');
+    expect(html).toContain('data-significant-event-loss-heading="player2">French</div>');
+    expect(html).not.toContain('English losses');
+    expect(html).not.toContain('French losses');
     expect(html).toContain('Spearman x2');
     expect(html).toContain('Knight x1');
     expect(html).toContain('data-significant-event-loss-summary="player2"');
     expect(html).toContain('data-significant-event-loss-total="player2">330</dd>');
     expect(html).toContain('data-significant-event-loss-immediate="player2">240</dd>');
     expect(html).toContain('data-significant-event-loss-villager-opportunity="player2">90</dd>');
-    expect(html).toContain('data-significant-event-loss-share-label="player2">Share of French deployed</dt>');
+    expect(html).toContain('data-significant-event-loss-share-label="player2">Share of Deployed Resources Lost</dt>');
     expect(html).not.toContain('<dt>Share of deployed</dt>');
     expect(html).not.toContain('data-hover-field="significantEvent.description"');
     expect(html).not.toContain('data-hover-field="significantEvent.grossLoss"');

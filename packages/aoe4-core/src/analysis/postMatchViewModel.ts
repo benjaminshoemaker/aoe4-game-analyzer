@@ -11,7 +11,6 @@ import {
 } from './villagerOpportunity';
 import {
   SignificantResourceLossEvent,
-  SignificantResourceLossGatherDisruption,
   SignificantResourceLossItem,
   SignificantResourceLossKind,
   SignificantResourceLossPlayerImpact,
@@ -845,33 +844,24 @@ export function buildAgeMarkers(
   );
 }
 
-function gatherDisruptionDetail(disruption: SignificantResourceLossGatherDisruption): string {
-  return `Gather/min fell from ${formatNumber(disruption.baselineRatePerMin)} to ${formatNumber(disruption.minRatePerMin)} during this event window; row value is ${formatNumber(disruption.value)} resources of shortfall, equivalent to roughly ${formatNumber(disruption.idleEquivalentVillagerSeconds)} villager-seconds.`;
-}
-
-function gatherDisruptionLossItem(
-  disruption: SignificantResourceLossGatherDisruption | undefined
-): SignificantResourceLossItem | null {
-  if (!disruption) return null;
-  return {
-    label: disruption.label,
-    value: disruption.value,
-    count: 0,
-    band: 'economic',
-    showCount: false,
-    detail: gatherDisruptionDetail(disruption),
-    title: 'Event-window gather-rate shortfall, not direct unit loss.',
-  };
-}
-
 function encounterLossesForImpact(
   impact: SignificantResourceLossPlayerImpact | undefined
 ): SignificantResourceLossItem[] {
-  if (!impact) return [];
-  const gatherDisruptionItem = gatherDisruptionLossItem(impact.gatherDisruption);
-  return gatherDisruptionItem
-    ? [...impact.losses, gatherDisruptionItem]
-    : impact.losses;
+  const losses = impact?.losses ?? [];
+  const disruption = impact?.gatherDisruption;
+  if (!disruption || disruption.value <= 0) return losses;
+
+  return [
+    ...losses,
+    {
+      label: disruption.label,
+      value: disruption.value,
+      count: 0,
+      band: 'economic',
+      showCount: false,
+      title: `Gather/min fell from ${formatNumber(disruption.baselineRatePerMin)} to ${formatNumber(disruption.minRatePerMin)} during this event window; row value is ${formatNumber(disruption.value)} resources of shortfall, equivalent to roughly ${formatNumber(disruption.idleEquivalentVillagerSeconds)} villager-seconds.`,
+    },
+  ];
 }
 
 function buildSignificantTimelineEvents(
@@ -1280,6 +1270,28 @@ function hoverInteractionTimestamps(params: {
 function sparseResourceTimestamps(player: GameSummary['players'][number]): number[] {
   const timestamps = player.resources.timestamps ?? [];
   return timestamps.length <= 120 ? timestamps : [];
+}
+
+function significantEventForTimestamp(
+  events: SignificantTimelineEvent[],
+  timestamp: number
+): SignificantTimelineEvent | null {
+  const exact = events.find(event => event.timestamp === timestamp);
+  if (exact) return exact;
+
+  const containing = events
+    .filter(event => {
+      const start = Math.min(event.windowStart, event.windowEnd);
+      const end = Math.max(event.windowStart, event.windowEnd);
+      return timestamp >= start && timestamp <= end;
+    })
+    .sort((a, b) =>
+      Math.abs(a.timestamp - timestamp) - Math.abs(b.timestamp - timestamp) ||
+      Math.abs(a.windowEnd - a.windowStart) - Math.abs(b.windowEnd - b.windowStart) ||
+      a.id.localeCompare(b.id)
+    );
+
+  return containing[0] ?? null;
 }
 
 function toHoverBandValues(point: PoolSeriesPoint): PostMatchHoverSnapshot['you'] {
@@ -2500,7 +2512,7 @@ export function buildPostMatchViewModel(params: {
       ? ((adjusted.opponent - opponent.militaryActive) / opponent.militaryActive) * 100
       : null;
 
-    const significantEvent = significantEvents.find(event => event.timestamp === timestamp) ?? null;
+    const significantEvent = significantEventForTimestamp(significantEvents, timestamp);
 
     return {
       timestamp,

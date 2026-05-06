@@ -251,7 +251,10 @@ describe('post-match render CLI end-to-end', () => {
       expect.objectContaining({ label: 'Yatai', value: 125, count: 1 }),
       expect.objectContaining({ label: 'Gather disruption', value: 200, showCount: false }),
     ]));
-    expect(html).toContain('Gather/min fell from 1,000 to 700 during this event window; row value is 200 resources of shortfall, equivalent to roughly 300 villager-seconds.');
+    expect(html).toContain('data-significant-event-loss-gather-disruption-row="player1"');
+    expect(html).toContain('data-significant-event-loss-gather-disruption-help="player1"');
+    expect(html).toContain('function significantEventDisplayedTotalLoss');
+    expect(html).not.toContain('event-impact-loss-note">Gather/min fell from 1,000 to 700');
     expect(html).not.toContain('Gather disruption x0');
   });
 
@@ -358,8 +361,8 @@ describe('post-match render CLI end-to-end', () => {
     expect(html).toContain('<summary class="event-impact-heading">Event impact</summary>');
     expect(html).toContain('Event impact');
     expect(html).toContain('data-significant-event-loss-summary="player2"');
-    expect(html).toContain('data-significant-event-loss-share-label="player2">Share of Player 2 deployed</dt>');
-    expect(html).not.toContain('<dt>Share of deployed</dt>');
+    expect(html).toContain('data-significant-event-loss-share-label="player2">Share of Deployed Resources Lost</dt>');
+    expect(html).not.toContain('Share of Player 2 deployed');
   });
 
   it('renders corrected hover military value after upgraded-unit deaths', () => {

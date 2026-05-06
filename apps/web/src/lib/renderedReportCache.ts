@@ -25,7 +25,8 @@ const CACHE_NAMESPACE = 'aoe4-rendered-report-html';
 //   v7: engagement, acquisition, mobile timeline, outbound events.
 //   v8: outcome header leads with player label.
 //   v9: significant event encounter losses include gather-disruption detail rows.
-const CACHE_BASELINE = 'v9';
+//   v10: event panel impact summary and fight window army-state rendering.
+const CACHE_BASELINE = 'v10';
 
 type CacheEnv = Record<string, string | undefined>;
 

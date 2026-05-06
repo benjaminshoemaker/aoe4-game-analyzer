@@ -426,7 +426,10 @@ describe('post-match view integration', () => {
       expect.objectContaining({ label: 'Yatai', value: 125, count: 1 }),
       expect.objectContaining({ label: 'Gather disruption', value: 200, showCount: false }),
     ]));
-    expect(html).toContain('Gather/min fell from 1,000 to 700 during this event window; row value is 200 resources of shortfall, equivalent to roughly 300 villager-seconds.');
+    expect(html).toContain('data-significant-event-loss-gather-disruption-row="player1"');
+    expect(html).toContain('data-significant-event-loss-gather-disruption-help="player1"');
+    expect(html).toContain('function significantEventDisplayedTotalLoss');
+    expect(html).not.toContain('event-impact-loss-note">Gather/min fell from 1,000 to 700');
     expect(html).not.toContain('Gather disruption x0');
   });
 
@@ -567,6 +570,7 @@ describe('post-match view integration', () => {
     const html = renderPostMatchHtml(model, { surface: 'full' });
     const hoverData = extractHoverData(html);
     const point = hoverData.find(snapshot => snapshot.timestamp === 150);
+    const windowInteriorPoint = hoverData.find(snapshot => snapshot.timestamp === 120);
     const opponentVillager = point?.bandBreakdown?.economic?.opponent?.find(
       (entry: any) => entry.label === 'Villager'
     );
@@ -601,6 +605,12 @@ describe('post-match view integration', () => {
       villagerDeaths: 1,
     }));
     expect(point?.significantEvent).toEqual(expect.objectContaining({
+      victim: 'opponent',
+      kind: 'raid',
+      immediateLoss: 50,
+      villagerDeaths: 1,
+    }));
+    expect(windowInteriorPoint?.significantEvent).toEqual(expect.objectContaining({
       victim: 'opponent',
       kind: 'raid',
       immediateLoss: 50,

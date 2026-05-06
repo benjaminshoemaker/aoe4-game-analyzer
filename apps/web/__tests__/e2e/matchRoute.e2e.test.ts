@@ -110,6 +110,22 @@ describe('matches route e2e', () => {
           ],
         },
       },
+      postEncounterArmies: {
+        player1: {
+          totalValue: 1140,
+          units: [
+            { label: 'Longbowman', value: 960, count: 12, band: 'militaryActive' },
+            { label: 'Spearman', value: 180, count: 2, band: 'militaryActive' },
+          ],
+        },
+        player2: {
+          totalValue: 400,
+          units: [
+            { label: 'Knight', value: 240, count: 1, band: 'militaryActive' },
+            { label: 'Archer', value: 160, count: 2, band: 'militaryActive' },
+          ],
+        },
+      },
       favorableUnderdogFight: {
         details: 'French won this encounter despite having significantly fewer deployed military resources than English. That usually means the fight had an extenuating factor: defensive-structure fire, an isolated engagement where French found an advantage, healing, stronger micro, or a favorable unit matchup.',
       },
@@ -248,14 +264,16 @@ describe('matches route e2e', () => {
     expect(body).toContain('data-significant-event-underdog-toggle');
     expect(body).toContain('Why this fight is notable');
     expect(body).toContain('French won this encounter despite having significantly fewer deployed military resources than English.');
-    expect(body).toContain('Pre-encounter armies');
+    expect(body).toContain('Event window armies');
     expect(body).toContain('data-significant-event-army-total="player1">1,300</dd>');
     expect(body).toContain('data-significant-event-army-total="player2">640</dd>');
-    expect(body.indexOf('Pre-encounter armies')).toBeLessThan(body.indexOf('Encounter losses'));
+    expect(body).toContain('data-significant-event-army-end-total="player1">1,140</dd>');
+    expect(body).toContain('data-significant-event-army-end-total="player2">400</dd>');
+    expect(body.indexOf('Event window armies')).toBeLessThan(body.indexOf('Encounter losses'));
     expect(body.indexOf('Why this fight is notable')).toBeGreaterThan(body.indexOf('Encounter losses'));
     expect(body).toContain('data-significant-event-loss-summary="player2"');
     expect(body).toContain('data-significant-event-loss-immediate="player2">240</dd>');
-    expect(body).toContain('data-significant-event-loss-share-label="player2">Share of French deployed</dt>');
+    expect(body).toContain('data-significant-event-loss-share-label="player2">Share of Deployed Resources Lost</dt>');
     expect(body).not.toContain('data-hover-field="significantEvent.description"');
     expect(body).not.toContain('data-hover-field="significantEvent.grossLoss"');
     expect(body).not.toContain('data-hover-field="significantEvent.topLosses"');
@@ -294,7 +312,7 @@ describe('matches route e2e', () => {
     expect(mockUnstableCache).toHaveBeenCalledTimes(1);
     expect(mockUnstableCache.mock.calls[0][1]).toEqual([
       'aoe4-rendered-report-html',
-      expect.stringMatching(/^v9-(?:[a-f0-9]{12}|nobuild)-(?:[a-f0-9]{12}|none)$/),
+      expect.stringMatching(/^v10-(?:[a-f0-9]{12}|nobuild)-(?:[a-f0-9]{12}|none)$/),
       'my-slug',
       '230143339',
       expect.stringMatching(/^sig-sha256:[a-f0-9]{64}$/),

@@ -367,6 +367,51 @@ describe('significant resource loss timeline events', () => {
       .toEqual(['English Fight 2:10-3:00']);
   });
 
+  it('carries fight context across selected timestamps inside the event window', () => {
+    const duration = 4 * 60;
+    const event = significantEvent({
+      id: 'trebuchet-fight',
+      timestamp: 120,
+      windowStart: 100,
+      windowEnd: 160,
+      kind: 'fight',
+      victimPlayer: 2,
+      grossImpact: 1100,
+      preEncounterArmies: {
+        player1: {
+          totalValue: 1400,
+          units: [{ label: 'Donso', value: 1400, count: 14, band: 'militaryActive' }],
+        },
+        player2: {
+          totalValue: 1100,
+          units: [{ label: 'Counterweight Trebuchet', value: 1100, count: 2, band: 'militaryActive' }],
+        },
+      },
+    });
+
+    const model = buildPostMatchViewModel({
+      summary: summaryForSignificantEvents(duration),
+      analysis: analysisForSignificantEvents(duration, [event]),
+      perspectiveProfileId: 1,
+    });
+
+    expect(model.trajectory.hoverSnapshots.find(snapshot => snapshot.timestamp === 90)?.significantEvent)
+      .toBeNull();
+    expect(model.trajectory.hoverSnapshots.find(snapshot => snapshot.timestamp === 150)?.significantEvent)
+      .toEqual(expect.objectContaining({
+        id: 'trebuchet-fight',
+        preEncounterArmies: expect.objectContaining({
+          player2: expect.objectContaining({
+            units: [expect.objectContaining({
+              label: 'Counterweight Trebuchet',
+              count: 2,
+              value: 1100,
+            })],
+          }),
+        }),
+      }));
+  });
+
   it('writes raid and fight headlines with civilization names and carries encounter losses', () => {
     const duration = 3 * 60;
     const events = [
@@ -483,11 +528,20 @@ describe('significant resource loss timeline events', () => {
           expect.objectContaining({
             label: 'Gather disruption',
             value: 205,
+            count: 0,
             showCount: false,
-            detail: 'Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds.',
           }),
         ],
       },
+      playerImpacts: expect.objectContaining({
+        player2: expect.objectContaining({
+          gatherDisruption: expect.objectContaining({
+            label: 'Gather disruption',
+            value: 205,
+            idleEquivalentVillagerSeconds: 307,
+          }),
+        }),
+      }),
     }));
 
     const shortGameRaidModel = buildPostMatchViewModel({

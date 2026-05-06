@@ -766,8 +766,8 @@ ${adjustedFormatters}
         return significantEventLossRowsHtml(items);
       }
 
-      function significantEventArmyValue(event, playerKey) {
-        var armies = event && event.preEncounterArmies ? event.preEncounterArmies : null;
+      function significantEventArmyValue(event, playerKey, phase) {
+        var armies = event && phase === 'end' ? event.postEncounterArmies : event && event.preEncounterArmies;
         var army = armies ? armies[playerKey] : null;
         return army && Number.isFinite(Number(army.totalValue)) ? Number(army.totalValue) : 0;
       }
@@ -803,23 +803,60 @@ ${adjustedFormatters}
         return 0;
       }
 
+      function significantEventGatherDisruption(event, playerKey) {
+        var impact = event && event.playerImpacts ? event.playerImpacts[playerKey] : null;
+        return impact && impact.gatherDisruption ? impact.gatherDisruption : null;
+      }
+
+      function significantEventGatherDisruptionDetail(event, playerKey) {
+        var disruption = significantEventGatherDisruption(event, playerKey);
+        if (!disruption) return '';
+        return 'Gather/min fell from ' + formatNumber(disruption.baselineRatePerMin) +
+          ' to ' + formatNumber(disruption.minRatePerMin) +
+          ' during this event window; row value is ' + formatNumber(disruption.value) +
+          ' resources of shortfall, equivalent to roughly ' +
+          formatNumber(disruption.idleEquivalentVillagerSeconds) + ' villager-seconds.';
+      }
+
+      function significantEventDisplayedTotalLoss(event, playerKey) {
+        var disruption = significantEventGatherDisruption(event, playerKey);
+        return significantEventLossValue(event, playerKey, 'grossLoss') +
+          (disruption ? Number(disruption.value || 0) : 0);
+      }
+
+      function significantEventDisplayedPctOfDeployed(event, playerKey) {
+        var denominator = significantEventLossValue(event, playerKey, 'denominator');
+        if (denominator <= 0) return 0;
+        return (significantEventDisplayedTotalLoss(event, playerKey) / denominator) * 100;
+      }
+
       function setSignificantLossSummaryText(attr, playerKey, value) {
         document.querySelectorAll('[data-significant-event-loss-' + attr + '="' + playerKey + '"]').forEach(function (el) {
           el.textContent = value;
         });
       }
 
-      function updateSignificantEventLossSummary(event, playerKey, playerLabel) {
-        var totalLoss = significantEventLossValue(event, playerKey, 'grossLoss');
+      function updateSignificantEventLossSummary(event, playerKey) {
+        var totalLoss = significantEventDisplayedTotalLoss(event, playerKey);
         var immediateLoss = significantEventLossValue(event, playerKey, 'immediateLoss');
+        var gatherDisruption = significantEventGatherDisruption(event, playerKey);
         var villagerOpportunityLoss = significantEventLossValue(event, playerKey, 'villagerOpportunityLoss');
-        var pctOfDeployed = significantEventLossValue(event, playerKey, 'pctOfDeployed');
+        var pctOfDeployed = significantEventDisplayedPctOfDeployed(event, playerKey);
         setSignificantLossSummaryText('total', playerKey, event ? formatNumber(totalLoss) : '');
         setSignificantLossSummaryText('immediate', playerKey, event ? formatNumber(immediateLoss) : '');
+        setSignificantLossSummaryText('gather-disruption', playerKey, event && gatherDisruption ? formatNumber(gatherDisruption.value || 0) : '');
         setSignificantLossSummaryText('villager-opportunity', playerKey, event ? formatNumber(villagerOpportunityLoss) : '');
         setSignificantLossSummaryText('share', playerKey, event ? formatPrecise(pctOfDeployed, 1) + '%' : '');
         document.querySelectorAll('[data-significant-event-loss-share-label="' + playerKey + '"]').forEach(function (el) {
-          el.textContent = 'Share of ' + playerLabel + ' deployed';
+          el.textContent = 'Share of Deployed Resources Lost';
+        });
+        document.querySelectorAll('[data-significant-event-loss-gather-disruption-row="' + playerKey + '"]').forEach(function (el) {
+          el.hidden = !event || !gatherDisruption;
+        });
+        document.querySelectorAll('[data-significant-event-loss-gather-disruption-help="' + playerKey + '"]').forEach(function (el) {
+          var detail = event ? significantEventGatherDisruptionDetail(event, playerKey) : '';
+          el.setAttribute('title', detail);
+          el.setAttribute('aria-label', detail ? 'What is gather disruption?' : '');
         });
         document.querySelectorAll('[data-significant-event-loss-villager-opportunity-row="' + playerKey + '"]').forEach(function (el) {
           el.hidden = !event || villagerOpportunityLoss <= 0;
@@ -830,10 +867,10 @@ ${adjustedFormatters}
         var player1Label = event && (event.player1Label || event.player1Civilization) ? (event.player1Label || event.player1Civilization) : 'Player 1';
         var player2Label = event && (event.player2Label || event.player2Civilization) ? (event.player2Label || event.player2Civilization) : 'Player 2';
         document.querySelectorAll('[data-significant-event-loss-heading="player1"]').forEach(function (el) {
-          el.textContent = player1Label + ' losses';
+          el.textContent = player1Label;
         });
         document.querySelectorAll('[data-significant-event-loss-heading="player2"]').forEach(function (el) {
-          el.textContent = player2Label + ' losses';
+          el.textContent = player2Label;
         });
         document.querySelectorAll('[data-significant-event-loss-list="player1"]').forEach(function (el) {
           el.innerHTML = significantEventLossRowsHtml(event && event.encounterLosses ? event.encounterLosses.player1 : []);
@@ -841,34 +878,52 @@ ${adjustedFormatters}
         document.querySelectorAll('[data-significant-event-loss-list="player2"]').forEach(function (el) {
           el.innerHTML = significantEventLossRowsHtml(event && event.encounterLosses ? event.encounterLosses.player2 : []);
         });
-        updateSignificantEventLossSummary(event, 'player1', player1Label);
-        updateSignificantEventLossSummary(event, 'player2', player2Label);
+        updateSignificantEventLossSummary(event, 'player1');
+        updateSignificantEventLossSummary(event, 'player2');
       }
 
       function updateSignificantEventArmies(event) {
-        var showArmies = !!(event && event.kind === 'fight' && event.preEncounterArmies);
+        var showArmies = !!(event && event.kind === 'fight' && (event.preEncounterArmies || event.postEncounterArmies));
         var player1Label = event && (event.player1Label || event.player1Civilization) ? (event.player1Label || event.player1Civilization) : 'Player 1';
         var player2Label = event && (event.player2Label || event.player2Civilization) ? (event.player2Label || event.player2Civilization) : 'Player 2';
         document.querySelectorAll('[data-significant-event-armies]').forEach(function (el) {
           el.hidden = !showArmies;
         });
         document.querySelectorAll('[data-significant-event-army-heading="player1"]').forEach(function (el) {
-          el.textContent = player1Label + ' army before fight';
+          el.textContent = player1Label + ' Army';
         });
         document.querySelectorAll('[data-significant-event-army-heading="player2"]').forEach(function (el) {
-          el.textContent = player2Label + ' army before fight';
+          el.textContent = player2Label + ' Army';
+        });
+        document.querySelectorAll('[data-significant-event-army-end-heading="player1"]').forEach(function (el) {
+          el.textContent = player1Label + ' Army';
+        });
+        document.querySelectorAll('[data-significant-event-army-end-heading="player2"]').forEach(function (el) {
+          el.textContent = player2Label + ' Army';
         });
         document.querySelectorAll('[data-significant-event-army-total="player1"]').forEach(function (el) {
-          el.textContent = event ? formatNumber(significantEventArmyValue(event, 'player1')) : '';
+          el.textContent = event ? formatNumber(significantEventArmyValue(event, 'player1', 'start')) : '';
         });
         document.querySelectorAll('[data-significant-event-army-total="player2"]').forEach(function (el) {
-          el.textContent = event ? formatNumber(significantEventArmyValue(event, 'player2')) : '';
+          el.textContent = event ? formatNumber(significantEventArmyValue(event, 'player2', 'start')) : '';
+        });
+        document.querySelectorAll('[data-significant-event-army-end-total="player1"]').forEach(function (el) {
+          el.textContent = event ? formatNumber(significantEventArmyValue(event, 'player1', 'end')) : '';
+        });
+        document.querySelectorAll('[data-significant-event-army-end-total="player2"]').forEach(function (el) {
+          el.textContent = event ? formatNumber(significantEventArmyValue(event, 'player2', 'end')) : '';
         });
         document.querySelectorAll('[data-significant-event-army-list="player1"]').forEach(function (el) {
           el.innerHTML = significantEventArmyRowsHtml(event && event.preEncounterArmies ? event.preEncounterArmies.player1.units : []);
         });
         document.querySelectorAll('[data-significant-event-army-list="player2"]').forEach(function (el) {
           el.innerHTML = significantEventArmyRowsHtml(event && event.preEncounterArmies ? event.preEncounterArmies.player2.units : []);
+        });
+        document.querySelectorAll('[data-significant-event-army-end-list="player1"]').forEach(function (el) {
+          el.innerHTML = significantEventArmyRowsHtml(event && event.postEncounterArmies ? event.postEncounterArmies.player1.units : []);
+        });
+        document.querySelectorAll('[data-significant-event-army-end-list="player2"]').forEach(function (el) {
+          el.innerHTML = significantEventArmyRowsHtml(event && event.postEncounterArmies ? event.postEncounterArmies.player2.units : []);
         });
       }
 

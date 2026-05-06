@@ -85,6 +85,10 @@ export interface SignificantResourceLossEvent {
     player1: SignificantResourceMilitarySituation;
     player2: SignificantResourceMilitarySituation;
   };
+  postEncounterArmies?: {
+    player1: SignificantResourceMilitarySituation;
+    player2: SignificantResourceMilitarySituation;
+  };
 }
 
 export interface DetectSignificantResourceLossEventsParams {
@@ -291,12 +295,35 @@ function activeCountsAtWindowStart(
   return activeCounts;
 }
 
-function buildMilitarySituationAtWindowStart(
-  context: LossContext,
+function activeCountsAtWindowEnd(
+  lifecycleEvents: LifecycleLossEvent[],
+  contexts: LossItemContext[],
   timestamp: number
+): Map<LossItemContext, number> {
+  const activeCounts = new Map<LossItemContext, number>();
+
+  for (const event of lifecycleEvents) {
+    if (event.timestamp > timestamp) break;
+    if (event.kind === 'produced') {
+      activeCounts.set(event.context, activeCountForContext(activeCounts, event.context) + 1);
+      continue;
+    }
+
+    const lossContext = activeCountForContext(activeCounts, event.context) > 0
+      ? event.context
+      : findFallbackLossContext(event.context, contexts, activeCounts);
+    if (lossContext) {
+      activeCounts.set(lossContext, activeCountForContext(activeCounts, lossContext) - 1);
+    }
+  }
+
+  return activeCounts;
+}
+
+function buildMilitarySituationFromActiveCounts(
+  contexts: LossItemContext[],
+  activeCounts: Map<LossItemContext, number>
 ): SignificantResourceMilitarySituation {
-  const { contexts, events } = buildLossLifecycleContext(context.build);
-  const activeCounts = activeCountsAtWindowStart(events, contexts, timestamp);
   const byLabel = new Map<string, SignificantResourceLossItem>();
 
   for (const itemContext of contexts) {
@@ -329,6 +356,28 @@ function buildMilitarySituationAtWindowStart(
     totalValue: allUnits.reduce((sum, item) => sum + item.value, 0),
     units: allUnits.slice(0, 4),
   };
+}
+
+function buildMilitarySituationAtWindowStart(
+  context: LossContext,
+  timestamp: number
+): SignificantResourceMilitarySituation {
+  const { contexts, events } = buildLossLifecycleContext(context.build);
+  return buildMilitarySituationFromActiveCounts(
+    contexts,
+    activeCountsAtWindowStart(events, contexts, timestamp)
+  );
+}
+
+function buildMilitarySituationAtWindowEnd(
+  context: LossContext,
+  timestamp: number
+): SignificantResourceMilitarySituation {
+  const { contexts, events } = buildLossLifecycleContext(context.build);
+  return buildMilitarySituationFromActiveCounts(
+    contexts,
+    activeCountsAtWindowEnd(events, contexts, timestamp)
+  );
 }
 
 function valueAtOrBefore(series: PlayerDeployedPoolSeries['series'], timestamp: number): number {
@@ -790,6 +839,12 @@ export function detectSignificantResourceLossEvents(params: DetectSignificantRes
           player2: buildMilitarySituationAtWindowStart(player2Context, candidate.start),
         }
       : undefined;
+    const postEncounterArmies = kind === 'fight'
+      ? {
+          player1: buildMilitarySituationAtWindowEnd(player1Context, candidate.end),
+          player2: buildMilitarySituationAtWindowEnd(player2Context, candidate.end),
+        }
+      : undefined;
     const { description, impactSummary } = describeWindow({
       kind,
       windowSeconds,
@@ -851,6 +906,7 @@ export function detectSignificantResourceLossEvents(params: DetectSignificantRes
         },
       },
       ...(preEncounterArmies ? { preEncounterArmies } : {}),
+      ...(postEncounterArmies ? { postEncounterArmies } : {}),
     };
   });
 }
