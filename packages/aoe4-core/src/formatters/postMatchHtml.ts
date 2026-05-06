@@ -850,36 +850,66 @@ function significantEventTitle(event: SignificantTimelineEvent | null): string {
   return `${event.victimLabel} ${event.label}`;
 }
 
-function significantEventLossRowsHtml(items: SignificantTimelineEvent['encounterLosses']['player1']): string {
-  if (items.length === 0) {
-    return '<li class="event-impact-loss-row event-impact-loss-row-empty">No losses</li>';
-  }
-
-  return items
-    .map(item => {
-      const countLabel = item.showCount === false || item.count <= 0
-        ? ''
-        : ` x${formatNumber(item.count)}`;
-      const helpButton = item.title
-        ? `<button type="button" class="event-impact-help-button event-impact-inline-help-button" data-significant-event-loss-row-help aria-label="What is ${escapeHtml(item.label)}?" title="${escapeHtml(item.title)}">?</button>`
-        : '';
-      return `
-              <li class="event-impact-loss-row">
-                <span class="event-impact-loss-name">${escapeHtml(item.label)}${countLabel}${helpButton}${item.detail ? `<small class="event-impact-loss-note">${escapeHtml(item.detail)}</small>` : ''}</span>
-                <span class="event-impact-loss-value">${formatNumber(item.value)}</span>
-              </li>`;
-    })
-    .join('');
+function significantEventLossNameHtml(item: SignificantTimelineEvent['encounterLosses']['player1'][number]): string {
+  const countLabel = item.showCount === false || item.count <= 0
+    ? ''
+    : ` <span class="event-impact-item-count">x${formatNumber(item.count)}</span>`;
+  const helpButton = item.title
+    ? `<button type="button" class="event-impact-help-button event-impact-inline-help-button" data-significant-event-loss-row-help aria-label="What is ${escapeHtml(item.label)}?" title="${escapeHtml(item.title)}">?</button>`
+    : '';
+  return `${escapeHtml(item.label)}${countLabel}${helpButton}${item.detail ? `<small class="event-impact-loss-note">${escapeHtml(item.detail)}</small>` : ''}`;
 }
 
-function significantEventArmyRowsHtml(
+function significantEventLossTableRowsHtml(
+  player1Items: SignificantTimelineEvent['encounterLosses']['player1'],
+  player2Items: SignificantTimelineEvent['encounterLosses']['player2']
+): string {
+  const rowCount = Math.max(player1Items.length, player2Items.length, 1);
+  let player1EmptyRendered = false;
+  let player2EmptyRendered = false;
+  return Array.from({ length: rowCount }, (_, index) => {
+    const player1Item = player1Items[index];
+    const player2Item = player2Items[index];
+    const player1Cells = player1Item
+      ? `
+                <td class="event-impact-loss-name">${significantEventLossNameHtml(player1Item)}</td>
+                <td class="event-impact-loss-value">${formatNumber(player1Item.value)}</td>`
+      : !player1EmptyRendered
+        ? `<td class="event-impact-loss-empty-side event-impact-loss-empty-side-player1" colspan="2" rowspan="${rowCount - index}">No losses</td>`
+        : '';
+    const player2Cells = player2Item
+      ? `
+                <td class="event-impact-loss-name">${significantEventLossNameHtml(player2Item)}</td>
+                <td class="event-impact-loss-value">${formatNumber(player2Item.value)}</td>`
+      : !player2EmptyRendered
+        ? `<td class="event-impact-loss-empty-side event-impact-loss-empty-side-player2" colspan="2" rowspan="${rowCount - index}">No losses</td>`
+        : '';
+    if (!player1Item) player1EmptyRendered = true;
+    if (!player2Item) player2EmptyRendered = true;
+    return `
+              <tr>
+                ${player1Cells}
+                ${player2Cells}
+              </tr>`;
+  }).join('');
+}
+
+function significantEventArmyTableRowsHtml(
   units: NonNullable<SignificantTimelineEvent['preEncounterArmies']>['player1']['units'] | undefined
 ): string {
   if (!units || units.length === 0) {
-    return '<li class="event-impact-loss-row event-impact-loss-row-empty">No active military</li>';
+    return `
+              <tr>
+                <td class="event-impact-loss-row-empty">No active military</td>
+                <td></td>
+              </tr>`;
   }
 
-  return significantEventLossRowsHtml(units);
+  return units.map(unit => `
+              <tr>
+                <td class="event-impact-loss-name">${significantEventLossNameHtml(unit)}</td>
+                <td class="event-impact-loss-value">${formatNumber(unit.value)}</td>
+              </tr>`).join('');
 }
 
 function significantEventLossValue(
@@ -931,43 +961,100 @@ function significantEventDisplayedPctOfDeployed(
   return (significantEventDisplayedTotalLoss(event, playerKey) / denominator) * 100;
 }
 
-function significantEventLossSummaryHtml(
-  event: SignificantTimelineEvent | null,
-  playerKey: SignificantEventPlayerKey
-): string {
-  const totalLoss = significantEventDisplayedTotalLoss(event, playerKey);
-  const immediateLoss = significantEventDisplayedImmediateLoss(event, playerKey);
-  const villagerOpportunityLoss = significantEventLossValue(event, playerKey, 'villagerOpportunityLoss');
-  const pctOfDeployed = significantEventDisplayedPctOfDeployed(event, playerKey);
-  const opportunityHiddenAttr = event && villagerOpportunityLoss > 0 ? '' : ' hidden';
+function significantEventLossPill(event: SignificantTimelineEvent | null): string {
+  if (!event) return '';
+  return `${formatNumber(significantEventDisplayedTotalLoss(event, 'player1'))} vs ${formatNumber(significantEventDisplayedTotalLoss(event, 'player2'))}`;
+}
+
+function significantEventArmyPill(event: SignificantTimelineEvent | null): string {
+  if (!event) return '';
+  return `Start ${formatNumber(significantEventArmyValue(event, 'player1', 'start'))} / ${formatNumber(significantEventArmyValue(event, 'player2', 'start'))} -> End ${formatNumber(significantEventArmyValue(event, 'player1', 'end'))} / ${formatNumber(significantEventArmyValue(event, 'player2', 'end'))}`;
+}
+
+function significantEventSummaryHtml(event: SignificantTimelineEvent | null): string {
+  const player1Label = event?.player1Label ?? event?.player1Civilization ?? 'Player 1';
+  const player2Label = event?.player2Label ?? event?.player2Civilization ?? 'Player 2';
+  const showArmies = !!(event?.kind === 'fight' && (event.preEncounterArmies || event.postEncounterArmies));
+  const player1OpportunityLoss = significantEventLossValue(event, 'player1', 'villagerOpportunityLoss');
+  const player2OpportunityLoss = significantEventLossValue(event, 'player2', 'villagerOpportunityLoss');
+  const showOpportunity = !!event && (player1OpportunityLoss > 0 || player2OpportunityLoss > 0);
+  const armyHiddenAttr = showArmies ? '' : ' hidden';
+  const opportunityHiddenAttr = showOpportunity ? '' : ' hidden';
   return `
-                  <dl class="event-impact-loss-summary" data-significant-event-loss-summary="${playerKey}">
-                    <div><dt>Total loss</dt><dd data-significant-event-loss-total="${playerKey}">${event ? formatNumber(totalLoss) : ''}</dd></div>
-                    <div><dt>Immediate loss</dt><dd data-significant-event-loss-immediate="${playerKey}">${event ? formatNumber(immediateLoss) : ''}</dd></div>
-                    <div data-significant-event-loss-villager-opportunity-row="${playerKey}"${opportunityHiddenAttr}><dt><span data-villager-opportunity-event-tooltip title="${escapeHtml(significantVillagerOpportunityTooltip)}">Villager opportunity</span></dt><dd data-significant-event-loss-villager-opportunity="${playerKey}">${event ? formatNumber(villagerOpportunityLoss) : ''}</dd></div>
-                    <div><dt data-significant-event-loss-share-label="${playerKey}">Share of Deployed Resources Lost</dt><dd data-significant-event-loss-share="${playerKey}">${event ? `${formatPrecise(pctOfDeployed, 1)}%` : ''}</dd></div>
-                  </dl>`;
+            <div class="event-impact-summary" data-significant-event-summary>
+              <div class="event-impact-loss-detail-title">Event summary</div>
+              <table class="event-impact-summary-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Metric</th>
+                    <th scope="col" data-significant-event-summary-heading="player1">${escapeHtml(player1Label)}</th>
+                    <th scope="col" data-significant-event-summary-heading="player2">${escapeHtml(player2Label)}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr data-significant-event-summary-army-row${armyHiddenAttr}>
+                    <th scope="row">Window start active military</th>
+                    <td data-significant-event-army-total="player1">${event ? formatNumber(significantEventArmyValue(event, 'player1', 'start')) : ''}</td>
+                    <td data-significant-event-army-total="player2">${event ? formatNumber(significantEventArmyValue(event, 'player2', 'start')) : ''}</td>
+                  </tr>
+                  <tr data-significant-event-summary-army-row${armyHiddenAttr}>
+                    <th scope="row">Window end active military</th>
+                    <td data-significant-event-army-end-total="player1">${event ? formatNumber(significantEventArmyValue(event, 'player1', 'end')) : ''}</td>
+                    <td data-significant-event-army-end-total="player2">${event ? formatNumber(significantEventArmyValue(event, 'player2', 'end')) : ''}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Total loss</th>
+                    <td data-significant-event-loss-total="player1">${event ? formatNumber(significantEventDisplayedTotalLoss(event, 'player1')) : ''}</td>
+                    <td data-significant-event-loss-total="player2">${event ? formatNumber(significantEventDisplayedTotalLoss(event, 'player2')) : ''}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Immediate loss</th>
+                    <td data-significant-event-loss-immediate="player1">${event ? formatNumber(significantEventDisplayedImmediateLoss(event, 'player1')) : ''}</td>
+                    <td data-significant-event-loss-immediate="player2">${event ? formatNumber(significantEventDisplayedImmediateLoss(event, 'player2')) : ''}</td>
+                  </tr>
+                  <tr data-significant-event-summary-villager-opportunity-row${opportunityHiddenAttr}>
+                    <th scope="row"><span data-villager-opportunity-event-tooltip title="${escapeHtml(significantVillagerOpportunityTooltip)}">Villager opportunity</span></th>
+                    <td data-significant-event-loss-villager-opportunity="player1">${event ? formatNumber(player1OpportunityLoss) : ''}</td>
+                    <td data-significant-event-loss-villager-opportunity="player2">${event ? formatNumber(player2OpportunityLoss) : ''}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row" data-significant-event-loss-share-label>Share of deployed resources lost</th>
+                    <td data-significant-event-loss-share="player1">${event ? `${formatPrecise(significantEventDisplayedPctOfDeployed(event, 'player1'), 1)}%` : ''}</td>
+                    <td data-significant-event-loss-share="player2">${event ? `${formatPrecise(significantEventDisplayedPctOfDeployed(event, 'player2'), 1)}%` : ''}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>`;
 }
 
 function significantEventLossesHtml(event: SignificantTimelineEvent | null): string {
   const player1Label = event?.player1Label ?? event?.player1Civilization ?? 'Player 1';
   const player2Label = event?.player2Label ?? event?.player2Civilization ?? 'Player 2';
   return `
-            <div class="event-impact-loss-detail" data-significant-event-losses>
-              <div class="event-impact-loss-detail-title">Encounter losses</div>
-              <div class="event-impact-loss-columns">
-                <div class="event-impact-loss-column">
-                  <div class="event-impact-loss-column-heading" data-significant-event-loss-heading="player1">${escapeHtml(player1Label)}</div>
-                  ${significantEventLossSummaryHtml(event, 'player1')}
-                  <ul class="event-impact-loss-list" data-significant-event-loss-list="player1">${significantEventLossRowsHtml(event?.encounterLosses?.player1 ?? [])}</ul>
-                </div>
-                <div class="event-impact-loss-column">
-                  <div class="event-impact-loss-column-heading" data-significant-event-loss-heading="player2">${escapeHtml(player2Label)}</div>
-                  ${significantEventLossSummaryHtml(event, 'player2')}
-                  <ul class="event-impact-loss-list" data-significant-event-loss-list="player2">${significantEventLossRowsHtml(event?.encounterLosses?.player2 ?? [])}</ul>
-                </div>
+            <details class="event-impact-detail-disclosure event-impact-loss-detail" data-significant-event-losses>
+              <summary class="event-impact-detail-summary">
+                <span class="event-impact-detail-summary-main">
+                  <span class="event-impact-detail-summary-title">Encounter loss details</span>
+                  <span class="event-impact-detail-summary-caption">Itemized unit and villager losses by player</span>
+                </span>
+                <span class="event-impact-detail-summary-value" data-significant-event-loss-pill>${escapeHtml(significantEventLossPill(event))}</span>
+              </summary>
+              <div class="event-impact-detail-body">
+                <table class="event-impact-detail-table event-impact-loss-table">
+                  <thead>
+                    <tr>
+                      <th scope="col" data-significant-event-loss-heading="player1">${escapeHtml(player1Label)} loss</th>
+                      <th scope="col">Value</th>
+                      <th scope="col" data-significant-event-loss-heading="player2">${escapeHtml(player2Label)} loss</th>
+                      <th scope="col">Value</th>
+                    </tr>
+                  </thead>
+                  <tbody data-significant-event-loss-table>
+                    ${significantEventLossTableRowsHtml(event?.encounterLosses?.player1 ?? [], event?.encounterLosses?.player2 ?? [])}
+                  </tbody>
+                </table>
               </div>
-            </div>`;
+            </details>`;
 }
 
 function significantEventArmyValue(
@@ -994,43 +1081,43 @@ function significantEventWindowArmiesHtml(event: SignificantTimelineEvent | null
   const player2Label = event?.player2Label ?? event?.player2Civilization ?? 'Player 2';
   const hiddenAttr = event?.kind === 'fight' && (event.preEncounterArmies || event.postEncounterArmies) ? '' : ' hidden';
   return `
-            <div class="event-impact-loss-detail event-impact-army-detail" data-significant-event-armies${hiddenAttr}>
-              <div class="event-impact-loss-detail-title">Event window armies</div>
-              <div class="event-impact-army-phase-label">Window start</div>
-              <div class="event-impact-loss-columns">
-                <div class="event-impact-loss-column">
-                  <div class="event-impact-loss-column-heading" data-significant-event-army-heading="player1">${escapeHtml(player1Label)} Army</div>
-                  <dl class="event-impact-loss-summary">
-                    <div><dt>Active military</dt><dd data-significant-event-army-total="player1">${event ? formatNumber(significantEventArmyValue(event, 'player1', 'start')) : ''}</dd></div>
-                  </dl>
-                  <ul class="event-impact-loss-list" data-significant-event-army-list="player1">${significantEventArmyRowsHtml(event?.preEncounterArmies?.player1.units)}</ul>
-                </div>
-                <div class="event-impact-loss-column">
-                  <div class="event-impact-loss-column-heading" data-significant-event-army-heading="player2">${escapeHtml(player2Label)} Army</div>
-                  <dl class="event-impact-loss-summary">
-                    <div><dt>Active military</dt><dd data-significant-event-army-total="player2">${event ? formatNumber(significantEventArmyValue(event, 'player2', 'start')) : ''}</dd></div>
-                  </dl>
-                  <ul class="event-impact-loss-list" data-significant-event-army-list="player2">${significantEventArmyRowsHtml(event?.preEncounterArmies?.player2.units)}</ul>
+            <details class="event-impact-detail-disclosure event-impact-army-detail" data-significant-event-armies${hiddenAttr}>
+              <summary class="event-impact-detail-summary">
+                <span class="event-impact-detail-summary-main">
+                  <span class="event-impact-detail-summary-title">Event window army lists</span>
+                  <span class="event-impact-detail-summary-caption">Start and end active-military compositions</span>
+                </span>
+                <span class="event-impact-detail-summary-value" data-significant-event-army-pill>${escapeHtml(significantEventArmyPill(event))}</span>
+              </summary>
+              <div class="event-impact-detail-body">
+                <div class="event-impact-army-grid">
+                  <div class="event-impact-army-table">
+                    <h4 data-significant-event-army-heading="player1">Window start: ${escapeHtml(player1Label)}</h4>
+                    <table>
+                      <tbody data-significant-event-army-list="player1">${significantEventArmyTableRowsHtml(event?.preEncounterArmies?.player1.units)}</tbody>
+                    </table>
+                  </div>
+                  <div class="event-impact-army-table">
+                    <h4 data-significant-event-army-heading="player2">Window start: ${escapeHtml(player2Label)}</h4>
+                    <table>
+                      <tbody data-significant-event-army-list="player2">${significantEventArmyTableRowsHtml(event?.preEncounterArmies?.player2.units)}</tbody>
+                    </table>
+                  </div>
+                  <div class="event-impact-army-table">
+                    <h4 data-significant-event-army-end-heading="player1">Window end: ${escapeHtml(player1Label)}</h4>
+                    <table>
+                      <tbody data-significant-event-army-end-list="player1">${significantEventArmyTableRowsHtml(event?.postEncounterArmies?.player1.units)}</tbody>
+                    </table>
+                  </div>
+                  <div class="event-impact-army-table">
+                    <h4 data-significant-event-army-end-heading="player2">Window end: ${escapeHtml(player2Label)}</h4>
+                    <table>
+                      <tbody data-significant-event-army-end-list="player2">${significantEventArmyTableRowsHtml(event?.postEncounterArmies?.player2.units)}</tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
-              <div class="event-impact-army-phase-label">Window end</div>
-              <div class="event-impact-loss-columns">
-                <div class="event-impact-loss-column">
-                  <div class="event-impact-loss-column-heading" data-significant-event-army-end-heading="player1">${escapeHtml(player1Label)} Army</div>
-                  <dl class="event-impact-loss-summary">
-                    <div><dt>Active military</dt><dd data-significant-event-army-end-total="player1">${event ? formatNumber(significantEventArmyValue(event, 'player1', 'end')) : ''}</dd></div>
-                  </dl>
-                  <ul class="event-impact-loss-list" data-significant-event-army-end-list="player1">${significantEventArmyRowsHtml(event?.postEncounterArmies?.player1.units)}</ul>
-                </div>
-                <div class="event-impact-loss-column">
-                  <div class="event-impact-loss-column-heading" data-significant-event-army-end-heading="player2">${escapeHtml(player2Label)} Army</div>
-                  <dl class="event-impact-loss-summary">
-                    <div><dt>Active military</dt><dd data-significant-event-army-end-total="player2">${event ? formatNumber(significantEventArmyValue(event, 'player2', 'end')) : ''}</dd></div>
-                  </dl>
-                  <ul class="event-impact-loss-list" data-significant-event-army-end-list="player2">${significantEventArmyRowsHtml(event?.postEncounterArmies?.player2.units)}</ul>
-                </div>
-              </div>
-            </div>`;
+            </details>`;
 }
 
 function significantEventUnderdogDetailsHtml(event: SignificantTimelineEvent | null): string {
@@ -1053,8 +1140,9 @@ function buildSignificantEventImpactHtml(event: SignificantTimelineEvent | null)
           <details class="event-impact" data-significant-event${hiddenAttr} open>
             <summary class="event-impact-heading">Event impact</summary>
             ${significantEventTitleHtml(event)}
-            ${significantEventWindowArmiesHtml(event)}
+            ${significantEventSummaryHtml(event)}
             ${significantEventLossesHtml(event)}
+            ${significantEventWindowArmiesHtml(event)}
             ${significantEventUnderdogDetailsHtml(event)}
           </details>`;
 }
@@ -2979,12 +3067,140 @@ export function renderPostMatchHtml(
       margin: 6px 0 0;
     }
 
-    .event-impact-loss-detail {
+    .event-impact-summary {
       margin: 8px 0;
       padding: 7px;
       border: 1px solid #eadbd4;
       border-radius: 6px;
       background: rgba(255, 255, 255, 0.62);
+    }
+
+    .event-impact-summary-table,
+    .event-impact-detail-table,
+    .event-impact-army-table table {
+      width: 100%;
+      border-collapse: collapse;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .event-impact-loss-table {
+      table-layout: fixed;
+    }
+
+    .event-impact-army-table table {
+      table-layout: fixed;
+    }
+
+    .event-impact-summary-table th,
+    .event-impact-summary-table td,
+    .event-impact-detail-table th,
+    .event-impact-detail-table td,
+    .event-impact-army-table td {
+      padding: 4px 0;
+      border-top: 1px solid #f0e2dc;
+      vertical-align: top;
+    }
+
+    .event-impact-summary-table thead th,
+    .event-impact-detail-table thead th {
+      padding-top: 0;
+      border-top: 0;
+      color: #465447;
+      font-size: 10px;
+      font-weight: 800;
+      text-align: right;
+    }
+
+    .event-impact-summary-table thead th:first-child,
+    .event-impact-detail-table thead th:first-child {
+      text-align: left;
+    }
+
+    .event-impact-summary-table tbody th,
+    .event-impact-detail-table tbody th {
+      color: var(--color-muted);
+      font-size: 10px;
+      font-weight: 800;
+      text-align: left;
+      text-transform: uppercase;
+    }
+
+    .event-impact-summary-table td,
+    .event-impact-detail-table td {
+      color: var(--color-strong);
+      font-size: 12px;
+      font-weight: 800;
+      text-align: right;
+    }
+
+    .event-impact-detail-disclosure {
+      margin: 8px 0;
+      border: 1px solid #eadbd4;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.62);
+      overflow: hidden;
+    }
+
+    .event-impact-detail-summary {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 7px;
+      align-items: center;
+      padding: 8px;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .event-impact-detail-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .event-impact-detail-summary::before {
+      content: "+";
+      display: grid;
+      width: 16px;
+      height: 16px;
+      place-items: center;
+      border: 1px solid #d8c4bb;
+      border-radius: 50%;
+      color: #7b3f32;
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .event-impact-detail-disclosure[open] .event-impact-detail-summary::before {
+      content: "-";
+    }
+
+    .event-impact-detail-summary-main {
+      display: grid;
+      gap: 1px;
+      min-width: 0;
+    }
+
+    .event-impact-detail-summary-title {
+      color: #7b3f32;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .event-impact-detail-summary-caption {
+      color: var(--color-muted);
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .event-impact-detail-summary-value {
+      color: var(--color-strong);
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .event-impact-detail-body {
+      padding: 0 8px 8px;
     }
 
     .event-impact-loss-detail-title {
@@ -2995,87 +3211,68 @@ export function renderPostMatchHtml(
       text-transform: uppercase;
     }
 
-    .event-impact-loss-columns {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .event-impact-loss-column {
-      min-width: 0;
-    }
-
-    .event-impact-loss-column-heading {
-      margin-bottom: 3px;
-      color: #465447;
-      font-size: 11px;
-      font-weight: 800;
-    }
-
-    .event-impact-loss-summary {
-      display: grid;
-      gap: 3px;
-      margin: 0 0 6px;
-      padding: 0 0 6px;
-      border-bottom: 1px solid #f0e2dc;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .event-impact-loss-summary div {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 7px;
-      align-items: baseline;
-    }
-
-    .event-impact-loss-summary dt {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      min-width: 0;
-      color: var(--color-muted);
-      font-size: 9.5px;
-      font-weight: 800;
-      text-transform: uppercase;
-      overflow-wrap: anywhere;
-    }
-
-    .event-impact-loss-summary dd {
-      margin: 0;
-      color: var(--color-strong);
-      font-size: 12px;
-      font-weight: 800;
-    }
-
-    .event-impact-loss-list {
-      display: grid;
-      gap: 2px;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .event-impact-loss-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 8px;
-      align-items: baseline;
-      color: var(--color-strong);
-      font-size: 12px;
-    }
-
     .event-impact-loss-name {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 4px;
       min-width: 0;
+      text-align: left;
       overflow-wrap: anywhere;
+    }
+
+    .event-impact-loss-name .event-impact-inline-help-button {
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+
+    .event-impact-item-count {
+      white-space: nowrap;
+    }
+
+    .event-impact-loss-table th:nth-child(1),
+    .event-impact-loss-table td:nth-child(1),
+    .event-impact-loss-table th:nth-child(3),
+    .event-impact-loss-table td:nth-child(3) {
+      width: 38%;
+      padding-left: 12px;
+      text-align: left;
+    }
+
+    .event-impact-loss-table th:nth-child(1),
+    .event-impact-loss-table td:nth-child(1) {
+      padding-left: 0;
+    }
+
+    .event-impact-loss-table th:nth-child(2),
+    .event-impact-loss-table td:nth-child(2) {
+      width: 12%;
+      padding-left: 10px;
+      padding-right: 12px;
+      border-left: 1px solid #f5e8e2;
+    }
+
+    .event-impact-loss-table th:nth-child(4),
+    .event-impact-loss-table td:nth-child(4) {
+      width: 12%;
+      padding-left: 10px;
+      border-left: 1px solid #f5e8e2;
+    }
+
+    .event-impact-loss-table .event-impact-loss-empty-side {
+      padding: 10px 8px;
+      border-left: 1px solid #f5e8e2;
+      color: var(--color-muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      vertical-align: middle;
+      background: rgba(250, 246, 243, 0.64);
+    }
+
+    .event-impact-loss-table .event-impact-loss-empty-side-player1 {
+      border-left: 0;
+      border-right: 1px solid #f5e8e2;
     }
 
     .event-impact-loss-note {
       display: block;
-      flex-basis: 100%;
       margin-top: 2px;
       color: var(--color-muted);
       font-size: 11px;
@@ -3087,6 +3284,7 @@ export function renderPostMatchHtml(
       color: #7b3f32;
       font-variant-numeric: tabular-nums;
       font-weight: 800;
+      white-space: nowrap;
     }
 
     .event-impact-loss-row-empty {
@@ -3094,9 +3292,58 @@ export function renderPostMatchHtml(
       color: var(--color-muted);
     }
 
+    .event-impact-army-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px 12px;
+    }
+
+    .event-impact-army-table {
+      min-width: 0;
+    }
+
+    .event-impact-army-table table {
+      table-layout: fixed;
+    }
+
+    .event-impact-army-table h4 {
+      margin: 0 0 4px;
+      color: #465447;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .event-impact-army-table td {
+      color: var(--color-strong);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .event-impact-army-table td:first-child {
+      width: calc(100% - 64px);
+      padding-right: 8px;
+      text-align: left;
+    }
+
+    .event-impact-army-table td:last-child {
+      width: 64px;
+      padding-left: 8px;
+      border-left: 1px solid #f5e8e2;
+      text-align: right;
+    }
+
     @media (max-width: 760px) {
-      .event-impact-loss-columns {
+      .event-impact-army-grid {
         grid-template-columns: 1fr;
+      }
+
+      .event-impact-detail-summary {
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+
+      .event-impact-detail-summary-value {
+        grid-column: 2;
       }
     }
 

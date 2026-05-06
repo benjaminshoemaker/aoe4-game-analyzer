@@ -348,7 +348,7 @@ describe('Sengoku Yatai match route e2e', () => {
     const interiorSnapshot = hoverPayload.hoverSnapshots.find((point: { timestamp: number }) => point.timestamp === 180);
 
     expect(pageResponse.status).toBe(200);
-    expect(pageBody).toContain('Event window armies');
+    expect(pageBody).toContain('Event window army lists');
     expect(embeddedInteriorSnapshot?.significantEvent?.preEncounterArmies?.player2?.units).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ label: 'Knight', count: 2, value: 480 }),

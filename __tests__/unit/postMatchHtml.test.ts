@@ -822,24 +822,27 @@ describe('renderPostMatchHtml', () => {
     expect(html).toContain('French took a favorable fight against English, despite significantly fewer deployed military resources.');
     expect(html).toContain('Why this fight is notable');
     expect(html).toContain('French won this encounter despite having significantly fewer deployed military resources than English.');
-    expect(html).toContain('Event window armies');
-    expect(html.indexOf('Event window armies')).toBeLessThan(html.indexOf('Encounter losses'));
-    expect(html.indexOf('Why this fight is notable')).toBeGreaterThan(html.indexOf('Encounter losses'));
-    expect(html).toContain('data-significant-event-army-heading="player1">English Army</div>');
-    expect(html).toContain('data-significant-event-army-heading="player2">French Army</div>');
-    expect(html).toContain('data-significant-event-army-end-heading="player1">English Army</div>');
-    expect(html).toContain('data-significant-event-army-end-heading="player2">French Army</div>');
+    expect(html).toContain('Event summary');
+    expect(html).toContain('Encounter loss details');
+    expect(html).toContain('Event window army lists');
+    expect(html).toContain('<details class="event-impact-detail-disclosure event-impact-loss-detail" data-significant-event-losses>');
+    expect(html).toContain('<details class="event-impact-detail-disclosure event-impact-army-detail" data-significant-event-armies>');
+    expect(html.indexOf('Event summary')).toBeLessThan(html.indexOf('Encounter loss details'));
+    expect(html.indexOf('Encounter loss details')).toBeLessThan(html.indexOf('Event window army lists'));
+    expect(html.indexOf('Why this fight is notable')).toBeGreaterThan(html.indexOf('Event window army lists'));
+    expect(html).toContain('Window start: English');
+    expect(html).toContain('Window start: French');
+    expect(html).toContain('Window end: English');
+    expect(html).toContain('Window end: French');
     expect(html).not.toContain('army at window start');
     expect(html).not.toContain('army at window end');
-    expect(html).toContain('data-significant-event-army-total="player1">1,300</dd>');
-    expect(html).toContain('data-significant-event-army-total="player2">640</dd>');
-    expect(html).toContain('data-significant-event-army-end-total="player1">1,140</dd>');
-    expect(html).toContain('data-significant-event-army-end-total="player2">400</dd>');
-    expect(html).toContain('data-significant-event-loss-summary="player2"');
-    expect(html).toContain('data-significant-event-loss-heading="player2">French</div>');
+    expect(html).toContain('data-significant-event-army-total="player1">1,300</td>');
+    expect(html).toContain('data-significant-event-army-total="player2">640</td>');
+    expect(html).toContain('data-significant-event-army-end-total="player1">1,140</td>');
+    expect(html).toContain('data-significant-event-army-end-total="player2">400</td>');
     expect(html).not.toContain('French losses');
-    expect(html).toContain('data-significant-event-loss-total="player2">445</dd>');
-    expect(html).toContain('data-significant-event-loss-immediate="player2">445</dd>');
+    expect(html).toContain('data-significant-event-loss-total="player2">445</td>');
+    expect(html).toContain('data-significant-event-loss-immediate="player2">445</td>');
     expect(html).toContain('Gather disruption');
     expect(html).not.toContain('data-significant-event-loss-gather-disruption-row="player2"');
     expect(html).not.toContain('data-significant-event-loss-gather-disruption="player2"');
@@ -847,16 +850,72 @@ describe('renderPostMatchHtml', () => {
     expect(html).toContain('data-significant-event-loss-row-help');
     expect(html).toContain('title="Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds."');
     expect(html).not.toContain('event-impact-loss-note">Gather/min fell from 1,104 to 656');
-    expect(html).toContain('<span class="event-impact-loss-value">205</span>');
+    expect(html).toContain('<td class="event-impact-loss-value">205</td>');
     expect(html).not.toContain('Gather disruption x0');
     expect(html).not.toContain('Gather disruption x1');
     expect(html).toContain('.event-impact-inline-help-button {\n      width: 12px;');
     expect(html).toContain('height: 12px;');
-    expect(html).toContain('data-significant-event-loss-share-label="player2">Share of Deployed Resources Lost</dt>');
+    expect(html).toContain('data-significant-event-loss-share-label>Share of deployed resources lost</th>');
     expect(html).not.toContain('Share of French deployed');
     expect(html).not.toContain('data-hover-field="significantEvent.description"');
     expect(html).not.toContain('data-hover-field="significantEvent.grossLoss"');
     expect(html).not.toContain('data-hover-field="significantEvent.topLosses"');
+
+    const oneSidedLossEvent = {
+      ...significantEvent,
+      encounterLosses: {
+        player1: [
+          { label: 'Hardened Spearman', value: 1520, count: 19, band: 'militaryActive' },
+          { label: 'Palace Guard', value: 1265, count: 11, band: 'militaryActive' },
+        ],
+        player2: [],
+      },
+      preEncounterArmies: {
+        ...significantEvent.preEncounterArmies,
+        player1: {
+          totalValue: 2785,
+          units: [
+            { label: 'Hardened Spearman', value: 1520, count: 19, band: 'militaryActive' },
+            { label: 'Palace Guard', value: 1265, count: 11, band: 'militaryActive' },
+          ],
+        },
+      },
+      playerImpacts: {
+        ...significantEvent.playerImpacts,
+        player1: {
+          ...significantEvent.playerImpacts.player1,
+          immediateLoss: 2785,
+          grossLoss: 2785,
+          losses: [
+            { label: 'Hardened Spearman', value: 1520, count: 19, band: 'militaryActive' },
+            { label: 'Palace Guard', value: 1265, count: 11, band: 'militaryActive' },
+          ],
+          topLosses: [
+            { label: 'Hardened Spearman', value: 1520, count: 19, band: 'militaryActive' },
+            { label: 'Palace Guard', value: 1265, count: 11, band: 'militaryActive' },
+          ],
+        },
+        player2: {
+          ...significantEvent.playerImpacts.player2,
+          immediateLoss: 0,
+          grossLoss: 0,
+          villagerOpportunityLoss: 0,
+          gatherDisruption: undefined,
+          losses: [],
+          topLosses: [],
+        },
+      },
+    };
+    (model.trajectory as any).significantEvents = [oneSidedLossEvent];
+    (model.trajectory.hoverSnapshots[0] as any).significantEvent = oneSidedLossEvent;
+    const oneSidedHtml = renderPostMatchHtml(model, { surface: 'full' });
+
+    expect(oneSidedHtml).toContain('class="event-impact-loss-empty-side event-impact-loss-empty-side-player2" colspan="2" rowspan="2">No losses</td>');
+    expect(oneSidedHtml).not.toContain('<td class="event-impact-loss-name"></td>');
+    expect(oneSidedHtml).not.toContain('<td class="event-impact-loss-value"></td>');
+    expect(oneSidedHtml).toContain('Hardened Spearman <span class="event-impact-item-count">x19</span>');
+    expect(oneSidedHtml).toContain('.event-impact-army-table table {\n      table-layout: fixed;');
+    expect(oneSidedHtml).toContain('.event-impact-item-count {\n      white-space: nowrap;');
     const otherRowIndex = html.indexOf('data-allocation-category-row="other"');
     const otherDestroyedRowIndex = html.indexOf('data-allocation-category-accounting="other-destroyed"');
     const otherInvestmentRowIndex = html.indexOf('data-allocation-category-accounting="other-investment"');

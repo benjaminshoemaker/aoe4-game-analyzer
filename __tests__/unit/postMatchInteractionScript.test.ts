@@ -203,21 +203,26 @@ function runScriptInDom(script: string, hoverPoints: ClientHoverSnapshot[], anal
 	      </dl>
 	      <div data-significant-event-loss-villager-opportunity-row="player1"></div>
 	      <div data-significant-event-loss-villager-opportunity-row="player2"></div>
-	      <ul data-significant-event-loss-list="player1"></ul>
-	      <ul data-significant-event-loss-list="player2"></ul>
+	      <div data-significant-event-summary-villager-opportunity-row></div>
+	      <div data-significant-event-summary-army-row></div>
+	      <div data-significant-event-summary-heading="player1"></div>
+	      <div data-significant-event-summary-heading="player2"></div>
+	      <span data-significant-event-loss-pill></span>
+	      <table><tbody data-significant-event-loss-table></tbody></table>
 	      <div data-significant-event-armies hidden>
+	        <span data-significant-event-army-pill></span>
 	        <div data-significant-event-army-heading="player1"></div>
 	        <dd data-significant-event-army-total="player1"></dd>
-	        <ul data-significant-event-army-list="player1"></ul>
+	        <table><tbody data-significant-event-army-list="player1"></tbody></table>
 	        <div data-significant-event-army-heading="player2"></div>
 	        <dd data-significant-event-army-total="player2"></dd>
-	        <ul data-significant-event-army-list="player2"></ul>
+	        <table><tbody data-significant-event-army-list="player2"></tbody></table>
 	        <div data-significant-event-army-end-heading="player1"></div>
 	        <dd data-significant-event-army-end-total="player1"></dd>
-	        <ul data-significant-event-army-end-list="player1"></ul>
+	        <table><tbody data-significant-event-army-end-list="player1"></tbody></table>
 	        <div data-significant-event-army-end-heading="player2"></div>
 	        <dd data-significant-event-army-end-total="player2"></dd>
-	        <ul data-significant-event-army-end-list="player2"></ul>
+	        <table><tbody data-significant-event-army-end-list="player2"></tbody></table>
 	      </div>
 	      <button type="button" data-significant-event-underdog-toggle>Why notable</button>
       <details data-significant-event-underdog-details>
@@ -387,20 +392,62 @@ describe('post-match interaction script formatter', () => {
     };
     const script = buildHoverInteractionScript([point], labels);
     const { window } = runScriptInDom(script, [point]);
-    const player2Losses = window.document.querySelector('[data-significant-event-loss-list="player2"]')?.innerHTML ?? '';
+    const lossTable = window.document.querySelector('[data-significant-event-loss-table]')?.innerHTML ?? '';
 
-    expect(player2Losses).toContain('Yatai x1');
-    expect(player2Losses).toContain('Gather disruption');
-    expect(player2Losses).toContain('event-impact-loss-value">205</span>');
-    expect(player2Losses).toContain('data-significant-event-loss-row-help');
-    expect(player2Losses).toContain('title="Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds."');
-    expect(player2Losses).not.toContain('event-impact-loss-note');
+    expect(lossTable).toContain('Yatai <span class="event-impact-item-count">x1</span>');
+    expect(lossTable).toContain('Gather disruption');
+    expect(lossTable).toContain('event-impact-loss-value">205</td>');
+    expect(lossTable).toContain('data-significant-event-loss-row-help');
+    expect(lossTable).toContain('title="Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds."');
+    expect(lossTable).not.toContain('event-impact-loss-note');
     expect(window.document.querySelector('[data-significant-event-loss-total="player2"]')?.textContent).toBe('330');
     expect(window.document.querySelector('[data-significant-event-loss-immediate="player2"]')?.textContent).toBe('330');
+    expect(window.document.querySelector('[data-significant-event-loss-pill]')?.textContent).toBe('0 vs 330');
     expect(window.document.querySelector('[data-significant-event-loss-gather-disruption-row="player2"]')).toBeNull();
     expect(window.document.querySelector('[data-significant-event-loss-share-label="player2"]')?.textContent).toBe('Share of Deployed Resources Lost');
-    expect(player2Losses).not.toContain('Gather disruption x0');
-    expect(player2Losses).not.toContain('Gather disruption x1');
+    expect(lossTable).not.toContain('Gather disruption x0');
+    expect(lossTable).not.toContain('Gather disruption x1');
+  });
+
+  it('uses a stable empty-state cell for one-sided encounter losses', () => {
+    const point: ClientHoverSnapshot = {
+      ...eventSnapshot,
+      significantEvent: {
+        ...eventSnapshot.significantEvent!,
+        encounterLosses: {
+          player1: [
+            { label: 'Hardened Spearman', value: 1520, count: 19, band: 'militaryActive' },
+            { label: 'Palace Guard', value: 1265, count: 11, band: 'militaryActive' },
+          ],
+          player2: [],
+        },
+        playerImpacts: {
+          player1: {
+            grossLoss: 2785,
+            immediateLoss: 2785,
+            pctOfDeployed: 9.9,
+            villagerOpportunityLoss: 0,
+            denominator: 28000,
+          },
+          player2: {
+            grossLoss: 0,
+            immediateLoss: 0,
+            pctOfDeployed: 0,
+            villagerOpportunityLoss: 0,
+            denominator: 8000,
+          },
+        },
+      } as any,
+    };
+    const script = buildHoverInteractionScript([point], labels);
+    const { window } = runScriptInDom(script, [point]);
+    const lossTable = window.document.querySelector('[data-significant-event-loss-table]')?.innerHTML ?? '';
+
+    expect(lossTable).toContain('Hardened Spearman <span class="event-impact-item-count">x19</span>');
+    expect(lossTable).toContain('class="event-impact-loss-empty-side event-impact-loss-empty-side-player2" colspan="2" rowspan="2">No losses</td>');
+    expect(lossTable).not.toContain('<td class="event-impact-loss-name"></td>');
+    expect(lossTable).not.toContain('<td class="event-impact-loss-value"></td>');
+    expect(window.document.querySelector('[data-significant-event-loss-pill]')?.textContent).toBe('2,785 vs 0');
   });
 
   it('renders event-window start and end armies when hover state changes', () => {
@@ -412,7 +459,7 @@ describe('post-match interaction script formatter', () => {
         preEncounterArmies: {
           player1: {
             totalValue: 1300,
-            units: [{ label: 'Longbowman', value: 960, count: 12, band: 'militaryActive' }],
+            units: [{ label: 'Hardened Spearman', value: 960, count: 12, band: 'militaryActive' }],
           },
           player2: {
             totalValue: 640,
@@ -436,15 +483,19 @@ describe('post-match interaction script formatter', () => {
 
     expect(window.document.querySelector('[data-significant-event-armies]')?.hidden).toBe(false);
     expect(window.document.querySelector('[data-significant-event-army-heading="player1"]')?.textContent)
-      .toBe('Player One Army');
+      .toBe('Window start: Player One');
     expect(window.document.querySelector('[data-significant-event-army-total="player1"]')?.textContent)
       .toBe('1,300');
     expect(window.document.querySelector('[data-significant-event-army-end-heading="player2"]')?.textContent)
-      .toBe('Player Two Army');
+      .toBe('Window end: Player Two');
     expect(window.document.querySelector('[data-significant-event-army-end-total="player2"]')?.textContent)
       .toBe('400');
+    expect(window.document.querySelector('[data-significant-event-army-pill]')?.textContent)
+      .toBe('Start 1,300 / 640 -> End 1,140 / 400');
+    expect(window.document.querySelector('[data-significant-event-army-list="player1"]')?.innerHTML)
+      .toContain('Hardened Spearman <span class="event-impact-item-count">x12</span>');
     expect(window.document.querySelector('[data-significant-event-army-end-list="player2"]')?.innerHTML)
-      .toContain('Knight x1');
+      .toContain('Knight <span class="event-impact-item-count">x1</span>');
   });
 
   it('exposes the helpers needed to reset the hover inspector to the top on a significant event click', () => {

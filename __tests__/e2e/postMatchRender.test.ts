@@ -377,8 +377,8 @@ describe('post-match render CLI end-to-end', () => {
     expect(html).toMatch(/<details class="event-impact" data-significant-event(?: hidden)? open>/);
     expect(html).toContain('<summary class="event-impact-heading">Event impact</summary>');
     expect(html).toContain('Event impact');
-    expect(html).toContain('data-significant-event-loss-summary="player2"');
-    expect(html).toContain('data-significant-event-loss-share-label="player2">Share of Deployed Resources Lost</dt>');
+    expect(html).toContain('data-significant-event-summary');
+    expect(html).toContain('data-significant-event-loss-share-label>Share of deployed resources lost</th>');
     expect(html).not.toContain('Share of Player 2 deployed');
   });
 

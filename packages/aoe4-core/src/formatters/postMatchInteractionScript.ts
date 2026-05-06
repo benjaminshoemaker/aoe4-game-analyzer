@@ -747,29 +747,83 @@ ${adjustedHelpers}
       }
 ${adjustedFormatters}
 
-      function significantEventLossRowsHtml(items) {
+      function significantEventLossNameHtml(item) {
+        var label = item && item.label ? item.label : 'Loss';
+        var count = Number(item && item.count || 0);
+        var countLabel = item && item.showCount === false || count <= 0
+          ? ''
+          : ' <span class="event-impact-item-count">x' + formatNumber(count) + '</span>';
+        var detail = item && item.detail ? '<small class="event-impact-loss-note">' + escapeHtml(item.detail) + '</small>' : '';
+        var helpButton = item && item.title
+          ? '<button type="button" class="event-impact-help-button event-impact-inline-help-button" data-significant-event-loss-row-help aria-label="What is ' + escapeHtml(label) + '?" title="' + escapeHtml(item.title) + '">?</button>'
+          : '';
+        return escapeHtml(label) + countLabel + helpButton + detail;
+      }
+
+      function significantEventLossTableRowsHtml(player1Items, player2Items) {
+        var left = Array.isArray(player1Items) ? player1Items : [];
+        var right = Array.isArray(player2Items) ? player2Items : [];
+        var rowCount = Math.max(left.length, right.length, 1);
+        var player1EmptyRendered = false;
+        var player2EmptyRendered = false;
+        var rows = [];
+        for (var index = 0; index < rowCount; index += 1) {
+          var player1Item = left[index];
+          var player2Item = right[index];
+          var player1Cells = player1Item
+            ? '<td class="event-impact-loss-name">' + significantEventLossNameHtml(player1Item) + '</td>' +
+              '<td class="event-impact-loss-value">' + formatNumber(player1Item.value || 0) + '</td>'
+            : !player1EmptyRendered
+              ? '<td class="event-impact-loss-empty-side event-impact-loss-empty-side-player1" colspan="2" rowspan="' + (rowCount - index) + '">No losses</td>'
+              : '';
+          var player2Cells = player2Item
+            ? '<td class="event-impact-loss-name">' + significantEventLossNameHtml(player2Item) + '</td>' +
+              '<td class="event-impact-loss-value">' + formatNumber(player2Item.value || 0) + '</td>'
+            : !player2EmptyRendered
+              ? '<td class="event-impact-loss-empty-side event-impact-loss-empty-side-player2" colspan="2" rowspan="' + (rowCount - index) + '">No losses</td>'
+              : '';
+          if (!player1Item) player1EmptyRendered = true;
+          if (!player2Item) player2EmptyRendered = true;
+          rows.push('<tr>' +
+            player1Cells +
+            player2Cells +
+            '</tr>');
+        }
+        return rows.join('');
+      }
+
+      function significantEventArmyTableRowsHtml(items) {
         if (!Array.isArray(items) || items.length === 0) {
-          return '<li class="event-impact-loss-row event-impact-loss-row-empty">No losses</li>';
+          return '<tr>' +
+            '<td class="event-impact-loss-row-empty">No active military</td>' +
+            '<td></td>' +
+            '</tr>';
         }
         return items.map(function (item) {
-          var count = Number(item.count || 0);
-          var countLabel = item.showCount === false || count <= 0 ? '' : ' x' + formatNumber(count);
-          var detail = item.detail ? '<small class="event-impact-loss-note">' + escapeHtml(item.detail) + '</small>' : '';
-          var helpButton = item.title
-            ? '<button type="button" class="event-impact-help-button event-impact-inline-help-button" data-significant-event-loss-row-help aria-label="What is ' + escapeHtml(item.label || 'loss') + '?" title="' + escapeHtml(item.title) + '">?</button>'
-            : '';
-          return '<li class="event-impact-loss-row">' +
-            '<span class="event-impact-loss-name">' + escapeHtml(item.label || 'Loss') + countLabel + helpButton + detail + '</span>' +
-            '<span class="event-impact-loss-value">' + formatNumber(item.value || 0) + '</span>' +
-            '</li>';
+          return '<tr>' +
+            '<td class="event-impact-loss-name">' + significantEventLossNameHtml(item) + '</td>' +
+            '<td class="event-impact-loss-value">' + formatNumber(item.value || 0) + '</td>' +
+            '</tr>';
         }).join('');
       }
 
-      function significantEventArmyRowsHtml(items) {
-        if (!Array.isArray(items) || items.length === 0) {
-          return '<li class="event-impact-loss-row event-impact-loss-row-empty">No active military</li>';
-        }
-        return significantEventLossRowsHtml(items);
+      function significantEventLossPill(event) {
+        if (!event) return '';
+        return formatNumber(significantEventDisplayedTotalLoss(event, 'player1')) +
+          ' vs ' +
+          formatNumber(significantEventDisplayedTotalLoss(event, 'player2'));
+      }
+
+      function significantEventArmyPill(event) {
+        if (!event) return '';
+        return 'Start ' +
+          formatNumber(significantEventArmyValue(event, 'player1', 'start')) +
+          ' / ' +
+          formatNumber(significantEventArmyValue(event, 'player2', 'start')) +
+          ' -> End ' +
+          formatNumber(significantEventArmyValue(event, 'player1', 'end')) +
+          ' / ' +
+          formatNumber(significantEventArmyValue(event, 'player2', 'end'));
       }
 
       function significantEventArmyValue(event, playerKey, phase) {
@@ -853,25 +907,33 @@ ${adjustedFormatters}
         document.querySelectorAll('[data-significant-event-loss-villager-opportunity-row="' + playerKey + '"]').forEach(function (el) {
           el.hidden = !event || villagerOpportunityLoss <= 0;
         });
+        document.querySelectorAll('[data-significant-event-loss-pill]').forEach(function (el) {
+          el.textContent = significantEventLossPill(event);
+        });
       }
 
       function updateSignificantEventLosses(event) {
         var player1Label = event && (event.player1Label || event.player1Civilization) ? (event.player1Label || event.player1Civilization) : 'Player 1';
         var player2Label = event && (event.player2Label || event.player2Civilization) ? (event.player2Label || event.player2Civilization) : 'Player 2';
         document.querySelectorAll('[data-significant-event-loss-heading="player1"]').forEach(function (el) {
-          el.textContent = player1Label;
+          el.textContent = player1Label + ' loss';
         });
         document.querySelectorAll('[data-significant-event-loss-heading="player2"]').forEach(function (el) {
-          el.textContent = player2Label;
+          el.textContent = player2Label + ' loss';
         });
-        document.querySelectorAll('[data-significant-event-loss-list="player1"]').forEach(function (el) {
-          el.innerHTML = significantEventLossRowsHtml(event && event.encounterLosses ? event.encounterLosses.player1 : []);
-        });
-        document.querySelectorAll('[data-significant-event-loss-list="player2"]').forEach(function (el) {
-          el.innerHTML = significantEventLossRowsHtml(event && event.encounterLosses ? event.encounterLosses.player2 : []);
+        document.querySelectorAll('[data-significant-event-loss-table]').forEach(function (el) {
+          el.innerHTML = significantEventLossTableRowsHtml(
+            event && event.encounterLosses ? event.encounterLosses.player1 : [],
+            event && event.encounterLosses ? event.encounterLosses.player2 : []
+          );
         });
         updateSignificantEventLossSummary(event, 'player1');
         updateSignificantEventLossSummary(event, 'player2');
+        var player1OpportunityLoss = significantEventLossValue(event, 'player1', 'villagerOpportunityLoss');
+        var player2OpportunityLoss = significantEventLossValue(event, 'player2', 'villagerOpportunityLoss');
+        document.querySelectorAll('[data-significant-event-summary-villager-opportunity-row]').forEach(function (el) {
+          el.hidden = !event || (player1OpportunityLoss <= 0 && player2OpportunityLoss <= 0);
+        });
       }
 
       function updateSignificantEventArmies(event) {
@@ -881,17 +943,26 @@ ${adjustedFormatters}
         document.querySelectorAll('[data-significant-event-armies]').forEach(function (el) {
           el.hidden = !showArmies;
         });
+        document.querySelectorAll('[data-significant-event-summary-army-row]').forEach(function (el) {
+          el.hidden = !showArmies;
+        });
+        document.querySelectorAll('[data-significant-event-summary-heading="player1"]').forEach(function (el) {
+          el.textContent = player1Label;
+        });
+        document.querySelectorAll('[data-significant-event-summary-heading="player2"]').forEach(function (el) {
+          el.textContent = player2Label;
+        });
         document.querySelectorAll('[data-significant-event-army-heading="player1"]').forEach(function (el) {
-          el.textContent = player1Label + ' Army';
+          el.textContent = 'Window start: ' + player1Label;
         });
         document.querySelectorAll('[data-significant-event-army-heading="player2"]').forEach(function (el) {
-          el.textContent = player2Label + ' Army';
+          el.textContent = 'Window start: ' + player2Label;
         });
         document.querySelectorAll('[data-significant-event-army-end-heading="player1"]').forEach(function (el) {
-          el.textContent = player1Label + ' Army';
+          el.textContent = 'Window end: ' + player1Label;
         });
         document.querySelectorAll('[data-significant-event-army-end-heading="player2"]').forEach(function (el) {
-          el.textContent = player2Label + ' Army';
+          el.textContent = 'Window end: ' + player2Label;
         });
         document.querySelectorAll('[data-significant-event-army-total="player1"]').forEach(function (el) {
           el.textContent = event ? formatNumber(significantEventArmyValue(event, 'player1', 'start')) : '';
@@ -905,17 +976,20 @@ ${adjustedFormatters}
         document.querySelectorAll('[data-significant-event-army-end-total="player2"]').forEach(function (el) {
           el.textContent = event ? formatNumber(significantEventArmyValue(event, 'player2', 'end')) : '';
         });
+        document.querySelectorAll('[data-significant-event-army-pill]').forEach(function (el) {
+          el.textContent = significantEventArmyPill(event);
+        });
         document.querySelectorAll('[data-significant-event-army-list="player1"]').forEach(function (el) {
-          el.innerHTML = significantEventArmyRowsHtml(event && event.preEncounterArmies ? event.preEncounterArmies.player1.units : []);
+          el.innerHTML = significantEventArmyTableRowsHtml(event && event.preEncounterArmies ? event.preEncounterArmies.player1.units : []);
         });
         document.querySelectorAll('[data-significant-event-army-list="player2"]').forEach(function (el) {
-          el.innerHTML = significantEventArmyRowsHtml(event && event.preEncounterArmies ? event.preEncounterArmies.player2.units : []);
+          el.innerHTML = significantEventArmyTableRowsHtml(event && event.preEncounterArmies ? event.preEncounterArmies.player2.units : []);
         });
         document.querySelectorAll('[data-significant-event-army-end-list="player1"]').forEach(function (el) {
-          el.innerHTML = significantEventArmyRowsHtml(event && event.postEncounterArmies ? event.postEncounterArmies.player1.units : []);
+          el.innerHTML = significantEventArmyTableRowsHtml(event && event.postEncounterArmies ? event.postEncounterArmies.player1.units : []);
         });
         document.querySelectorAll('[data-significant-event-army-end-list="player2"]').forEach(function (el) {
-          el.innerHTML = significantEventArmyRowsHtml(event && event.postEncounterArmies ? event.postEncounterArmies.player2.units : []);
+          el.innerHTML = significantEventArmyTableRowsHtml(event && event.postEncounterArmies ? event.postEncounterArmies.player2.units : []);
         });
       }
 
