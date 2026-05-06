@@ -1,29 +1,34 @@
 export type AnalyticsValue = string | number | boolean | null;
 export type AnalyticsProperties = Record<string, AnalyticsValue>;
 
-const SIGNATURE_QUERY_PATTERN = /(?:sig=|sig%3d|sig%253d)/i;
-const SENSITIVE_PROPERTY_NAMES = new Set(['sig', 'signature', 'summary_sig', 'sig_token']);
+const SENSITIVE_QUERY_PATTERN = /(?:(?:sig|api_key|apikey)=|(?:sig|api_key|apikey)%3d|(?:sig|api_key|apikey)%253d)/i;
+const SENSITIVE_PROPERTY_NAMES = new Set(['sig', 'signature', 'summary_sig', 'sig_token', 'api_key', 'apikey']);
 
-function containsSensitiveSignatureQuery(value: string): boolean {
-  return SIGNATURE_QUERY_PATTERN.test(value);
+function containsSensitiveQuery(value: string): boolean {
+  return SENSITIVE_QUERY_PATTERN.test(value);
 }
 
-function stripSignaturePatterns(value: string): string {
+function isSensitiveQueryParamName(key: string): boolean {
+  const normalized = key.toLowerCase();
+  return normalized === 'sig' || normalized === 'api_key' || normalized === 'apikey';
+}
+
+function stripSensitiveQueryPatterns(value: string): string {
   return value
-    .replace(/([?&])sig=[^&#]*&?/gi, (_match, prefix) => prefix === '?' ? '?' : '')
-    .replace(/(%3F|%26)sig%3D[^%&#]*/gi, (_match, prefix) => prefix.toLowerCase() === '%3f' ? prefix : '')
-    .replace(/(%253F|%2526)sig%253D[^%&#]*/gi, (_match, prefix) => prefix.toLowerCase() === '%253f' ? prefix : '');
+    .replace(/([?&])(?:sig|api_key|apikey)=[^&#]*&?/gi, (_match, prefix) => prefix === '?' ? '?' : '')
+    .replace(/(%3F|%26)(?:sig|api_key|apikey)%3D[^%&#]*/gi, (_match, prefix) => prefix.toLowerCase() === '%3f' ? prefix : '')
+    .replace(/(%253F|%2526)(?:sig|api_key|apikey)%253D[^%&#]*/gi, (_match, prefix) => prefix.toLowerCase() === '%253f' ? prefix : '');
 }
 
 export function stripSensitiveQueryParams(value: string): string {
-  if (!containsSensitiveSignatureQuery(value)) return value;
+  if (!containsSensitiveQuery(value)) return value;
 
   try {
     const isAbsolute = /^[a-z][a-z0-9+.-]*:/i.test(value);
     const url = isAbsolute ? new URL(value) : new URL(value, 'https://aoe4.local');
     let changed = false;
     for (const key of Array.from(url.searchParams.keys())) {
-      if (key.toLowerCase() === 'sig') {
+      if (isSensitiveQueryParamName(key)) {
         url.searchParams.delete(key);
         changed = true;
         continue;
@@ -39,17 +44,19 @@ export function stripSensitiveQueryParams(value: string): string {
         changed = true;
       }
     }
-    if (!changed) return stripSignaturePatterns(value);
+    if (!changed) return stripSensitiveQueryPatterns(value);
     return isAbsolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
   } catch (_error) {
-    return stripSignaturePatterns(value);
+    return stripSensitiveQueryPatterns(value);
   }
 }
 
 export function shouldDropAnalyticsProperty(key: string): boolean {
   const normalized = key.toLowerCase();
   return SENSITIVE_PROPERTY_NAMES.has(normalized) ||
-    normalized.includes('signature_token');
+    normalized.includes('signature_token') ||
+    normalized.endsWith('_api_key') ||
+    normalized.endsWith('_apikey');
 }
 
 export function sanitizeAnalyticsProperties(properties: Record<string, unknown>): AnalyticsProperties {
@@ -72,16 +79,20 @@ export function sanitizeAnalyticsProperties(properties: Record<string, unknown>)
 export function browserAnalyticsPrivacyScript(): string {
   return `
   function stripSensitiveQueryParams(value) {
-    if (typeof value !== 'string' || !/(?:sig=|sig%3d|sig%253d)/i.test(value)) return value;
-    function stripSignaturePatterns(input) {
+    if (typeof value !== 'string' || !/(?:(?:sig|api_key|apikey)=|(?:sig|api_key|apikey)%3d|(?:sig|api_key|apikey)%253d)/i.test(value)) return value;
+    function isSensitiveQueryParamName(key) {
+      var normalized = String(key || '').toLowerCase();
+      return normalized === 'sig' || normalized === 'api_key' || normalized === 'apikey';
+    }
+    function stripSensitiveQueryPatterns(input) {
       return input
-        .replace(/([?&])sig=[^&#]*&?/ig, function (_match, prefix) {
+        .replace(/([?&])(?:sig|api_key|apikey)=[^&#]*&?/ig, function (_match, prefix) {
           return prefix === '?' ? '?' : '';
         })
-        .replace(/(%3F|%26)sig%3D[^%&#]*/ig, function (_match, prefix) {
+        .replace(/(%3F|%26)(?:sig|api_key|apikey)%3D[^%&#]*/ig, function (_match, prefix) {
           return prefix.toLowerCase() === '%3f' ? prefix : '';
         })
-        .replace(/(%253F|%2526)sig%253D[^%&#]*/ig, function (_match, prefix) {
+        .replace(/(%253F|%2526)(?:sig|api_key|apikey)%253D[^%&#]*/ig, function (_match, prefix) {
           return prefix.toLowerCase() === '%253f' ? prefix : '';
         });
     }
@@ -90,7 +101,7 @@ export function browserAnalyticsPrivacyScript(): string {
       var url = new URL(value, isAbsolute ? undefined : window.location.origin);
       var changed = false;
       Array.from(url.searchParams.keys()).forEach(function (key) {
-        if (key.toLowerCase() === 'sig') {
+        if (isSensitiveQueryParamName(key)) {
           url.searchParams.delete(key);
           changed = true;
           return;
@@ -109,10 +120,10 @@ export function browserAnalyticsPrivacyScript(): string {
         });
         changed = true;
       });
-      if (!changed) return stripSignaturePatterns(value);
+      if (!changed) return stripSensitiveQueryPatterns(value);
       return isAbsolute ? url.toString() : (url.pathname + url.search + url.hash);
     } catch (_error) {
-      return stripSignaturePatterns(value);
+      return stripSensitiveQueryPatterns(value);
     }
   }
 
@@ -122,7 +133,11 @@ export function browserAnalyticsPrivacyScript(): string {
       normalized === 'signature' ||
       normalized === 'summary_sig' ||
       normalized === 'sig_token' ||
-      normalized.indexOf('signature_token') !== -1;
+      normalized === 'api_key' ||
+      normalized === 'apikey' ||
+      normalized.indexOf('signature_token') !== -1 ||
+      normalized.slice(-8) === '_api_key' ||
+      normalized.slice(-7) === '_apikey';
   }
 
   function sanitizeProperties(properties) {

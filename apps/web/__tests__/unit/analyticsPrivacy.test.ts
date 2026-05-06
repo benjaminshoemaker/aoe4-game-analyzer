@@ -8,9 +8,11 @@ describe('analytics privacy policy', () => {
   it('sanitizes private signature data through one reusable module', () => {
     const properties = sanitizeAnalyticsProperties({
       sig: 'private',
+      api_key: 'private-api-key',
+      apiKey: 'private-api-key',
       signature_token_value: 'private',
       current_url: '/matches/foo/123?sig=private&t=90',
-      nested: '/matches/loading?to=%2Fmatches%2Ffoo%2F123%3Fsig%3Dprivate%26t%3D90',
+      nested: '/matches/loading?to=%2Fmatches%2Ffoo%2F123%3Fsig%3Dprivate%26api_key%3Dprivate-api-key%26t%3D90',
       has_sig: true,
       count: 2,
       ignored: { raw: true },
@@ -23,12 +25,16 @@ describe('analytics privacy policy', () => {
       count: 2,
     });
     expect(JSON.stringify(properties)).not.toContain('private');
+    expect(JSON.stringify(properties)).not.toContain('api_key');
+    expect(JSON.stringify(properties)).not.toContain('apiKey');
   });
 
   it('exports browser-parseable privacy helpers for the generated bootstrap', () => {
-    expect(stripSensitiveQueryParams('https://aoe4world.com/players/1/games/2?sig=abc&t=90'))
+    expect(stripSensitiveQueryParams('https://aoe4world.com/players/1/games/2?sig=abc&api_key=server-token&t=90'))
       .toBe('https://aoe4world.com/players/1/games/2?t=90');
-    expect(() => new Function(`${browserAnalyticsPrivacyScript()}; return sanitizeProperties({sig: 'x'});`))
+    expect(stripSensitiveQueryParams('https://overlay.aoe4world.com/profile/1/bar?apiKey=server-token&theme=top'))
+      .toBe('https://overlay.aoe4world.com/profile/1/bar?theme=top');
+    expect(() => new Function(`${browserAnalyticsPrivacyScript()}; return sanitizeProperties({sig: 'x', api_key: 'y'});`))
       .not.toThrow();
   });
 });

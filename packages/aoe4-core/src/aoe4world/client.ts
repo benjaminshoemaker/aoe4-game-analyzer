@@ -27,12 +27,16 @@ export function buildAoe4WorldHeaders(kind: Aoe4WorldRequestKind): Record<string
 export function buildGameSummaryRequest(
   profileId: number | string,
   gameId: number,
-  sig?: string
+  sig?: string,
+  apiKey?: string
 ): Aoe4WorldRequest {
   const profileSlug = typeof profileId === 'string' ? profileId : String(profileId);
   const params: Record<string, string | number> = { camelize: 'true' };
   if (sig) {
     params.sig = sig;
+  }
+  if (apiKey) {
+    params.api_key = apiKey;
   }
 
   return {

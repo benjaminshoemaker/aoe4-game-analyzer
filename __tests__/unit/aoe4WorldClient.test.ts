@@ -18,6 +18,18 @@ describe('AoE4World client policy', () => {
     expect(request.headers['User-Agent']).not.toContain('Mozilla');
   });
 
+  it('adds the configured AoE4World API key as api_key query param', () => {
+    const request = buildGameSummaryRequest('8097972-steam', 230143339, 'private-sig', 'server-token');
+
+    expect(request.params).toEqual({
+      camelize: 'true',
+      sig: 'private-sig',
+      api_key: 'server-token',
+    });
+    expect(request.params).not.toHaveProperty('apiKey');
+    expect(request.params).not.toHaveProperty('apikey');
+  });
+
   it('centralizes static data endpoints and request headers', () => {
     expect(AOE4WORLD_STATIC_DATA_ENDPOINTS).toEqual({
       units: 'https://data.aoe4world.com/units/all.json',

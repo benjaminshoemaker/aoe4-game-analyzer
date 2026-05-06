@@ -39,6 +39,21 @@ npm run cli -- test-counters        # run the counter demo with random armies
 - Cache is considered stale after 7 days; stale or missing cache triggers a refetch.
 - `fetch-data` always refreshes regardless of age.
 
+## Match summary caching
+The match analyzer can use a Redis-compatible REST cache for AoE4World summary responses. This is intended for production/serverless deployments where local disk is not durable.
+
+Set either the app-specific variables or the provider defaults:
+- `AOE4_SUMMARY_REDIS_REST_URL` and `AOE4_SUMMARY_REDIS_REST_TOKEN`
+- or `KV_REST_API_URL` and `KV_REST_API_TOKEN`
+- or `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
+
+Optional tuning:
+- `AOE4_SUMMARY_CACHE_TTL_SECONDS` defaults to 7 days for successful raw summaries.
+- `AOE4_SUMMARY_NEGATIVE_CACHE_TTL_SECONDS` defaults to 3 minutes for AoE4World `429` responses.
+- `AOE4_SUMMARY_LOCK_TTL_SECONDS`, `AOE4_SUMMARY_LOCK_WAIT_MS`, and `AOE4_SUMMARY_LOCK_POLL_MS` control cross-instance cold-fetch backoff.
+
+Without Redis configuration, the analyzer keeps using the existing local cache and in-process request coalescing only.
+
 ## Testing
 Jest covers unit, integration, and end-to-end flows:
 ```bash

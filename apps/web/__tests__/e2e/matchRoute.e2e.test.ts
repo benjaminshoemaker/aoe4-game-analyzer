@@ -423,7 +423,14 @@ describe('matches route e2e', () => {
     const body = await response.text();
 
     expect(response.status).toBe(429);
-    expect(body).toContain('Unable to load match (429)');
+    expect(body).toContain('Match analysis is temporarily delayed');
+    expect(body).toContain('AoE4World is rate-limiting match summary requests right now.');
+    expect(body).toContain('This match link is valid');
+    expect(body).toContain('Cached report unavailable');
+    expect(body).toContain('Come back to this exact URL');
+    expect(body).toContain('Try again');
+    expect(body).toContain('Copy link');
+    expect(body).toContain('View sample report');
     expect(body).toContain('AoE4World rate limited the summary request');
   });
 

@@ -328,6 +328,16 @@ export class GameSummaryFetchError extends Error {
   }
 }
 
+class CachedSummaryRateLimitError extends Error {
+  readonly status = 429;
+  readonly response = { status: 429, statusText: 'Too Many Requests' };
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'CachedSummaryRateLimitError';
+  }
+}
+
 function responseStatus(error: unknown): number | undefined {
   return (error as FetchError).response?.status;
 }
@@ -348,6 +358,28 @@ type GameSummaryRequestIdentity = {
 };
 
 const inFlightSummaryRequests = new Map<string, Promise<GameSummary>>();
+const DEFAULT_REMOTE_SUMMARY_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
+const DEFAULT_REMOTE_RATE_LIMIT_TTL_SECONDS = 3 * 60;
+const DEFAULT_REMOTE_LOCK_TTL_SECONDS = 15;
+const DEFAULT_REMOTE_LOCK_WAIT_MS = 4500;
+const DEFAULT_REMOTE_LOCK_POLL_MS = 250;
+
+type RedisRestConfig = {
+  url: string;
+  token: string;
+};
+
+type RedisCommandValue = string | number;
+type RedisCommand = RedisCommandValue[];
+type RedisResponse = {
+  result?: unknown;
+  error?: string;
+};
+
+type RemoteLockResult =
+  | { status: 'acquired'; token: string }
+  | { status: 'held' }
+  | { status: 'unavailable' };
 
 function hashString(value: string): string {
   return createHash('sha256').update(value).digest('hex');
@@ -397,6 +429,56 @@ function configuredSummaryOverrideDir(): string | null {
   return null;
 }
 
+function configuredAoe4WorldApiKey(): string | undefined {
+  const configured = process.env.AOE4WORLD_API_KEY?.trim();
+  return configured || undefined;
+}
+
+function configuredRedisRest(): RedisRestConfig | null {
+  const url = (
+    process.env.AOE4_SUMMARY_REDIS_REST_URL ||
+    process.env.KV_REST_API_URL ||
+    process.env.UPSTASH_REDIS_REST_URL ||
+    ''
+  ).trim().replace(/\/+$/, '');
+  const token = (
+    process.env.AOE4_SUMMARY_REDIS_REST_TOKEN ||
+    process.env.KV_REST_API_TOKEN ||
+    process.env.UPSTASH_REDIS_REST_TOKEN ||
+    ''
+  ).trim();
+
+  if (!url || !token) return null;
+  return { url, token };
+}
+
+function readPositiveIntegerEnv(name: string, fallback: number): number {
+  const raw = process.env[name]?.trim();
+  if (!raw) return fallback;
+  const parsed = Number(raw);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function remoteSummaryCacheTtlSeconds(): number {
+  return readPositiveIntegerEnv('AOE4_SUMMARY_CACHE_TTL_SECONDS', DEFAULT_REMOTE_SUMMARY_CACHE_TTL_SECONDS);
+}
+
+function remoteRateLimitTtlSeconds(): number {
+  return readPositiveIntegerEnv('AOE4_SUMMARY_NEGATIVE_CACHE_TTL_SECONDS', DEFAULT_REMOTE_RATE_LIMIT_TTL_SECONDS);
+}
+
+function remoteLockTtlSeconds(): number {
+  return readPositiveIntegerEnv('AOE4_SUMMARY_LOCK_TTL_SECONDS', DEFAULT_REMOTE_LOCK_TTL_SECONDS);
+}
+
+function remoteLockWaitMs(): number {
+  return readPositiveIntegerEnv('AOE4_SUMMARY_LOCK_WAIT_MS', DEFAULT_REMOTE_LOCK_WAIT_MS);
+}
+
+function remoteLockPollMs(): number {
+  return readPositiveIntegerEnv('AOE4_SUMMARY_LOCK_POLL_MS', DEFAULT_REMOTE_LOCK_POLL_MS);
+}
+
 function summaryRequestKey(identity: GameSummaryRequestIdentity): string {
   const sigKey = identity.sig ? `sig:${hashString(identity.sig)}` : 'public';
   return JSON.stringify({
@@ -407,11 +489,27 @@ function summaryRequestKey(identity: GameSummaryRequestIdentity): string {
   });
 }
 
+function summaryRequestHash(identity: GameSummaryRequestIdentity): string {
+  return hashString(summaryRequestKey(identity));
+}
+
+function remoteSummaryCacheKey(identity: GameSummaryRequestIdentity): string {
+  return `aoe4:summary:v1:${summaryRequestHash(identity)}`;
+}
+
+function remoteRateLimitKey(identity: GameSummaryRequestIdentity): string {
+  return `aoe4:summary-rate-limit:v1:${summaryRequestHash(identity)}`;
+}
+
+function remoteLockKey(identity: GameSummaryRequestIdentity): string {
+  return `aoe4:summary-lock:v1:${summaryRequestHash(identity)}`;
+}
+
 function summaryCachePath(identity: GameSummaryRequestIdentity): string | null {
   const cacheDir = configuredSummaryCacheDir();
   if (!cacheDir) return null;
 
-  return path.join(cacheDir, `${hashString(summaryRequestKey(identity))}.json`);
+  return path.join(cacheDir, `${summaryRequestHash(identity)}.json`);
 }
 
 function summaryOverridePaths(identity: GameSummaryRequestIdentity): string[] {
@@ -450,6 +548,92 @@ async function readCachedGameSummary(identity: GameSummaryRequestIdentity): Prom
   return readJsonSummaryFile(cachePath);
 }
 
+async function runRedisCommand(command: RedisCommand): Promise<unknown | undefined> {
+  const config = configuredRedisRest();
+  if (!config) return undefined;
+
+  const response = await axios.post(config.url, command, {
+    headers: {
+      Authorization: `Bearer ${config.token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  const data = response.data as RedisResponse;
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+  return Object.prototype.hasOwnProperty.call(data ?? {}, 'result') ? data.result : undefined;
+}
+
+async function runRedisCommandSafely(command: RedisCommand): Promise<unknown | undefined> {
+  try {
+    return await runRedisCommand(command);
+  } catch {
+    return undefined;
+  }
+}
+
+async function readRemoteCachedGameSummary(identity: GameSummaryRequestIdentity): Promise<GameSummary | null> {
+  const raw = await runRedisCommandSafely(['GET', remoteSummaryCacheKey(identity)]);
+  if (typeof raw !== 'string') return null;
+
+  try {
+    return parseGameSummary(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+async function writeRemoteCachedGameSummary(identity: GameSummaryRequestIdentity, rawSummary: unknown): Promise<void> {
+  await runRedisCommandSafely([
+    'SET',
+    remoteSummaryCacheKey(identity),
+    JSON.stringify(rawSummary),
+    'EX',
+    remoteSummaryCacheTtlSeconds(),
+  ]);
+}
+
+async function readRemoteRateLimit(identity: GameSummaryRequestIdentity): Promise<void> {
+  const raw = await runRedisCommandSafely(['GET', remoteRateLimitKey(identity)]);
+  if (typeof raw !== 'string') return;
+
+  try {
+    const parsed = JSON.parse(raw) as { message?: unknown };
+    const message = typeof parsed.message === 'string'
+      ? parsed.message
+      : 'AoE4World summary request was recently rate-limited';
+    throw new CachedSummaryRateLimitError(message);
+  } catch (error) {
+    if (error instanceof CachedSummaryRateLimitError) throw error;
+    throw new CachedSummaryRateLimitError('AoE4World summary request was recently rate-limited');
+  }
+}
+
+async function writeRemoteRateLimit(identity: GameSummaryRequestIdentity, error: unknown): Promise<void> {
+  if (responseStatus(error) !== 429) return;
+
+  const message = error instanceof Error
+    ? error.message
+    : typeof (error as { message?: unknown }).message === 'string'
+      ? (error as { message: string }).message
+      : 'AoE4World summary request was recently rate-limited';
+  await runRedisCommandSafely([
+    'SET',
+    remoteRateLimitKey(identity),
+    JSON.stringify({
+      message,
+      cachedAt: new Date().toISOString(),
+    }),
+    'EX',
+    remoteRateLimitTtlSeconds(),
+  ]);
+}
+
+async function clearRemoteRateLimit(identity: GameSummaryRequestIdentity): Promise<void> {
+  await runRedisCommandSafely(['DEL', remoteRateLimitKey(identity)]);
+}
+
 async function writeCachedGameSummary(identity: GameSummaryRequestIdentity, rawSummary: unknown): Promise<void> {
   const cachePath = summaryCachePath(identity);
   if (!cachePath) return;
@@ -460,11 +644,83 @@ async function writeCachedGameSummary(identity: GameSummaryRequestIdentity, rawS
 
 async function requestGameSummaryFromApi(identity: GameSummaryRequestIdentity): Promise<GameSummary> {
   const { profileId, gameId, sig } = identity;
-  const { url, params, headers } = buildGameSummaryRequest(profileId, gameId, sig);
+  const { url, params, headers } = buildGameSummaryRequest(profileId, gameId, sig, configuredAoe4WorldApiKey());
   const response = await axios.get(url, { params, headers });
   const summary = parseGameSummary(response.data);
   await writeCachedGameSummary(identity, response.data);
+  await writeRemoteCachedGameSummary(identity, response.data);
+  await clearRemoteRateLimit(identity);
   return summary;
+}
+
+async function acquireRemoteSummaryLock(identity: GameSummaryRequestIdentity): Promise<RemoteLockResult> {
+  if (!configuredRedisRest()) return { status: 'unavailable' };
+
+  const token = `${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const result = await runRedisCommandSafely([
+    'SET',
+    remoteLockKey(identity),
+    token,
+    'NX',
+    'EX',
+    remoteLockTtlSeconds(),
+  ]);
+
+  if (result === 'OK') return { status: 'acquired', token };
+  if (result === null) return { status: 'held' };
+  return { status: 'unavailable' };
+}
+
+async function releaseRemoteSummaryLock(identity: GameSummaryRequestIdentity, token: string): Promise<void> {
+  const key = remoteLockKey(identity);
+  const currentToken = await runRedisCommandSafely(['GET', key]);
+  if (currentToken !== token) return;
+  await runRedisCommandSafely(['DEL', key]);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function waitForRemoteSummaryResult(identity: GameSummaryRequestIdentity): Promise<GameSummary | null> {
+  const deadline = Date.now() + remoteLockWaitMs();
+  const pollMs = remoteLockPollMs();
+
+  while (Date.now() < deadline) {
+    await sleep(pollMs);
+    const cached = await readRemoteCachedGameSummary(identity);
+    if (cached) return cached;
+    await readRemoteRateLimit(identity);
+  }
+
+  return null;
+}
+
+async function requestGameSummaryWithSharedBackoff(identity: GameSummaryRequestIdentity): Promise<GameSummary> {
+  const lock = await acquireRemoteSummaryLock(identity);
+  if (lock.status === 'held') {
+    const cached = await waitForRemoteSummaryResult(identity);
+    if (cached) return cached;
+    throw new CachedSummaryRateLimitError('AoE4World summary request is already in progress; retry shortly');
+  }
+
+  if (lock.status === 'acquired') {
+    try {
+      return await requestGameSummaryFromApi(identity);
+    } catch (error) {
+      await writeRemoteRateLimit(identity, error);
+      throw error;
+    } finally {
+      await releaseRemoteSummaryLock(identity, lock.token);
+    }
+  }
+
+  try {
+    return await requestGameSummaryFromApi(identity);
+  } catch (error) {
+    await writeRemoteRateLimit(identity, error);
+    throw error;
+  }
 }
 
 async function requestGameSummary(profileId: number | string, gameId: number, sig?: string): Promise<GameSummary> {
@@ -475,11 +731,16 @@ async function requestGameSummary(profileId: number | string, gameId: number, si
   const cached = await readCachedGameSummary(identity);
   if (cached) return cached;
 
+  const remoteCached = await readRemoteCachedGameSummary(identity);
+  if (remoteCached) return remoteCached;
+
+  await readRemoteRateLimit(identity);
+
   const key = summaryRequestKey(identity);
   const existing = inFlightSummaryRequests.get(key);
   if (existing) return existing;
 
-  const request = requestGameSummaryFromApi(identity)
+  const request = requestGameSummaryWithSharedBackoff(identity)
     .finally(() => {
       inFlightSummaryRequests.delete(key);
     });
