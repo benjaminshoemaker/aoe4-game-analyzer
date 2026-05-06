@@ -74,6 +74,7 @@ const faviconHref = "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/s
 
 const TC_IDLE_SECONDS_TOOLTIP = 'Town-center idle seconds behind expected villager production. Resource loss can be much larger because delayed villagers miss gather time after they would have existed.';
 type SignificantEventPlayerKey = 'player1' | 'player2';
+type SignificantEventLossRow = SignificantTimelineEvent['encounterLosses']['player1'][number];
 
 const embeddedAoeTokenCss = `
       --aoe-color-bg: #f7f2e8;
@@ -850,7 +851,7 @@ function significantEventTitle(event: SignificantTimelineEvent | null): string {
   return `${event.victimLabel} ${event.label}`;
 }
 
-function significantEventLossNameHtml(item: SignificantTimelineEvent['encounterLosses']['player1'][number]): string {
+function significantEventLossNameHtml(item: SignificantEventLossRow): string {
   const countLabel = item.showCount === false || item.count <= 0
     ? ''
     : ` <span class="event-impact-item-count">x${formatNumber(item.count)}</span>`;
@@ -861,12 +862,15 @@ function significantEventLossNameHtml(item: SignificantTimelineEvent['encounterL
 }
 
 function significantEventLossTableRowsHtml(
-  player1Items: SignificantTimelineEvent['encounterLosses']['player1'],
-  player2Items: SignificantTimelineEvent['encounterLosses']['player2']
+  player1Items: SignificantEventLossRow[],
+  player2Items: SignificantEventLossRow[]
 ): string {
   const rowCount = Math.max(player1Items.length, player2Items.length, 1);
+  const player1HasAny = player1Items.length > 0;
+  const player2HasAny = player2Items.length > 0;
   let player1EmptyRendered = false;
   let player2EmptyRendered = false;
+  const emptyFillCell = '<td class="event-impact-loss-empty-fill" colspan="2" aria-hidden="true"></td>';
   return Array.from({ length: rowCount }, (_, index) => {
     const player1Item = player1Items[index];
     const player2Item = player2Items[index];
@@ -874,15 +878,19 @@ function significantEventLossTableRowsHtml(
       ? `
                 <td class="event-impact-loss-name">${significantEventLossNameHtml(player1Item)}</td>
                 <td class="event-impact-loss-value">${formatNumber(player1Item.value)}</td>`
-      : !player1EmptyRendered
+      : !player1HasAny && !player1EmptyRendered
         ? `<td class="event-impact-loss-empty-side event-impact-loss-empty-side-player1" colspan="2" rowspan="${rowCount - index}">No losses</td>`
+        : player1HasAny
+          ? emptyFillCell
         : '';
     const player2Cells = player2Item
       ? `
                 <td class="event-impact-loss-name">${significantEventLossNameHtml(player2Item)}</td>
                 <td class="event-impact-loss-value">${formatNumber(player2Item.value)}</td>`
-      : !player2EmptyRendered
+      : !player2HasAny && !player2EmptyRendered
         ? `<td class="event-impact-loss-empty-side event-impact-loss-empty-side-player2" colspan="2" rowspan="${rowCount - index}">No losses</td>`
+        : player2HasAny
+          ? emptyFillCell
         : '';
     if (!player1Item) player1EmptyRendered = true;
     if (!player2Item) player2EmptyRendered = true;
@@ -958,7 +966,7 @@ function significantEventDisplayedPctOfDeployed(
 ): number {
   const denominator = significantEventLossValue(event, playerKey, 'denominator');
   if (denominator <= 0) return 0;
-  return (significantEventDisplayedTotalLoss(event, playerKey) / denominator) * 100;
+  return (significantEventDisplayedImmediateLoss(event, playerKey) / denominator) * 100;
 }
 
 function significantEventLossPill(event: SignificantTimelineEvent | null): string {
@@ -1003,12 +1011,12 @@ function significantEventSummaryHtml(event: SignificantTimelineEvent | null): st
                     <td data-significant-event-army-end-total="player2">${event ? formatNumber(significantEventArmyValue(event, 'player2', 'end')) : ''}</td>
                   </tr>
                   <tr>
-                    <th scope="row">Total loss</th>
+                    <th scope="row">Total event impact</th>
                     <td data-significant-event-loss-total="player1">${event ? formatNumber(significantEventDisplayedTotalLoss(event, 'player1')) : ''}</td>
                     <td data-significant-event-loss-total="player2">${event ? formatNumber(significantEventDisplayedTotalLoss(event, 'player2')) : ''}</td>
                   </tr>
                   <tr>
-                    <th scope="row">Immediate loss</th>
+                    <th scope="row">Immediate impact</th>
                     <td data-significant-event-loss-immediate="player1">${event ? formatNumber(significantEventDisplayedImmediateLoss(event, 'player1')) : ''}</td>
                     <td data-significant-event-loss-immediate="player2">${event ? formatNumber(significantEventDisplayedImmediateLoss(event, 'player2')) : ''}</td>
                   </tr>
@@ -1018,13 +1026,35 @@ function significantEventSummaryHtml(event: SignificantTimelineEvent | null): st
                     <td data-significant-event-loss-villager-opportunity="player2">${event ? formatNumber(player2OpportunityLoss) : ''}</td>
                   </tr>
                   <tr>
-                    <th scope="row" data-significant-event-loss-share-label>Share of deployed resources lost</th>
+                    <th scope="row" data-significant-event-loss-share-label>Immediate loss share of deployed resources</th>
                     <td data-significant-event-loss-share="player1">${event ? `${formatPrecise(significantEventDisplayedPctOfDeployed(event, 'player1'), 1)}%` : ''}</td>
                     <td data-significant-event-loss-share="player2">${event ? `${formatPrecise(significantEventDisplayedPctOfDeployed(event, 'player2'), 1)}%` : ''}</td>
                   </tr>
                 </tbody>
               </table>
             </div>`;
+}
+
+function significantEventLossRowsForPlayer(
+  event: SignificantTimelineEvent | null,
+  playerKey: SignificantEventPlayerKey
+): SignificantEventLossRow[] {
+  const rows = [...(event?.encounterLosses?.[playerKey] ?? [])];
+  const villagerOpportunityLoss = significantEventLossValue(event, playerKey, 'villagerOpportunityLoss');
+  const alreadyHasOpportunityRow = rows.some(row => row.label.toLowerCase() === 'villager opportunity');
+
+  if (villagerOpportunityLoss > 0 && !alreadyHasOpportunityRow) {
+    rows.push({
+      label: 'Villager opportunity',
+      value: villagerOpportunityLoss,
+      count: 0,
+      band: 'economic',
+      showCount: false,
+      title: significantVillagerOpportunityTooltip,
+    });
+  }
+
+  return rows;
 }
 
 function significantEventLossesHtml(event: SignificantTimelineEvent | null): string {
@@ -1050,7 +1080,10 @@ function significantEventLossesHtml(event: SignificantTimelineEvent | null): str
                     </tr>
                   </thead>
                   <tbody data-significant-event-loss-table>
-                    ${significantEventLossTableRowsHtml(event?.encounterLosses?.player1 ?? [], event?.encounterLosses?.player2 ?? [])}
+                    ${significantEventLossTableRowsHtml(
+                      significantEventLossRowsForPlayer(event, 'player1'),
+                      significantEventLossRowsForPlayer(event, 'player2')
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -3083,6 +3116,10 @@ export function renderPostMatchHtml(
       font-variant-numeric: tabular-nums;
     }
 
+    .event-impact-summary-table {
+      table-layout: fixed;
+    }
+
     .event-impact-loss-table {
       table-layout: fixed;
     }
@@ -3114,6 +3151,25 @@ export function renderPostMatchHtml(
     .event-impact-summary-table thead th:first-child,
     .event-impact-detail-table thead th:first-child {
       text-align: left;
+    }
+
+    .event-impact-summary-table th:first-child,
+    .event-impact-summary-table td:first-child {
+      width: 62%;
+      padding-right: 8px;
+    }
+
+    .event-impact-summary-table th:nth-child(2),
+    .event-impact-summary-table td:nth-child(2) {
+      padding-right: 12px;
+      width: 19%;
+    }
+
+    .event-impact-summary-table th:nth-child(3),
+    .event-impact-summary-table td:nth-child(3) {
+      border-left: 1px solid #eadbd4;
+      padding-left: 12px;
+      width: 19%;
     }
 
     .event-impact-summary-table tbody th,

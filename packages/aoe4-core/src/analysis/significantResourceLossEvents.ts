@@ -458,13 +458,18 @@ function finalDeathLoss(opportunity: VillagerOpportunityForPlayer): number {
   return opportunity.series[opportunity.series.length - 1]?.cumulativeDeathLoss ?? 0;
 }
 
-function deathLossAtOrBefore(opportunity: VillagerOpportunityForPlayer, timestamp: number): number {
-  let candidate = opportunity.series[0];
-  for (const point of opportunity.series) {
-    if (point.timestamp > timestamp) break;
-    candidate = point;
+function advanceTimestampIndex<T extends { timestamp: number }>(
+  series: T[],
+  currentIndex: number,
+  timestamp: number
+): number {
+  if (series.length === 0) return -1;
+
+  let index = Math.max(0, currentIndex);
+  while (index + 1 < series.length && series[index + 1].timestamp <= timestamp) {
+    index += 1;
   }
-  return candidate?.cumulativeDeathLoss ?? 0;
+  return index;
 }
 
 function removeVillagerDeathsInWindow(player: PlayerSummary, start: number, end: number): PlayerSummary {
@@ -483,14 +488,12 @@ function removeVillagerDeathsInWindow(player: PlayerSummary, start: number, end:
 function opportunityCostTimestamps(
   original: VillagerOpportunityForPlayer,
   counterfactual: VillagerOpportunityForPlayer,
-  pool: PlayerDeployedPoolSeries,
   start: number,
   duration: number
 ): number[] {
   return [...new Set([
     ...original.series.map(point => point.timestamp),
     ...counterfactual.series.map(point => point.timestamp),
-    ...pool.series.map(point => point.timestamp),
     duration,
   ])]
     .filter(timestamp => Number.isFinite(timestamp) && timestamp >= start)
@@ -505,22 +508,32 @@ function scaledOpportunityCost(params: {
   duration: number;
 }): number {
   const baseDeployed = Math.max(0, valueAtOrBefore(params.pool.series, params.start));
+  const timestamps = opportunityCostTimestamps(
+    params.original,
+    params.counterfactual,
+    params.start,
+    params.duration
+  );
+  const originalSeries = params.original.series;
+  const counterfactualSeries = params.counterfactual.series;
+  const poolSeries = params.pool.series;
+  let originalIndex = 0;
+  let counterfactualIndex = 0;
+  let poolIndex = 0;
   let previousSavedLoss = 0;
   let scaledCost = 0;
 
-  for (const timestamp of opportunityCostTimestamps(
-    params.original,
-    params.counterfactual,
-    params.pool,
-    params.start,
-    params.duration
-  )) {
-    const originalLoss = deathLossAtOrBefore(params.original, timestamp);
-    const counterfactualLoss = deathLossAtOrBefore(params.counterfactual, timestamp);
+  for (const timestamp of timestamps) {
+    originalIndex = advanceTimestampIndex(originalSeries, originalIndex, timestamp);
+    counterfactualIndex = advanceTimestampIndex(counterfactualSeries, counterfactualIndex, timestamp);
+    poolIndex = advanceTimestampIndex(poolSeries, poolIndex, timestamp);
+
+    const originalLoss = originalSeries[originalIndex]?.cumulativeDeathLoss ?? 0;
+    const counterfactualLoss = counterfactualSeries[counterfactualIndex]?.cumulativeDeathLoss ?? 0;
     const savedLoss = Math.max(0, originalLoss - counterfactualLoss);
     const increment = Math.max(0, savedLoss - previousSavedLoss);
     if (increment > 0) {
-      const deployedAtIncrement = Math.max(1, valueAtOrBefore(params.pool.series, timestamp));
+      const deployedAtIncrement = Math.max(1, poolSeries[poolIndex]?.total ?? 0);
       const scaleWeight = baseDeployed > 0
         ? Math.min(1, baseDeployed / deployedAtIncrement)
         : 1;
@@ -540,21 +553,33 @@ function createOpportunityCostCalculator(
   const original = buildVillagerOpportunityForPlayer({ player, duration });
   const originalFinalDeathLoss = finalDeathLoss(original);
   const cache = new Map<string, number>();
+  const counterfactualCache = new Map<string, {
+    counterfactual: VillagerOpportunityForPlayer;
+    unscaledSaved: number;
+  }>();
 
   return (start, end, deathTimes) => {
     if (deathTimes.length === 0) return 0;
-    const key = `${start}-${end}-${deathTimes.join(',')}`;
+    const deathKey = deathTimes.join(',');
+    const key = `${start}-${end}-${deathKey}`;
     const cached = cache.get(key);
     if (cached !== undefined) return cached;
 
-    const counterfactual = buildVillagerOpportunityForPlayer({
-      player: removeVillagerDeathsInWindow(player, start, end),
-      duration,
-    });
-    const unscaledSaved = Math.max(0, originalFinalDeathLoss - finalDeathLoss(counterfactual));
-    const saved = Math.min(unscaledSaved, scaledOpportunityCost({
+    const counterfactualResult = counterfactualCache.get(deathKey) ?? (() => {
+      const counterfactual = buildVillagerOpportunityForPlayer({
+        player: removeVillagerDeathsInWindow(player, start, end),
+        duration,
+      });
+      return {
+        counterfactual,
+        unscaledSaved: Math.max(0, originalFinalDeathLoss - finalDeathLoss(counterfactual)),
+      };
+    })();
+    counterfactualCache.set(deathKey, counterfactualResult);
+
+    const saved = Math.min(counterfactualResult.unscaledSaved, scaledOpportunityCost({
       original,
-      counterfactual,
+      counterfactual: counterfactualResult.counterfactual,
       pool,
       start,
       duration,

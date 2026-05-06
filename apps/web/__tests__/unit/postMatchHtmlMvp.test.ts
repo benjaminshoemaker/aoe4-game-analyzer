@@ -342,7 +342,7 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).toContain('data-significant-event-loss-total="player2">330</td>');
     expect(html).toContain('data-significant-event-loss-immediate="player2">240</td>');
     expect(html).toContain('data-significant-event-loss-villager-opportunity="player2">90</td>');
-    expect(html).toContain('data-significant-event-loss-share-label>Share of deployed resources lost</th>');
+    expect(html).toContain('data-significant-event-loss-share-label>Immediate loss share of deployed resources</th>');
     expect(html).not.toContain('<dt>Share of deployed</dt>');
     expect(html).not.toContain('data-hover-field="significantEvent.description"');
     expect(html).not.toContain('data-hover-field="significantEvent.grossLoss"');

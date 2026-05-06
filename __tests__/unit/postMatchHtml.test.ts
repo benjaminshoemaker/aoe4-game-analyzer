@@ -855,7 +855,10 @@ describe('renderPostMatchHtml', () => {
     expect(html).not.toContain('Gather disruption x1');
     expect(html).toContain('.event-impact-inline-help-button {\n      width: 12px;');
     expect(html).toContain('height: 12px;');
-    expect(html).toContain('data-significant-event-loss-share-label>Share of deployed resources lost</th>');
+    expect(html).toContain('.event-impact-summary-table {\n      table-layout: fixed;');
+    expect(html).toContain('.event-impact-summary-table th:nth-child(2),\n    .event-impact-summary-table td:nth-child(2) {\n      padding-right: 12px;');
+    expect(html).toContain('.event-impact-summary-table th:nth-child(3),\n    .event-impact-summary-table td:nth-child(3) {\n      border-left: 1px solid #eadbd4;');
+    expect(html).toContain('data-significant-event-loss-share-label>Immediate loss share of deployed resources</th>');
     expect(html).not.toContain('Share of French deployed');
     expect(html).not.toContain('data-hover-field="significantEvent.description"');
     expect(html).not.toContain('data-hover-field="significantEvent.grossLoss"');

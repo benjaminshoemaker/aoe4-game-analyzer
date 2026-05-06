@@ -15,6 +15,7 @@ jest.mock('next/cache', () => ({
 import { GET, clearMatchRouteCacheForTests } from '../../src/app/matches/[profileSlug]/[gameId]/route';
 import { renderPostMatchHtml } from '@aoe4/analyzer-core/formatters/postMatchHtml';
 import {
+  addEventWindowOpportunityRaid,
   addGatherDisruptionEvent,
   addVerboseOpportunityLostBuckets,
   makeMvpModelFixture,
@@ -48,6 +49,12 @@ function extractHoverPayload(html: string): any[] {
   const payloadMatch = html.match(/<script id="post-match-hover-data" type="application\/json">([\s\S]*?)<\/script>/);
   if (!payloadMatch) throw new Error('Expected post-match hover data payload');
   return JSON.parse(payloadMatch[1]);
+}
+
+function extractEventLossTable(html: string): string {
+  const match = html.match(/<tbody data-significant-event-loss-table>[\s\S]*?<\/tbody>/);
+  if (!match) throw new Error('Expected event loss table');
+  return match[0];
 }
 
 jest.mock('../../src/lib/matchPage', () => ({
@@ -278,7 +285,9 @@ describe('matches route e2e', () => {
     expect(body.indexOf('Encounter loss details')).toBeLessThan(body.indexOf('Event window army lists'));
     expect(body.indexOf('Why this fight is notable')).toBeGreaterThan(body.indexOf('Event window army lists'));
     expect(body).toContain('data-significant-event-loss-immediate="player2">240</td>');
-    expect(body).toContain('data-significant-event-loss-share-label>Share of deployed resources lost</th>');
+    expect(body).toContain('.event-impact-summary-table {\n      table-layout: fixed;');
+    expect(body).toContain('.event-impact-summary-table th:nth-child(3),\n    .event-impact-summary-table td:nth-child(3) {\n      border-left: 1px solid #eadbd4;');
+    expect(body).toContain('data-significant-event-loss-share-label>Immediate loss share of deployed resources</th>');
     expect(body).not.toContain('data-hover-field="significantEvent.description"');
     expect(body).not.toContain('data-hover-field="significantEvent.grossLoss"');
     expect(body).not.toContain('data-hover-field="significantEvent.topLosses"');
@@ -317,7 +326,7 @@ describe('matches route e2e', () => {
     expect(mockUnstableCache).toHaveBeenCalledTimes(1);
     expect(mockUnstableCache.mock.calls[0][1]).toEqual([
       'aoe4-rendered-report-html',
-      expect.stringMatching(/^v14-(?:[a-f0-9]{12}|nobuild)-(?:[a-f0-9]{12}|none)$/),
+      expect.stringMatching(/^v15-(?:[a-f0-9]{12}|nobuild)-(?:[a-f0-9]{12}|none)$/),
       'my-slug',
       '230143339',
       expect.stringMatching(/^sig-sha256:[a-f0-9]{64}$/),
@@ -564,6 +573,52 @@ describe('matches route e2e', () => {
     expect(at90.opportunityLostComponents.lowUnderproduction.you).toBe(30);
     expect(at180.opportunityLostComponents.lowUnderproduction.you).toBe(120);
     expect(body).toContain('resources lost by selected time');
+  });
+
+  it('returns event impact details that reconcile villager opportunity without using it for deployed-resource share', async () => {
+    parseMatchRouteParams.mockReturnValue({ profileSlug: 'my-slug', gameId: 230143339 });
+    buildMatchHtml.mockResolvedValue(renderPostMatchHtml(addEventWindowOpportunityRaid(makeMvpModelFixture())));
+
+    const request = new Request('http://localhost/matches/my-slug/230143339?sig=abc123&t=943');
+    const response = await GET(request, {
+      params: Promise.resolve({
+        profileSlug: 'my-slug',
+        gameId: '230143339',
+      }),
+    });
+    const body = await response.text();
+    const lossTable = extractEventLossTable(body);
+
+    expect(response.status).toBe(200);
+    expect(body).toContain('data-significant-event-loss-total="player2">10,620</td>');
+    expect(body).toContain('data-significant-event-loss-immediate="player2">1,479</td>');
+    expect(body).toContain('data-significant-event-loss-villager-opportunity="player2">9,141</td>');
+    expect(body).toContain('data-significant-event-loss-share="player2">12.0%</td>');
+    expect(body).toContain('Immediate loss share of deployed resources');
+    expect(lossTable).toContain('Villager opportunity');
+    expect(lossTable).toContain('event-impact-loss-value">9,141</td>');
+    expect(lossTable).not.toContain('event-impact-loss-empty-side-player1');
+  });
+
+  it('returns uncached HTML when Next refuses to persist an oversized rendered report', async () => {
+    parseMatchRouteParams.mockReturnValue({ profileSlug: 'my-slug', gameId: 230143339 });
+    buildMatchHtml.mockResolvedValue('<!doctype html><html><body>large report rendered</body></html>');
+    mockUnstableCache.mockImplementation((callback: () => Promise<string>) => async () => {
+      await callback();
+      throw new Error('Failed to set Next.js data cache for unstable_cache large-report, items over 2MB can not be cached');
+    });
+
+    const response = await GET(new Request('http://localhost/matches/my-slug/230143339?sig=abc123'), {
+      params: Promise.resolve({
+        profileSlug: 'my-slug',
+        gameId: '230143339',
+      }),
+    });
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(body).toContain('large report rendered');
+    expect(buildMatchHtml).toHaveBeenCalledTimes(1);
   });
 
   describe('cache headers', () => {

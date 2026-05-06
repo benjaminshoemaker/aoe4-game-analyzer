@@ -7,7 +7,7 @@ import {
   sigCacheToken,
 } from '../../src/lib/renderedReportCache';
 
-const CACHE_VERSION_PATTERN = /^v14-(?:[a-f0-9]{12}|nobuild)-(?:[a-f0-9]{12}|none)$/;
+const CACHE_VERSION_PATTERN = /^v15-(?:[a-f0-9]{12}|nobuild)-(?:[a-f0-9]{12}|none)$/;
 
 describe('rendered report cache helpers', () => {
   beforeEach(() => {
@@ -91,6 +91,70 @@ describe('rendered report cache helpers', () => {
 
     expect(builtA).not.toBe(baseline);
     expect(builtA).not.toBe(builtB);
+  });
+
+  it('returns rendered HTML when Next refuses to persist an oversized cache entry', async () => {
+    jest.resetModules();
+    const oversizedCacheError = {
+      message: 'Failed to set Next.js data cache for unstable_cache large-report, items over 2MB can not be cached',
+    };
+    const unstableCacheMock = jest.fn((callback: () => Promise<string>) => async () => {
+      await callback();
+      throw oversizedCacheError;
+    });
+    jest.doMock('next/cache', () => ({
+      unstable_cache: (
+        callback: () => Promise<string>,
+        _keyParts?: string[],
+        _options?: { revalidate?: number | false; tags?: string[] }
+      ) => unstableCacheMock(callback),
+    }));
+    const { clearRenderedReportCacheForTests: clearIsolatedCache, getRenderedReportHtml: getIsolatedHtml } =
+      await import('../../src/lib/renderedReportCache');
+    clearIsolatedCache();
+    const renderer = jest.fn(async () => '<html data-large-report="true"></html>');
+
+    await expect(getIsolatedHtml(
+      { profileSlug: 'large-report-player', gameId: 231907299, sig: 'private' },
+      renderer,
+      1000
+    )).resolves.toBe('<html data-large-report="true"></html>');
+
+    expect(renderer).toHaveBeenCalledTimes(1);
+    expect(unstableCacheMock).toHaveBeenCalledTimes(1);
+    jest.dontMock('next/cache');
+    jest.resetModules();
+  });
+
+  it('skips the persistent Next cache in development', async () => {
+    jest.resetModules();
+    const unstableCacheMock = jest.fn(() => {
+      throw new Error('unstable_cache should not be called in development');
+    });
+    jest.doMock('next/cache', () => ({
+      unstable_cache: unstableCacheMock,
+    }));
+    const originalNodeEnv = process.env.NODE_ENV;
+    Object.defineProperty(process.env, 'NODE_ENV', { value: 'development', configurable: true });
+    const { clearRenderedReportCacheForTests: clearIsolatedCache, getRenderedReportHtml: getIsolatedHtml } =
+      await import('../../src/lib/renderedReportCache');
+    clearIsolatedCache();
+    const renderer = jest.fn(async () => '<html data-dev-render="true"></html>');
+
+    try {
+      await expect(getIsolatedHtml(
+        { profileSlug: 'dev-player', gameId: 231907299, sig: 'private' },
+        renderer,
+        1000
+      )).resolves.toBe('<html data-dev-render="true"></html>');
+
+      expect(renderer).toHaveBeenCalledTimes(1);
+      expect(unstableCacheMock).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(process.env, 'NODE_ENV', { value: originalNodeEnv, configurable: true });
+      jest.dontMock('next/cache');
+      jest.resetModules();
+    }
   });
 
   describe('memory cache lifecycle', () => {

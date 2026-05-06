@@ -764,8 +764,11 @@ ${adjustedFormatters}
         var left = Array.isArray(player1Items) ? player1Items : [];
         var right = Array.isArray(player2Items) ? player2Items : [];
         var rowCount = Math.max(left.length, right.length, 1);
+        var player1HasAny = left.length > 0;
+        var player2HasAny = right.length > 0;
         var player1EmptyRendered = false;
         var player2EmptyRendered = false;
+        var emptyFillCell = '<td class="event-impact-loss-empty-fill" colspan="2" aria-hidden="true"></td>';
         var rows = [];
         for (var index = 0; index < rowCount; index += 1) {
           var player1Item = left[index];
@@ -773,14 +776,18 @@ ${adjustedFormatters}
           var player1Cells = player1Item
             ? '<td class="event-impact-loss-name">' + significantEventLossNameHtml(player1Item) + '</td>' +
               '<td class="event-impact-loss-value">' + formatNumber(player1Item.value || 0) + '</td>'
-            : !player1EmptyRendered
+            : !player1HasAny && !player1EmptyRendered
               ? '<td class="event-impact-loss-empty-side event-impact-loss-empty-side-player1" colspan="2" rowspan="' + (rowCount - index) + '">No losses</td>'
+              : player1HasAny
+                ? emptyFillCell
               : '';
           var player2Cells = player2Item
             ? '<td class="event-impact-loss-name">' + significantEventLossNameHtml(player2Item) + '</td>' +
               '<td class="event-impact-loss-value">' + formatNumber(player2Item.value || 0) + '</td>'
-            : !player2EmptyRendered
+            : !player2HasAny && !player2EmptyRendered
               ? '<td class="event-impact-loss-empty-side event-impact-loss-empty-side-player2" colspan="2" rowspan="' + (rowCount - index) + '">No losses</td>'
+              : player2HasAny
+                ? emptyFillCell
               : '';
           if (!player1Item) player1EmptyRendered = true;
           if (!player2Item) player2EmptyRendered = true;
@@ -868,6 +875,27 @@ ${adjustedFormatters}
         return impact && impact.gatherDisruption ? impact.gatherDisruption : null;
       }
 
+      function significantEventLossRowsForPlayer(event, playerKey) {
+        var losses = event && event.encounterLosses && Array.isArray(event.encounterLosses[playerKey])
+          ? event.encounterLosses[playerKey].slice()
+          : [];
+        var villagerOpportunityLoss = significantEventLossValue(event, playerKey, 'villagerOpportunityLoss');
+        var alreadyHasOpportunityRow = losses.some(function (item) {
+          return item && String(item.label || '').toLowerCase() === 'villager opportunity';
+        });
+        if (villagerOpportunityLoss > 0 && !alreadyHasOpportunityRow) {
+          losses.push({
+            label: 'Villager opportunity',
+            value: villagerOpportunityLoss,
+            count: 0,
+            band: 'economic',
+            showCount: false,
+            title: 'Scale-adjusted future missed gathering from killed villagers in this event window. The model removes those deaths, measures the future villager death-loss avoided, then discounts each future increment by event-time deployed resources divided by deployed resources at that later time.'
+          });
+        }
+        return losses;
+      }
+
       function significantEventDisplayedTotalLoss(event, playerKey) {
         var disruption = significantEventGatherDisruption(event, playerKey);
         return significantEventLossValue(event, playerKey, 'grossLoss') +
@@ -883,7 +911,7 @@ ${adjustedFormatters}
       function significantEventDisplayedPctOfDeployed(event, playerKey) {
         var denominator = significantEventLossValue(event, playerKey, 'denominator');
         if (denominator <= 0) return 0;
-        return (significantEventDisplayedTotalLoss(event, playerKey) / denominator) * 100;
+        return (significantEventDisplayedImmediateLoss(event, playerKey) / denominator) * 100;
       }
 
       function setSignificantLossSummaryText(attr, playerKey, value) {
@@ -902,7 +930,7 @@ ${adjustedFormatters}
         setSignificantLossSummaryText('villager-opportunity', playerKey, event ? formatNumber(villagerOpportunityLoss) : '');
         setSignificantLossSummaryText('share', playerKey, event ? formatPrecise(pctOfDeployed, 1) + '%' : '');
         document.querySelectorAll('[data-significant-event-loss-share-label="' + playerKey + '"]').forEach(function (el) {
-          el.textContent = 'Share of Deployed Resources Lost';
+          el.textContent = 'Immediate loss share of deployed resources';
         });
         document.querySelectorAll('[data-significant-event-loss-villager-opportunity-row="' + playerKey + '"]').forEach(function (el) {
           el.hidden = !event || villagerOpportunityLoss <= 0;
@@ -923,8 +951,8 @@ ${adjustedFormatters}
         });
         document.querySelectorAll('[data-significant-event-loss-table]').forEach(function (el) {
           el.innerHTML = significantEventLossTableRowsHtml(
-            event && event.encounterLosses ? event.encounterLosses.player1 : [],
-            event && event.encounterLosses ? event.encounterLosses.player2 : []
+            significantEventLossRowsForPlayer(event, 'player1'),
+            significantEventLossRowsForPlayer(event, 'player2')
           );
         });
         updateSignificantEventLossSummary(event, 'player1');

@@ -132,6 +132,124 @@ export function addGatherDisruptionEvent(
   return next;
 }
 
+export function addEventWindowOpportunityRaid(model: PostMatchViewModel): PostMatchViewModel {
+  const next = structuredClone(model);
+  const event: SignificantTimelineEvent = {
+    id: 'significant-loss-opportunity-raid',
+    timestamp: next.trajectory.hoverSnapshots[0]?.timestamp ?? 0,
+    windowStart: 893,
+    windowEnd: 953,
+    timeLabel: '15:43',
+    victim: 'opponent',
+    victimLabel: 'French',
+    player1Civilization: 'English',
+    player2Civilization: 'French',
+    player1Label: 'English',
+    player2Label: 'French',
+    victimCivilization: 'French',
+    actorCivilization: 'English',
+    actorLabel: 'English',
+    headline: 'English raided French and killed 14 villagers.',
+    kind: 'raid',
+    label: 'Raid',
+    shortLabel: 'Raid',
+    description: 'Raid with immediate losses, gather disruption, and future villager opportunity.',
+    impactSummary: '12,961 gross impact.',
+    grossImpact: 12961,
+    grossLoss: 10136,
+    immediateLoss: 995,
+    villagerOpportunityLoss: 9141,
+    denominator: 12367,
+    pctOfDeployed: 82,
+    villagerDeaths: 14,
+    topLosses: [
+      { label: 'Villager', value: 700, count: 14, band: 'economic' },
+      { label: 'Horseman', value: 120, count: 1, band: 'militaryActive' },
+      { label: 'Man-at-Arms', value: 110, count: 1, band: 'militaryActive' },
+      { label: 'Scout', value: 65, count: 1, band: 'militaryActive' },
+    ],
+    encounterLosses: {
+      player1: [
+        { label: 'Lancer', value: 1440, count: 6, band: 'militaryActive' },
+        { label: 'Veteran Zhuge Nu', value: 640, count: 8, band: 'militaryActive' },
+        { label: 'Shaolin Monk', value: 400, count: 2, band: 'militaryActive' },
+        { label: 'Palace Guard', value: 345, count: 3, band: 'militaryActive' },
+      ],
+      player2: [
+        { label: 'Villager', value: 700, count: 14, band: 'economic' },
+        { label: 'Horseman', value: 120, count: 1, band: 'militaryActive' },
+        { label: 'Man-at-Arms', value: 110, count: 1, band: 'militaryActive' },
+        { label: 'Scout', value: 65, count: 1, band: 'militaryActive' },
+        {
+          label: 'Gather disruption',
+          value: 484,
+          count: 0,
+          band: 'economic',
+          showCount: false,
+          title: 'Gather/min fell from 2,633 to 1,502 during this event window; row value is 484 resources of shortfall, equivalent to roughly 726 villager-seconds.',
+        },
+      ],
+    },
+    playerImpacts: {
+      player1: {
+        immediateLoss: 2825,
+        villagerOpportunityLoss: 0,
+        grossLoss: 2825,
+        denominator: 12245,
+        pctOfDeployed: 23.1,
+        villagerDeaths: 0,
+        losses: [
+          { label: 'Lancer', value: 1440, count: 6, band: 'militaryActive' },
+          { label: 'Veteran Zhuge Nu', value: 640, count: 8, band: 'militaryActive' },
+          { label: 'Shaolin Monk', value: 400, count: 2, band: 'militaryActive' },
+          { label: 'Palace Guard', value: 345, count: 3, band: 'militaryActive' },
+        ],
+        topLosses: [
+          { label: 'Lancer', value: 1440, count: 6, band: 'militaryActive' },
+          { label: 'Veteran Zhuge Nu', value: 640, count: 8, band: 'militaryActive' },
+          { label: 'Shaolin Monk', value: 400, count: 2, band: 'militaryActive' },
+          { label: 'Palace Guard', value: 345, count: 3, band: 'militaryActive' },
+        ],
+      },
+      player2: {
+        immediateLoss: 995,
+        villagerOpportunityLoss: 9141,
+        grossLoss: 10136,
+        denominator: 12367,
+        pctOfDeployed: 82,
+        villagerDeaths: 14,
+        gatherDisruption: {
+          label: 'Gather disruption',
+          value: 484,
+          baselineRatePerMin: 2633,
+          minRatePerMin: 1502,
+          dropPercent: 43,
+          idleEquivalentVillagerSeconds: 726,
+          windowStart: 893,
+          windowEnd: 953,
+        },
+        losses: [
+          { label: 'Villager', value: 700, count: 14, band: 'economic' },
+          { label: 'Horseman', value: 120, count: 1, band: 'militaryActive' },
+          { label: 'Man-at-Arms', value: 110, count: 1, band: 'militaryActive' },
+          { label: 'Scout', value: 65, count: 1, band: 'militaryActive' },
+        ],
+        topLosses: [
+          { label: 'Villager', value: 700, count: 14, band: 'economic' },
+          { label: 'Horseman', value: 120, count: 1, band: 'militaryActive' },
+          { label: 'Man-at-Arms', value: 110, count: 1, band: 'militaryActive' },
+          { label: 'Scout', value: 65, count: 1, band: 'militaryActive' },
+        ],
+      },
+    },
+  };
+  next.trajectory.significantEvents = [event];
+  if (next.trajectory.hoverSnapshots[0]) {
+    next.trajectory.hoverSnapshots[0].significantEvent = event;
+  }
+  return next;
+}
+
 export function makeUnderproductionOnlyOpportunityLostModel(): PostMatchViewModel {
   const model = makeMvpModelFixture();
   const snapshot = model.trajectory.hoverSnapshots[0];

@@ -616,4 +616,59 @@ describe('detectSignificantResourceLossEvents', () => {
     expect(events[0].villagerOpportunityLoss).toBe(100);
     expect(events[0].grossLoss).toBe(150);
   });
+
+  it('keeps dense villager-loss window detection within the server-render budget', () => {
+    const duration = 900;
+    const deathTimes = Array.from({ length: 18 }, (_value, index) => 120 + index * 30);
+    const villagerEntry: PlayerSummary['buildOrder'][number] = {
+      id: 'villager',
+      icon: 'icons/races/common/units/villager',
+      pbgid: 3,
+      type: 'Unit',
+      finished: Array.from({ length: 24 }, () => 0),
+      constructed: [],
+      destroyed: deathTimes,
+    };
+    const p2Build: ResolvedBuildOrder = {
+      startingAssets: [{
+        originalEntry: villagerEntry,
+        type: 'unit',
+        id: 'villager',
+        name: 'Villager',
+        cost: { food: 50, wood: 0, gold: 0, stone: 0, total: 50 },
+        tier: 1,
+        tierMultiplier: 1,
+        classes: ['worker'],
+        produced: Array.from({ length: 24 }, () => 0),
+        destroyed: deathTimes,
+        civs: [],
+      }],
+      resolved: [],
+      unresolved: [],
+    };
+    const densePool = Array.from({ length: duration + 1 }, (_value, timestamp) =>
+      point(timestamp, timestamp < 450 ? 600 : 1200)
+    );
+
+    const start = performance.now();
+    const events = detectSignificantResourceLossEvents({
+      summary: summary(duration, [], [villagerEntry]),
+      deployedResourcePools: poolsFromSeries(
+        duration,
+        [point(0, 1000), point(duration, 1000)],
+        densePool
+      ),
+      player1Build: emptyBuild(),
+      player2Build: p2Build,
+    });
+    const elapsedMs = performance.now() - start;
+
+    expect(events.length).toBeGreaterThan(0);
+    expect(events[0]).toEqual(expect.objectContaining({
+      victimPlayer: 2,
+      kind: 'raid',
+      villagerOpportunityLoss: expect.any(Number),
+    }));
+    expect(elapsedMs).toBeLessThan(750);
+  });
 });

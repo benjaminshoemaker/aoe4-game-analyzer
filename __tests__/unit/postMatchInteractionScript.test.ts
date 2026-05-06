@@ -404,9 +404,79 @@ describe('post-match interaction script formatter', () => {
     expect(window.document.querySelector('[data-significant-event-loss-immediate="player2"]')?.textContent).toBe('330');
     expect(window.document.querySelector('[data-significant-event-loss-pill]')?.textContent).toBe('0 vs 330');
     expect(window.document.querySelector('[data-significant-event-loss-gather-disruption-row="player2"]')).toBeNull();
-    expect(window.document.querySelector('[data-significant-event-loss-share-label="player2"]')?.textContent).toBe('Share of Deployed Resources Lost');
+    expect(window.document.querySelector('[data-significant-event-loss-share-label="player2"]')?.textContent).toBe('Immediate loss share of deployed resources');
     expect(lossTable).not.toContain('Gather disruption x0');
     expect(lossTable).not.toContain('Gather disruption x1');
+  });
+
+  it('keeps event-window villager opportunity visible without inflating deployed-resource share', () => {
+    const point: ClientHoverSnapshot = {
+      ...eventSnapshot,
+      significantEvent: {
+        ...eventSnapshot.significantEvent!,
+        encounterLosses: {
+          player1: [
+            { label: 'Lancer', value: 1440, count: 6, band: 'militaryActive' },
+            { label: 'Veteran Zhuge Nu', value: 640, count: 8, band: 'militaryActive' },
+            { label: 'Shaolin Monk', value: 400, count: 2, band: 'militaryActive' },
+            { label: 'Palace Guard', value: 345, count: 3, band: 'militaryActive' },
+          ],
+          player2: [
+            { label: 'Villager', value: 700, count: 14, band: 'economic' },
+            { label: 'Horseman', value: 120, count: 1, band: 'militaryActive' },
+            { label: 'Man-at-Arms', value: 110, count: 1, band: 'militaryActive' },
+            { label: 'Scout', value: 65, count: 1, band: 'militaryActive' },
+            {
+              label: 'Gather disruption',
+              value: 484,
+              count: 0,
+              band: 'economic',
+              showCount: false,
+              title: 'Gather/min fell from 2,633 to 1,502 during this event window; row value is 484 resources of shortfall, equivalent to roughly 726 villager-seconds.',
+            },
+          ],
+        },
+        playerImpacts: {
+          player1: {
+            grossLoss: 2825,
+            immediateLoss: 2825,
+            pctOfDeployed: 23.1,
+            villagerOpportunityLoss: 0,
+            denominator: 12245,
+          },
+          player2: {
+            grossLoss: 10136,
+            immediateLoss: 995,
+            pctOfDeployed: 82,
+            villagerOpportunityLoss: 9141,
+            denominator: 12367,
+            gatherDisruption: {
+              label: 'Gather disruption',
+              value: 484,
+              baselineRatePerMin: 2633,
+              minRatePerMin: 1502,
+              dropPercent: 43,
+              idleEquivalentVillagerSeconds: 726,
+              windowStart: 893,
+              windowEnd: 953,
+            },
+          },
+        },
+      } as any,
+    };
+    const script = buildHoverInteractionScript([point], labels);
+    const { window } = runScriptInDom(script, [point]);
+    const lossTable = window.document.querySelector('[data-significant-event-loss-table]')?.innerHTML ?? '';
+
+    expect(window.document.querySelector('[data-significant-event-loss-total="player2"]')?.textContent).toBe('10,620');
+    expect(window.document.querySelector('[data-significant-event-loss-immediate="player2"]')?.textContent).toBe('1,479');
+    expect(window.document.querySelector('[data-significant-event-loss-villager-opportunity="player2"]')?.textContent).toBe('9,141');
+    expect(window.document.querySelector('[data-significant-event-loss-share="player2"]')?.textContent).toBe('12.0%');
+    expect(window.document.querySelector('[data-significant-event-loss-share-label="player2"]')?.textContent).toBe('Immediate loss share of deployed resources');
+    expect(lossTable).toContain('Villager opportunity');
+    expect(lossTable).toContain('event-impact-loss-value">9,141</td>');
+    expect(lossTable).not.toContain('event-impact-loss-empty-side-player1');
+    expect(lossTable).not.toContain('No losses');
   });
 
   it('uses a stable empty-state cell for one-sided encounter losses', () => {

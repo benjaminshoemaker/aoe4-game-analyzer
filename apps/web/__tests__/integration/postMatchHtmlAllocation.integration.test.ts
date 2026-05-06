@@ -1,5 +1,6 @@
 import { renderPostMatchHtml } from '@aoe4/analyzer-core/formatters/postMatchHtml';
 import {
+  addEventWindowOpportunityRaid,
   addGatherDisruptionEvent,
   addVerboseOpportunityLostBuckets,
   makeMvpModelFixture,
@@ -30,6 +31,12 @@ function extractHoverPayload(html: string): any[] {
   const payloadMatch = html.match(/<script id="post-match-hover-data" type="application\/json">([\s\S]*?)<\/script>/);
   if (!payloadMatch) throw new Error('Expected post-match hover data payload');
   return JSON.parse(payloadMatch[1]);
+}
+
+function extractEventLossTable(html: string): string {
+  const match = html.match(/<tbody data-significant-event-loss-table>[\s\S]*?<\/tbody>/);
+  if (!match) throw new Error('Expected event loss table');
+  return match[0];
 }
 
 function makeDenseInteractionModel() {
@@ -211,7 +218,9 @@ describe('post-match allocation widget integration', () => {
     expect(html).toContain('data-significant-event-army-end-total="player2">400</td>');
     expect(html).toContain('data-significant-event-loss-total="player2">240</td>');
     expect(html).toContain('data-significant-event-loss-immediate="player2">240</td>');
-    expect(html).toContain('data-significant-event-loss-share-label>Share of deployed resources lost</th>');
+    expect(html).toContain('.event-impact-summary-table {\n      table-layout: fixed;');
+    expect(html).toContain('.event-impact-summary-table th:nth-child(3),\n    .event-impact-summary-table td:nth-child(3) {\n      border-left: 1px solid #eadbd4;');
+    expect(html).toContain('data-significant-event-loss-share-label>Immediate loss share of deployed resources</th>');
     expect(html).not.toContain('<dt>Share of deployed</dt>');
     expect(html).not.toContain('data-hover-field="significantEvent.description"');
     expect(html).not.toContain('data-hover-field="significantEvent.grossLoss"');
@@ -477,5 +486,20 @@ describe('post-match allocation widget integration', () => {
     expect(at90.opportunityLostComponents.lowUnderproduction.you).toBe(30);
     expect(at180.opportunityLostComponents.lowUnderproduction.you).toBe(120);
     expect(html).toContain('resources lost by selected time');
+  });
+
+  it('renders event-window villager opportunity as a loss detail without inflating immediate share', () => {
+    const html = renderPostMatchHtml(addEventWindowOpportunityRaid(makeMvpModelFixture()));
+    const lossTable = extractEventLossTable(html);
+
+    expect(html).toContain('data-significant-event-loss-total="player2">10,620</td>');
+    expect(html).toContain('data-significant-event-loss-immediate="player2">1,479</td>');
+    expect(html).toContain('data-significant-event-loss-villager-opportunity="player2">9,141</td>');
+    expect(html).toContain('data-significant-event-loss-share="player2">12.0%</td>');
+    expect(html).toContain('Immediate loss share of deployed resources');
+    expect(lossTable).toContain('Villager opportunity');
+    expect(lossTable).toContain('event-impact-loss-value">9,141</td>');
+    expect(lossTable).not.toContain('event-impact-loss-empty-side-player1');
+    expect(lossTable).not.toContain('No losses');
   });
 });

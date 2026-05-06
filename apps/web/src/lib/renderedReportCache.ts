@@ -30,7 +30,8 @@ const CACHE_NAMESPACE = 'aoe4-rendered-report-html';
 //   v12: gather disruption folds into immediate loss and owns the lower-row tooltip.
 //   v13: gather disruption contributes to selected-time opportunity-lost accounting.
 //   v14: event-impact loss and army lists use collapsed table details and stable empty cells.
-const CACHE_BASELINE = 'v14';
+//   v15: event-impact details reconcile villager opportunity and immediate loss share.
+const CACHE_BASELINE = 'v15';
 
 type CacheEnv = Record<string, string | undefined>;
 
@@ -144,14 +145,35 @@ function setMemoryCachedHtml(params: RenderedReportCacheIdentity, html: string, 
 }
 
 function isMissingIncrementalCacheError(error: unknown): boolean {
-  return error instanceof Error && error.message.includes('incrementalCache missing');
+  return errorMessage(error).includes('incrementalCache missing');
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  const message = (error as { message?: unknown })?.message;
+  return typeof message === 'string' ? message : String(error);
+}
+
+function isPersistentCacheSizeLimitError(error: unknown): boolean {
+  const message = errorMessage(error);
+  return message.includes('Failed to set Next.js data cache') &&
+    message.includes('items over 2MB can not be cached');
+}
+
+function shouldUsePersistentCache(): boolean {
+  return process.env.NODE_ENV !== 'development';
 }
 
 async function readPersistentCachedHtml(
   params: RenderedReportCacheIdentity,
   render: () => Promise<string>
 ): Promise<string> {
-  const cachedRender = unstable_cache(render, renderedReportCacheKeyParts(params), {
+  let renderedHtml: string | null = null;
+  const renderAndCapture = async (): Promise<string> => {
+    renderedHtml = await render();
+    return renderedHtml;
+  };
+  const cachedRender = unstable_cache(renderAndCapture, renderedReportCacheKeyParts(params), {
     revalidate: RENDERED_REPORT_CACHE_REVALIDATE_SECONDS,
     tags: [renderedReportCacheTag(params)],
   });
@@ -159,6 +181,9 @@ async function readPersistentCachedHtml(
   try {
     return await cachedRender();
   } catch (error) {
+    if (isPersistentCacheSizeLimitError(error)) {
+      return renderedHtml ?? render();
+    }
     if (process.env.NODE_ENV === 'test' && isMissingIncrementalCacheError(error)) {
       return render();
     }
@@ -174,7 +199,9 @@ export async function getRenderedReportHtml(
   const memoryCachedHtml = getMemoryCachedHtml(params, now);
   if (memoryCachedHtml) return memoryCachedHtml;
 
-  const html = await readPersistentCachedHtml(params, render);
+  const html = shouldUsePersistentCache()
+    ? await readPersistentCachedHtml(params, render)
+    : await render();
   setMemoryCachedHtml(params, html, now);
   return html;
 }
