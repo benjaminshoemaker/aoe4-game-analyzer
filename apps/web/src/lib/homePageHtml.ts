@@ -143,6 +143,19 @@ export function renderHomeHtml(errorText?: string | null): string {
       font-size: 16px;
       line-height: 1.55;
     }
+    .support-note {
+      margin: 16px 0 0;
+      display: inline-flex;
+      max-width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--report-border);
+      border-radius: var(--aoe-radius-md);
+      background: var(--surface-alt);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1.35;
+    }
     .form-card {
       margin-top: 24px;
       display: grid;
@@ -488,6 +501,7 @@ export function renderHomeHtml(errorText?: string | null): string {
           Paste an AoE4World match link and inspect the resource mix, selected-time
           state, and fight windows that shaped the result.
         </p>
+        <p class="support-note" role="note">Currently supports 1v1 games only.</p>
 
         <form method="get" action="/matches/open" class="form-card" data-analytics-match-form>
           <label for="match-url">AoE4World match URL</label>

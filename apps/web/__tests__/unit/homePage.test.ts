@@ -16,6 +16,8 @@ describe('HomePage form', () => {
     expect(html).toContain('type="text"');
     expect(html).toContain('inputmode="url"');
     expect(html).toContain('placeholder="https://aoe4world.com/.../games/..."');
+    expect(html).toContain('Currently supports 1v1 games only.');
+    expect(html).toContain('class="support-note"');
     expect(html).toContain('id="posthog-analytics"');
     expect(html).toContain('posthog.init');
     expect(html).toContain('autocapture: false');

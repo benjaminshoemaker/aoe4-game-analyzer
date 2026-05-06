@@ -21,6 +21,7 @@ describe('home route integration', () => {
     expect(body).toContain('href="https://www.reddit.com/user/shoe7525/" target="_blank" rel="noopener noreferrer"');
     expect(body).toContain('Feedback? DM me on Reddit');
     expect(body).toContain('View sample report');
+    expect(body).toContain('Currently supports 1v1 games only.');
     expect(body).toContain('Resource state over time');
     expect(body).toContain('/matches/8139502/229727104?sig=');
     expect(body).toContain('<form method="get" action="/matches/open"');
