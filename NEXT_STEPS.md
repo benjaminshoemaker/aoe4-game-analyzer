@@ -1,6 +1,6 @@
 # Next Steps (Prioritized)
 
-Last updated: 2026-05-03 (America/Los_Angeles)
+Last updated: 2026-05-06 (America/Los_Angeles)
 
 - [ ] `P1` Stop hard-coding the PostHog write key as a default in `apps/web/src/lib/posthogAnalytics.ts`
   - The current `DEFAULT_POSTHOG_TOKEN` is a `phc_*` write-only key, so it is not a credential leak, but anyone who forks the repo will silently feed analytics events into the upstream project unless they set `NEXT_PUBLIC_POSTHOG_TOKEN`.
@@ -34,18 +34,11 @@ Priority levels:
   - Why: this directly explains "same value, different outcome" engagements.
   - Source: user follow-up; `NOTES.md` (Current limitations + Suggested slices, Proposed model section C); web performance pass on `aoe4-game-analyzer-web.vercel.app`.
 
-- [ ] `P0` Villager idle-time proxy from gather-rate drops
-  - Estimate all villager idle time from available telemetry, starting with drops in effective gather rate during engagements as a proxy signal.
-  - Categorize likely causes when the evidence supports it, but do not require categorization for the first useful version.
-  - Separate idle-time signal from villager deaths, upgrades, civ modifiers, resource depletion, and normal economic transitions as much as the telemetry allows.
-  - Why: idle time can explain resource gaps that villager count alone misses.
-  - Source: user follow-up; `DEFERRED.md`, `NOTES.md` (open discussion/data availability).
-
 - [ ] `P0` Divergence attribution, decisive-ahead, and evidence-backed explanation layer
   - Combine trajectory-split detection, decisive-ahead research, ranked cause attribution, and the lazy AI explanation widget into one evidence-first feature track.
   - First output should identify where the game diverged and what evidence supports the likely cause; probability-style claims should abstain unless the model has enough corpus support.
   - Reuse `features/ai_explanation/PLAN.md` for the prose layer, but keep the underlying evidence packet as the source of truth.
-  - Why: this is the synthesis layer that turns allocation, military, destruction, idle-time, and civ-effect signals into a coherent match explanation.
+  - Why: this is the synthesis layer that turns allocation, military, destruction, event-window gather disruption, and civ-effect signals into a coherent match explanation.
   - Source: `NOTES.md` (Current model limitations), `features/win_probability/PLAN.md`, `features/ai_explanation/PLAN.md`, `DEFERRED.md` (descriptive-first posture).
 
 ## P1 — Context And Model Features
@@ -56,10 +49,10 @@ Priority levels:
   - Why: these can materially change effective gather rate, but the model needs an explicit inclusion policy so "villager opportunity cost" stays interpretable.
   - Source: civ-mechanics text audit and user clarification request.
 
-- [ ] `P1` Surface event-window gather disruption in Villager opportunity
-  - Reuse the event-window gather disruption signal currently shown under Event impact -> Encounter losses.
+- [ ] `P1` Decide whether to surface event-window gather disruption in the standalone Villager opportunity section
+  - The event-window gather disruption signal is already shown under Event impact -> Encounter losses and included in Opportunity lost by selected time.
   - Keep it separate from villager deaths and TC idle seconds so opportunity math does not double-count direct villager loss, underproduction, and temporary raid pressure.
-  - Why: once the signal has enough examples, the Villager opportunity section should show raid-pressure economic downtime alongside deaths and TC idle seconds without changing the event-window source of truth.
+  - Why: the standalone Villager opportunity section may eventually show raid-pressure economic downtime alongside deaths and TC idle seconds, but that is a display/UX decision rather than the source-of-truth model work.
   - Source: user follow-up on the 229727104 / 8:15 Yatai event.
 
 - [ ] `P1` Add defensive-context confidence heuristics
@@ -121,8 +114,7 @@ Priority levels:
 ## Suggested Execution Order
 
 1. `P0` adjusted military value with upgrade/counter timing windows.
-2. `P0` all-villager idle-time proxy from gather-rate drops.
-3. `P0` divergence attribution, decisive-ahead, and evidence-backed explanation layer.
-4. `P1` defensive-context heuristics and replay-summary location research.
-5. `P1` advanced villager-efficiency modifier modeling if the examples prove useful.
-6. `P2` UX expansion, with net-vs-invested basis toggle last.
+2. `P0` divergence attribution, decisive-ahead, and evidence-backed explanation layer.
+3. `P1` defensive-context heuristics and replay-summary location research.
+4. `P1` advanced villager-efficiency modifier modeling if the examples prove useful.
+5. `P2` UX expansion, with net-vs-invested basis toggle last.

@@ -1,8 +1,16 @@
 # Completed Next Steps
 
-Last updated: 2026-05-03 (America/Los_Angeles)
+Last updated: 2026-05-06 (America/Los_Angeles)
 
 This file records items moved out of `NEXT_STEPS.md` after they are verified as completed or no longer applicable as open backlog work.
+
+## 2026-05-06
+
+- [x] `P0` Villager idle-time proxy from gather-rate drops
+  - Implemented in the current narrower event-window form as gather disruption: significant resource-loss windows compare in-window gather rates against the window-start baseline, threshold out weak/noisy drops, and report resource shortfall plus idle-equivalent villager-seconds.
+  - The signal is attached to affected-side event impacts, rendered under Event impact -> Encounter losses, and accumulated into Opportunity lost by selected time as a separate component from villager deaths, underproduction, and TC idle seconds.
+  - Verification: recent commits `892e4ed` and `8fc9daa` added/updated unit, integration, and e2e coverage across `significantResourceLossEvents`, post-match HTML/hover rendering, and the match route.
+  - Scope note: this intentionally does not attempt arbitrary all-game gather-rate-drop classification; the remaining P1 item is only about whether to also show this existing signal in the standalone Villager opportunity section.
 
 ## 2026-05-03
 
