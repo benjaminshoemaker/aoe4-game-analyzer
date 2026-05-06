@@ -535,6 +535,7 @@ ${adjustedHelpers}
         var opportunityTotal = (point.allocation && point.allocation.opportunityLost) || { you: 0, opponent: 0, delta: 0 };
         var villagersLost = opportunityComponents.villagersLost || { you: 0, opponent: 0, delta: 0 };
         var underproduction = opportunityComponents.underproduction || { you: 0, opponent: 0, delta: 0 };
+        var gatherDisruption = opportunityComponents.gatherDisruption || { you: 0, opponent: 0, delta: 0 };
         var lowUnderproduction = opportunityComponents.lowUnderproduction || { you: 0, opponent: 0, delta: 0 };
         setText('[data-opportunity-lost-component-total-you]', formatNumber(opportunityTotal.you));
         setText('[data-opportunity-lost-component-total-opponent]', formatNumber(opportunityTotal.opponent));
@@ -545,6 +546,9 @@ ${adjustedHelpers}
         setText('[data-opportunity-lost-component-underproduction-you]', formatNumber(underproduction.you));
         setText('[data-opportunity-lost-component-underproduction-opponent]', formatNumber(underproduction.opponent));
         setText('[data-opportunity-lost-component-underproduction-delta]', formatSigned(underproduction.delta));
+        setText('[data-opportunity-lost-component-gather-disruption-you]', formatNumber(gatherDisruption.you));
+        setText('[data-opportunity-lost-component-gather-disruption-opponent]', formatNumber(gatherDisruption.opponent));
+        setText('[data-opportunity-lost-component-gather-disruption-delta]', formatSigned(gatherDisruption.delta));
         setText('[data-opportunity-lost-component-low-underproduction-you]', formatSeconds(lowUnderproduction.you));
         setText('[data-opportunity-lost-component-low-underproduction-opponent]', formatSeconds(lowUnderproduction.opponent));
         setText('[data-opportunity-lost-component-low-underproduction-delta]', formatSignedSeconds(lowUnderproduction.delta));
@@ -751,9 +755,11 @@ ${adjustedFormatters}
           var count = Number(item.count || 0);
           var countLabel = item.showCount === false || count <= 0 ? '' : ' x' + formatNumber(count);
           var detail = item.detail ? '<small class="event-impact-loss-note">' + escapeHtml(item.detail) + '</small>' : '';
-          var title = item.title ? ' title="' + escapeHtml(item.title) + '"' : '';
+          var helpButton = item.title
+            ? '<button type="button" class="event-impact-help-button event-impact-inline-help-button" data-significant-event-loss-row-help aria-label="What is ' + escapeHtml(item.label || 'loss') + '?" title="' + escapeHtml(item.title) + '">?</button>'
+            : '';
           return '<li class="event-impact-loss-row">' +
-            '<span class="event-impact-loss-name"' + title + '>' + escapeHtml(item.label || 'Loss') + countLabel + detail + '</span>' +
+            '<span class="event-impact-loss-name">' + escapeHtml(item.label || 'Loss') + countLabel + helpButton + detail + '</span>' +
             '<span class="event-impact-loss-value">' + formatNumber(item.value || 0) + '</span>' +
             '</li>';
         }).join('');
@@ -808,19 +814,15 @@ ${adjustedFormatters}
         return impact && impact.gatherDisruption ? impact.gatherDisruption : null;
       }
 
-      function significantEventGatherDisruptionDetail(event, playerKey) {
-        var disruption = significantEventGatherDisruption(event, playerKey);
-        if (!disruption) return '';
-        return 'Gather/min fell from ' + formatNumber(disruption.baselineRatePerMin) +
-          ' to ' + formatNumber(disruption.minRatePerMin) +
-          ' during this event window; row value is ' + formatNumber(disruption.value) +
-          ' resources of shortfall, equivalent to roughly ' +
-          formatNumber(disruption.idleEquivalentVillagerSeconds) + ' villager-seconds.';
-      }
-
       function significantEventDisplayedTotalLoss(event, playerKey) {
         var disruption = significantEventGatherDisruption(event, playerKey);
         return significantEventLossValue(event, playerKey, 'grossLoss') +
+          (disruption ? Number(disruption.value || 0) : 0);
+      }
+
+      function significantEventDisplayedImmediateLoss(event, playerKey) {
+        var disruption = significantEventGatherDisruption(event, playerKey);
+        return significantEventLossValue(event, playerKey, 'immediateLoss') +
           (disruption ? Number(disruption.value || 0) : 0);
       }
 
@@ -838,25 +840,15 @@ ${adjustedFormatters}
 
       function updateSignificantEventLossSummary(event, playerKey) {
         var totalLoss = significantEventDisplayedTotalLoss(event, playerKey);
-        var immediateLoss = significantEventLossValue(event, playerKey, 'immediateLoss');
-        var gatherDisruption = significantEventGatherDisruption(event, playerKey);
+        var immediateLoss = significantEventDisplayedImmediateLoss(event, playerKey);
         var villagerOpportunityLoss = significantEventLossValue(event, playerKey, 'villagerOpportunityLoss');
         var pctOfDeployed = significantEventDisplayedPctOfDeployed(event, playerKey);
         setSignificantLossSummaryText('total', playerKey, event ? formatNumber(totalLoss) : '');
         setSignificantLossSummaryText('immediate', playerKey, event ? formatNumber(immediateLoss) : '');
-        setSignificantLossSummaryText('gather-disruption', playerKey, event && gatherDisruption ? formatNumber(gatherDisruption.value || 0) : '');
         setSignificantLossSummaryText('villager-opportunity', playerKey, event ? formatNumber(villagerOpportunityLoss) : '');
         setSignificantLossSummaryText('share', playerKey, event ? formatPrecise(pctOfDeployed, 1) + '%' : '');
         document.querySelectorAll('[data-significant-event-loss-share-label="' + playerKey + '"]').forEach(function (el) {
           el.textContent = 'Share of Deployed Resources Lost';
-        });
-        document.querySelectorAll('[data-significant-event-loss-gather-disruption-row="' + playerKey + '"]').forEach(function (el) {
-          el.hidden = !event || !gatherDisruption;
-        });
-        document.querySelectorAll('[data-significant-event-loss-gather-disruption-help="' + playerKey + '"]').forEach(function (el) {
-          var detail = event ? significantEventGatherDisruptionDetail(event, playerKey) : '';
-          el.setAttribute('title', detail);
-          el.setAttribute('aria-label', detail ? 'What is gather disruption?' : '');
         });
         document.querySelectorAll('[data-significant-event-loss-villager-opportunity-row="' + playerKey + '"]').forEach(function (el) {
           el.hidden = !event || villagerOpportunityLoss <= 0;

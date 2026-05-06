@@ -695,6 +695,18 @@ describe('renderPostMatchHtml', () => {
     (model.trajectory.hoverSnapshots[0] as any).significantEvent = significantEvent;
 
     const html = renderPostMatchHtml(model, { surface: 'full' });
+    const hoverPayload = extractHoverData(html);
+
+    expect(hoverPayload[0].opportunityLostComponents.gatherDisruption).toEqual(expect.objectContaining({
+      you: 0,
+      opponent: 205,
+      delta: -205,
+    }));
+    expect(hoverPayload[0].allocation.opportunityLost.opponent).toBe(
+      hoverPayload[0].opportunityLostComponents.villagersLost.opponent +
+      hoverPayload[0].opportunityLostComponents.underproduction.opponent +
+      hoverPayload[0].opportunityLostComponents.gatherDisruption.opponent
+    );
 
     expect(html).toContain('Resource state over time');
     expect(html.indexOf('Resource state over time')).toBeLessThan(html.indexOf('Gather rate'));
@@ -827,11 +839,12 @@ describe('renderPostMatchHtml', () => {
     expect(html).toContain('data-significant-event-loss-heading="player2">French</div>');
     expect(html).not.toContain('French losses');
     expect(html).toContain('data-significant-event-loss-total="player2">445</dd>');
-    expect(html).toContain('data-significant-event-loss-immediate="player2">240</dd>');
-    expect(html).toContain('data-significant-event-loss-gather-disruption-row="player2"');
-    expect(html).toContain('data-significant-event-loss-gather-disruption="player2">205</dd>');
+    expect(html).toContain('data-significant-event-loss-immediate="player2">445</dd>');
     expect(html).toContain('Gather disruption');
-    expect(html).toContain('data-significant-event-loss-gather-disruption-help="player2"');
+    expect(html).not.toContain('data-significant-event-loss-gather-disruption-row="player2"');
+    expect(html).not.toContain('data-significant-event-loss-gather-disruption="player2"');
+    expect(html).not.toContain('data-significant-event-loss-gather-disruption-help="player2"');
+    expect(html).toContain('data-significant-event-loss-row-help');
     expect(html).toContain('title="Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds."');
     expect(html).not.toContain('event-impact-loss-note">Gather/min fell from 1,104 to 656');
     expect(html).toContain('<span class="event-impact-loss-value">205</span>');

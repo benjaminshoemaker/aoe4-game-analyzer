@@ -62,7 +62,10 @@ export interface AllocationCategoryDef {
 }
 
 export type AllocationComparison = Record<AllocationGraphKey | AllocationCategoryKey, AllocationComparisonRow>;
-export type OpportunityLostComponents = Record<'villagersLost' | 'underproduction' | 'lowUnderproduction', AllocationComparisonRow>;
+export type OpportunityLostComponents = Record<
+  'villagersLost' | 'underproduction' | 'gatherDisruption' | 'lowUnderproduction',
+  AllocationComparisonRow
+>;
 export type AllocationCategoryBasis = 'net' | 'destroyed' | 'investment';
 export type EconomicAllocationBasis = 'resourceGeneration' | 'resourceInfrastructure';
 export type AllocationCategoryRows = Record<AllocationCategoryBasis, AllocationComparisonRow> &

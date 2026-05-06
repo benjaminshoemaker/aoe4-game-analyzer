@@ -96,6 +96,7 @@ const snapshot: ClientHoverSnapshot = {
   opportunityLostComponents: {
     villagersLost: { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 },
     underproduction: { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 },
+    gatherDisruption: { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 },
     lowUnderproduction: { you: 0, opponent: 0, delta: 0, youShare: 0, opponentShare: 0, shareDelta: 0 },
   },
   totalPoolTooltip: 'total',
@@ -192,19 +193,11 @@ function runScriptInDom(script: string, hoverPoints: ClientHoverSnapshot[], anal
 	        <dt data-significant-event-loss-share-label="player1"></dt>
 	        <dd data-significant-event-loss-total="player1"></dd>
 	        <dd data-significant-event-loss-immediate="player1"></dd>
-	        <div data-significant-event-loss-gather-disruption-row="player1" hidden>
-	          <button type="button" data-significant-event-loss-gather-disruption-help="player1"></button>
-	          <dd data-significant-event-loss-gather-disruption="player1"></dd>
-	        </div>
 	        <dd data-significant-event-loss-villager-opportunity="player1"></dd>
 	        <dd data-significant-event-loss-share="player1"></dd>
 	        <dt data-significant-event-loss-share-label="player2"></dt>
 	        <dd data-significant-event-loss-total="player2"></dd>
 	        <dd data-significant-event-loss-immediate="player2"></dd>
-	        <div data-significant-event-loss-gather-disruption-row="player2" hidden>
-	          <button type="button" data-significant-event-loss-gather-disruption-help="player2"></button>
-	          <dd data-significant-event-loss-gather-disruption="player2"></dd>
-	        </div>
 	        <dd data-significant-event-loss-villager-opportunity="player2"></dd>
 	        <dd data-significant-event-loss-share="player2"></dd>
 	      </dl>
@@ -234,6 +227,9 @@ function runScriptInDom(script: string, hoverPoints: ClientHoverSnapshot[], anal
       <strong data-opportunity-lost-component-low-underproduction-you></strong>
       <strong data-opportunity-lost-component-low-underproduction-opponent></strong>
       <strong data-opportunity-lost-component-low-underproduction-delta></strong>
+      <strong data-opportunity-lost-component-gather-disruption-you></strong>
+      <strong data-opportunity-lost-component-gather-disruption-opponent></strong>
+      <strong data-opportunity-lost-component-gather-disruption-delta></strong>
       <div style="height: 800px;"></div>
     </aside>
     <svg>
@@ -278,6 +274,8 @@ describe('post-match interaction script formatter', () => {
     expect(script).toContain('data-opportunity-lost-component-low-underproduction-you');
     expect(script).toContain('formatSeconds(lowUnderproduction.you)');
     expect(script).toContain('formatSignedSeconds(lowUnderproduction.delta)');
+    expect(script).toContain('data-opportunity-lost-component-gather-disruption-you');
+    expect(script).toContain('formatNumber(gatherDisruption.you)');
     expect(script).not.toContain('payloadSourceUrl');
     expect(script).not.toContain('fetch(payloadSourceUrl');
   });
@@ -306,6 +304,32 @@ describe('post-match interaction script formatter', () => {
       .toBe('94s');
     expect(window.document.querySelector('[data-opportunity-lost-component-low-underproduction-delta]')?.textContent)
       .toBe('-12s');
+  });
+
+  it('renders gather disruption as an opportunity-lost resource component when hover state changes', () => {
+    const point = {
+      ...snapshot,
+      opportunityLostComponents: {
+        ...snapshot.opportunityLostComponents,
+        gatherDisruption: {
+          you: 0,
+          opponent: 205,
+          delta: -205,
+          youShare: 0,
+          opponentShare: 0,
+          shareDelta: 0,
+        },
+      },
+    };
+    const script = buildHoverInteractionScript([point], labels);
+    const { window } = runScriptInDom(script, [point]);
+
+    expect(window.document.querySelector('[data-opportunity-lost-component-gather-disruption-you]')?.textContent)
+      .toBe('0');
+    expect(window.document.querySelector('[data-opportunity-lost-component-gather-disruption-opponent]')?.textContent)
+      .toBe('205');
+    expect(window.document.querySelector('[data-opportunity-lost-component-gather-disruption-delta]')?.textContent)
+      .toBe('-205');
   });
 
   it('renders gather disruption under immediate loss without a synthetic count when hover state changes', () => {
@@ -364,19 +388,16 @@ describe('post-match interaction script formatter', () => {
     const script = buildHoverInteractionScript([point], labels);
     const { window } = runScriptInDom(script, [point]);
     const player2Losses = window.document.querySelector('[data-significant-event-loss-list="player2"]')?.innerHTML ?? '';
-    const gatherRow = window.document.querySelector('[data-significant-event-loss-gather-disruption-row="player2"]') as HTMLElement;
-    const gatherValue = window.document.querySelector('[data-significant-event-loss-gather-disruption="player2"]') as HTMLElement;
-    const gatherHelp = window.document.querySelector('[data-significant-event-loss-gather-disruption-help="player2"]') as HTMLElement;
 
     expect(player2Losses).toContain('Yatai x1');
     expect(player2Losses).toContain('Gather disruption');
     expect(player2Losses).toContain('event-impact-loss-value">205</span>');
+    expect(player2Losses).toContain('data-significant-event-loss-row-help');
+    expect(player2Losses).toContain('title="Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds."');
     expect(player2Losses).not.toContain('event-impact-loss-note');
     expect(window.document.querySelector('[data-significant-event-loss-total="player2"]')?.textContent).toBe('330');
-    expect(window.document.querySelector('[data-significant-event-loss-immediate="player2"]')?.textContent).toBe('125');
-    expect(gatherRow.hidden).toBe(false);
-    expect(gatherValue.textContent).toBe('205');
-    expect(gatherHelp.getAttribute('title')).toBe('Gather/min fell from 1,104 to 656 during this event window; row value is 205 resources of shortfall, equivalent to roughly 307 villager-seconds.');
+    expect(window.document.querySelector('[data-significant-event-loss-immediate="player2"]')?.textContent).toBe('330');
+    expect(window.document.querySelector('[data-significant-event-loss-gather-disruption-row="player2"]')).toBeNull();
     expect(window.document.querySelector('[data-significant-event-loss-share-label="player2"]')?.textContent).toBe('Share of Deployed Resources Lost');
     expect(player2Losses).not.toContain('Gather disruption x0');
     expect(player2Losses).not.toContain('Gather disruption x1');

@@ -1,6 +1,7 @@
 import {
   buildPostMatchViewModel,
   PostMatchViewModel,
+  SignificantTimelineEvent,
 } from '@aoe4/analyzer-core/analysis/postMatchViewModel';
 import { GameAnalysis } from '@aoe4/analyzer-core/analysis/types';
 import { PoolSeriesPoint } from '@aoe4/analyzer-core/analysis/resourcePool';
@@ -42,6 +43,92 @@ export function addVerboseOpportunityLostBuckets(model: PostMatchViewModel): Pos
     })),
   };
 
+  return next;
+}
+
+export function addGatherDisruptionEvent(
+  model: PostMatchViewModel,
+  timestamp = 120,
+  value = 205
+): PostMatchViewModel {
+  const next = structuredClone(model);
+  const event: SignificantTimelineEvent = {
+    id: 'significant-loss-opponent-gather-disruption',
+    timestamp,
+    windowStart: Math.max(0, timestamp - 60),
+    windowEnd: timestamp,
+    timeLabel: formatBucketTime(timestamp),
+    victim: 'opponent',
+    victimLabel: 'French',
+    player1Civilization: 'English',
+    player2Civilization: 'French',
+    player1Label: 'English',
+    player2Label: 'French',
+    victimCivilization: 'French',
+    actorCivilization: 'English',
+    actorLabel: 'English',
+    headline: 'French economy was disrupted by raiding pressure.',
+    kind: 'raid',
+    label: 'Raid',
+    shortLabel: 'Raid',
+    description: 'French gather rate fell during the raid window.',
+    impactSummary: `${value} resources of gather disruption.`,
+    grossImpact: value,
+    grossLoss: 0,
+    immediateLoss: 0,
+    villagerOpportunityLoss: 0,
+    denominator: 1000,
+    pctOfDeployed: 0,
+    villagerDeaths: 0,
+    topLosses: [],
+    encounterLosses: {
+      player1: [],
+      player2: [{
+        label: 'Gather disruption',
+        value,
+        count: 0,
+        band: 'economic',
+        showCount: false,
+        title: 'Gather/min fell during this event window.',
+      }],
+    },
+    playerImpacts: {
+      player1: {
+        immediateLoss: 0,
+        villagerOpportunityLoss: 0,
+        grossLoss: 0,
+        denominator: 1000,
+        pctOfDeployed: 0,
+        villagerDeaths: 0,
+        losses: [],
+        topLosses: [],
+      },
+      player2: {
+        immediateLoss: 0,
+        villagerOpportunityLoss: 0,
+        grossLoss: 0,
+        denominator: 1000,
+        pctOfDeployed: 0,
+        villagerDeaths: 0,
+        gatherDisruption: {
+          label: 'Gather disruption',
+          value,
+          baselineRatePerMin: 1104,
+          minRatePerMin: 656,
+          dropPercent: 40.6,
+          idleEquivalentVillagerSeconds: 307,
+          windowStart: Math.max(0, timestamp - 60),
+          windowEnd: timestamp,
+        },
+        losses: [],
+        topLosses: [],
+      },
+    },
+  };
+  next.trajectory.significantEvents = [
+    ...(next.trajectory.significantEvents ?? []),
+    event,
+  ];
   return next;
 }
 

@@ -1,5 +1,6 @@
 import { renderPostMatchHtml } from '@aoe4/analyzer-core/formatters/postMatchHtml';
 import {
+  addGatherDisruptionEvent,
   addVerboseOpportunityLostBuckets,
   makeMvpModelFixture,
   makePointInTimeOpportunityLostModel,
@@ -393,6 +394,11 @@ describe('post-match allocation widget integration', () => {
       opponent: 0,
       delta: 1475,
     }));
+    expect(payload[0].opportunityLostComponents.gatherDisruption).toEqual(expect.objectContaining({
+      you: 0,
+      opponent: 0,
+      delta: 0,
+    }));
     expect(payload[0].opportunityLostComponents.lowUnderproduction).toEqual(expect.objectContaining({
       you: 2213,
       opponent: 0,
@@ -418,6 +424,8 @@ describe('post-match allocation widget integration', () => {
     expect(html).toContain('<th scope="row">Total</th>');
     expect(html).toContain('data-opportunity-lost-component="underproduction"');
     expect(html).toContain('<span title="Villager underproduction">Under-production</span>');
+    expect(html).toContain('data-opportunity-lost-component="gather-disruption"');
+    expect(html).toContain('<th scope="row">Gather disruption</th>');
     expect(html).toContain('data-opportunity-lost-component="low-underproduction"');
     expect(html).toContain('<span title="Town-center idle seconds behind expected villager production. Resource loss can be much larger because delayed villagers miss gather time after they would have existed.">TC idle seconds</span>');
     expect(html).toContain('data-opportunity-lost-component-low-underproduction-you>2,213s</strong>');
@@ -425,7 +433,7 @@ describe('post-match allocation widget integration', () => {
   });
 
   it('renders opportunity lost as resources lost by the selected time', () => {
-    const html = renderPostMatchHtml(makePointInTimeOpportunityLostModel());
+    const html = renderPostMatchHtml(addGatherDisruptionEvent(makePointInTimeOpportunityLostModel()));
     const payload = extractHoverPayload(html);
     const at90 = payload.find((snapshot: { timestamp: number }) => snapshot.timestamp === 90);
     const at180 = payload.find((snapshot: { timestamp: number }) => snapshot.timestamp === 180);
@@ -442,9 +450,25 @@ describe('post-match allocation widget integration', () => {
       opponent: 0,
       delta: 120,
     }));
+    expect(at90.opportunityLostComponents.gatherDisruption).toEqual(expect.objectContaining({
+      you: 0,
+      opponent: 0,
+      delta: 0,
+    }));
+    expect(at180.opportunityLostComponents.gatherDisruption).toEqual(expect.objectContaining({
+      you: 0,
+      opponent: 205,
+      delta: -205,
+    }));
     expect(at90.allocation.opportunityLost.you).toBe(
       at90.opportunityLostComponents.villagersLost.you +
-      at90.opportunityLostComponents.underproduction.you
+      at90.opportunityLostComponents.underproduction.you +
+      at90.opportunityLostComponents.gatherDisruption.you
+    );
+    expect(at180.allocation.opportunityLost.opponent).toBe(
+      at180.opportunityLostComponents.villagersLost.opponent +
+      at180.opportunityLostComponents.underproduction.opponent +
+      at180.opportunityLostComponents.gatherDisruption.opponent
     );
     expect(at90.opportunityLostComponents.lowUnderproduction.you).toBe(30);
     expect(at180.opportunityLostComponents.lowUnderproduction.you).toBe(120);

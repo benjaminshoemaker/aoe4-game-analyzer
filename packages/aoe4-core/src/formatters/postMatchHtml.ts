@@ -473,6 +473,54 @@ function economicRoleTotalsFromBreakdown(
   };
 }
 
+type SignificantEventPlayerImpact = SignificantTimelineEvent['playerImpacts']['player1'];
+
+function displaysSamePlayer(a: PostMatchPlayerDisplay, b: PostMatchPlayerDisplay): boolean {
+  return a.name === b.name && a.civilization === b.civilization;
+}
+
+function gatherDisruptionResourceValue(impact?: SignificantEventPlayerImpact): number {
+  const value = impact?.gatherDisruption?.value;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.max(0, Math.round(numeric)) : 0;
+}
+
+function gatherDisruptionForPerspective(
+  event: SignificantTimelineEvent,
+  model: PostMatchViewModel
+): { you: number; opponent: number } {
+  const player1 = gatherDisruptionResourceValue(event.playerImpacts.player1);
+  const player2 = gatherDisruptionResourceValue(event.playerImpacts.player2);
+  if (
+    displaysSamePlayer(model.header.youPlayer, model.header.player1) &&
+    displaysSamePlayer(model.header.opponentPlayer, model.header.player2)
+  ) {
+    return { you: player1, opponent: player2 };
+  }
+  if (
+    displaysSamePlayer(model.header.youPlayer, model.header.player2) &&
+    displaysSamePlayer(model.header.opponentPlayer, model.header.player1)
+  ) {
+    return { you: player2, opponent: player1 };
+  }
+  return { you: player1, opponent: player2 };
+}
+
+function cumulativeGatherDisruptionAt(
+  events: SignificantTimelineEvent[],
+  timestamp: number,
+  model: PostMatchViewModel
+): { you: number; opponent: number } {
+  return events.reduce((total, event) => {
+    if (event.timestamp > timestamp) return total;
+    const disruption = gatherDisruptionForPerspective(event, model);
+    return {
+      you: total.you + disruption.you,
+      opponent: total.opponent + disruption.opponent,
+    };
+  }, { you: 0, opponent: 0 });
+}
+
 function buildHoverSnapshots(model: PostMatchViewModel, labels: RenderPlayerLabels): HoverSnapshot[] {
   const duration = model.trajectory.durationSeconds;
   const villagerDuration = Math.max(
@@ -481,6 +529,7 @@ function buildHoverSnapshots(model: PostMatchViewModel, labels: RenderPlayerLabe
     model.villagerOpportunity.resourceSeries.opponent[model.villagerOpportunity.resourceSeries.opponent.length - 1]?.timestamp ?? 0,
     duration
   );
+  const significantEvents = model.trajectory.significantEvents ?? [];
   return model.trajectory.hoverSnapshots.map((snapshot) => {
     const matrix = buildAdjustedMatrixPayload(
       snapshot.adjustedMilitary.youUnitBreakdown,
@@ -497,6 +546,7 @@ function buildHoverSnapshots(model: PostMatchViewModel, labels: RenderPlayerLabe
     const opponentUnderproduction = cumulativeUnderproductionOpportunityLoss(snapshot.villagerOpportunity.opponent);
     const youUnderproductionSeconds = cumulativeUnderproductionSeconds(snapshot.villagerOpportunity.you);
     const opponentUnderproductionSeconds = cumulativeUnderproductionSeconds(snapshot.villagerOpportunity.opponent);
+    const gatherDisruption = cumulativeGatherDisruptionAt(significantEvents, snapshot.timestamp, model);
     const opportunityLostComponents: OpportunityLostComponents = {
       villagersLost: buildAllocationComparisonRow(
         'opportunityLost',
@@ -512,6 +562,13 @@ function buildHoverSnapshots(model: PostMatchViewModel, labels: RenderPlayerLabe
         0,
         0
       ),
+      gatherDisruption: buildAllocationComparisonRow(
+        'opportunityLost',
+        gatherDisruption.you,
+        gatherDisruption.opponent,
+        0,
+        0
+      ),
       lowUnderproduction: buildAllocationComparisonRow(
         'opportunityLost',
         youUnderproductionSeconds,
@@ -523,11 +580,11 @@ function buildHoverSnapshots(model: PostMatchViewModel, labels: RenderPlayerLabe
     const investmentAllocation = buildAllocationComparison(
       {
         ...accounting.you,
-        opportunityLost: youVillagersLost + youUnderproduction,
+        opportunityLost: youVillagersLost + youUnderproduction + gatherDisruption.you,
       },
       {
         ...accounting.opponent,
-        opportunityLost: opponentVillagersLost + opponentUnderproduction,
+        opportunityLost: opponentVillagersLost + opponentUnderproduction + gatherDisruption.opponent,
       }
     );
     const allocation: AllocationComparison = {
@@ -803,9 +860,12 @@ function significantEventLossRowsHtml(items: SignificantTimelineEvent['encounter
       const countLabel = item.showCount === false || item.count <= 0
         ? ''
         : ` x${formatNumber(item.count)}`;
+      const helpButton = item.title
+        ? `<button type="button" class="event-impact-help-button event-impact-inline-help-button" data-significant-event-loss-row-help aria-label="What is ${escapeHtml(item.label)}?" title="${escapeHtml(item.title)}">?</button>`
+        : '';
       return `
               <li class="event-impact-loss-row">
-                <span class="event-impact-loss-name"${item.title ? ` title="${escapeHtml(item.title)}"` : ''}>${escapeHtml(item.label)}${countLabel}${item.detail ? `<small class="event-impact-loss-note">${escapeHtml(item.detail)}</small>` : ''}</span>
+                <span class="event-impact-loss-name">${escapeHtml(item.label)}${countLabel}${helpButton}${item.detail ? `<small class="event-impact-loss-note">${escapeHtml(item.detail)}</small>` : ''}</span>
                 <span class="event-impact-loss-value">${formatNumber(item.value)}</span>
               </li>`;
     })
@@ -846,20 +906,19 @@ function significantEventGatherDisruption(
   return event?.playerImpacts?.[playerKey]?.gatherDisruption;
 }
 
-function significantEventGatherDisruptionDetail(
-  event: SignificantTimelineEvent | null,
-  playerKey: SignificantEventPlayerKey
-): string {
-  const disruption = significantEventGatherDisruption(event, playerKey);
-  if (!disruption) return '';
-  return `Gather/min fell from ${formatNumber(disruption.baselineRatePerMin)} to ${formatNumber(disruption.minRatePerMin)} during this event window; row value is ${formatNumber(disruption.value)} resources of shortfall, equivalent to roughly ${formatNumber(disruption.idleEquivalentVillagerSeconds)} villager-seconds.`;
-}
-
 function significantEventDisplayedTotalLoss(
   event: SignificantTimelineEvent | null,
   playerKey: SignificantEventPlayerKey
 ): number {
   return significantEventLossValue(event, playerKey, 'grossLoss') +
+    (significantEventGatherDisruption(event, playerKey)?.value ?? 0);
+}
+
+function significantEventDisplayedImmediateLoss(
+  event: SignificantTimelineEvent | null,
+  playerKey: SignificantEventPlayerKey
+): number {
+  return significantEventLossValue(event, playerKey, 'immediateLoss') +
     (significantEventGatherDisruption(event, playerKey)?.value ?? 0);
 }
 
@@ -877,18 +936,14 @@ function significantEventLossSummaryHtml(
   playerKey: SignificantEventPlayerKey
 ): string {
   const totalLoss = significantEventDisplayedTotalLoss(event, playerKey);
-  const immediateLoss = significantEventLossValue(event, playerKey, 'immediateLoss');
-  const gatherDisruption = significantEventGatherDisruption(event, playerKey);
-  const gatherDisruptionDetail = significantEventGatherDisruptionDetail(event, playerKey);
+  const immediateLoss = significantEventDisplayedImmediateLoss(event, playerKey);
   const villagerOpportunityLoss = significantEventLossValue(event, playerKey, 'villagerOpportunityLoss');
   const pctOfDeployed = significantEventDisplayedPctOfDeployed(event, playerKey);
-  const gatherHiddenAttr = event && gatherDisruption ? '' : ' hidden';
   const opportunityHiddenAttr = event && villagerOpportunityLoss > 0 ? '' : ' hidden';
   return `
                   <dl class="event-impact-loss-summary" data-significant-event-loss-summary="${playerKey}">
                     <div><dt>Total loss</dt><dd data-significant-event-loss-total="${playerKey}">${event ? formatNumber(totalLoss) : ''}</dd></div>
                     <div><dt>Immediate loss</dt><dd data-significant-event-loss-immediate="${playerKey}">${event ? formatNumber(immediateLoss) : ''}</dd></div>
-                    <div data-significant-event-loss-gather-disruption-row="${playerKey}"${gatherHiddenAttr}><dt><span>Gather disruption</span><button type="button" class="event-impact-help-button event-impact-inline-help-button" data-significant-event-loss-gather-disruption-help="${playerKey}" aria-label="What is gather disruption?" title="${escapeHtml(gatherDisruptionDetail)}">?</button></dt><dd data-significant-event-loss-gather-disruption="${playerKey}">${event && gatherDisruption ? formatNumber(gatherDisruption.value) : ''}</dd></div>
                     <div data-significant-event-loss-villager-opportunity-row="${playerKey}"${opportunityHiddenAttr}><dt><span data-villager-opportunity-event-tooltip title="${escapeHtml(significantVillagerOpportunityTooltip)}">Villager opportunity</span></dt><dd data-significant-event-loss-villager-opportunity="${playerKey}">${event ? formatNumber(villagerOpportunityLoss) : ''}</dd></div>
                     <div><dt data-significant-event-loss-share-label="${playerKey}">Share of Deployed Resources Lost</dt><dd data-significant-event-loss-share="${playerKey}">${event ? `${formatPrecise(pctOfDeployed, 1)}%` : ''}</dd></div>
                   </dl>`;
@@ -1417,6 +1472,12 @@ function buildHoverInspectorHtml(
                     <td><strong data-opportunity-lost-component-underproduction-you>${formatNumber(opportunityLostComponents.underproduction.you)}</strong></td>
                     <td><strong data-opportunity-lost-component-underproduction-opponent>${formatNumber(opportunityLostComponents.underproduction.opponent)}</strong></td>
                     <td><strong data-opportunity-lost-component-underproduction-delta>${formatSigned(opportunityLostComponents.underproduction.delta)}</strong></td>
+                  </tr>
+                  <tr data-opportunity-lost-component="gather-disruption">
+                    <th scope="row">Gather disruption</th>
+                    <td><strong data-opportunity-lost-component-gather-disruption-you>${formatNumber(opportunityLostComponents.gatherDisruption.you)}</strong></td>
+                    <td><strong data-opportunity-lost-component-gather-disruption-opponent>${formatNumber(opportunityLostComponents.gatherDisruption.opponent)}</strong></td>
+                    <td><strong data-opportunity-lost-component-gather-disruption-delta>${formatSigned(opportunityLostComponents.gatherDisruption.delta)}</strong></td>
                   </tr>
                   <tr data-opportunity-lost-component="low-underproduction">
                     <th scope="row"><span title="${escapeHtml(TC_IDLE_SECONDS_TOOLTIP)}">TC idle seconds</span></th>
@@ -3004,12 +3065,17 @@ export function renderPostMatchHtml(
     }
 
     .event-impact-loss-name {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
       min-width: 0;
       overflow-wrap: anywhere;
     }
 
     .event-impact-loss-note {
       display: block;
+      flex-basis: 100%;
       margin-top: 2px;
       color: var(--color-muted);
       font-size: 11px;

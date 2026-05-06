@@ -514,6 +514,8 @@ describe('renderPostMatchHtml (web mvp)', () => {
     expect(html).toContain('<th scope="col">Gap</th>');
     expect(html).toContain('data-opportunity-lost-component="total"');
     expect(html).toContain('data-opportunity-lost-component-total-you');
+    expect(html).toContain('data-opportunity-lost-component="gather-disruption"');
+    expect(html).toContain('<th scope="row">Gather disruption</th>');
     expect(html).toContain('data-opportunity-lost-component="low-underproduction"');
     expect(html).toContain('<span title="Town-center idle seconds behind expected villager production. Resource loss can be much larger because delayed villagers miss gather time after they would have existed.">TC idle seconds</span>');
     expect(html).toContain('data-opportunity-lost-component-low-underproduction-you>0s</strong>');
@@ -538,6 +540,11 @@ describe('renderPostMatchHtml (web mvp)', () => {
       delta: -50,
     }));
     expect(payload[0].opportunityLostComponents.lowUnderproduction).toEqual(expect.objectContaining({
+      you: 0,
+      opponent: 0,
+      delta: 0,
+    }));
+    expect(payload[0].opportunityLostComponents.gatherDisruption).toEqual(expect.objectContaining({
       you: 0,
       opponent: 0,
       delta: 0,

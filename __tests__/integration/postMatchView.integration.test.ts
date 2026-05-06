@@ -426,8 +426,9 @@ describe('post-match view integration', () => {
       expect.objectContaining({ label: 'Yatai', value: 125, count: 1 }),
       expect.objectContaining({ label: 'Gather disruption', value: 200, showCount: false }),
     ]));
-    expect(html).toContain('data-significant-event-loss-gather-disruption-row="player1"');
-    expect(html).toContain('data-significant-event-loss-gather-disruption-help="player1"');
+    expect(html).not.toContain('data-significant-event-loss-gather-disruption-row="player1"');
+    expect(html).not.toContain('data-significant-event-loss-gather-disruption-help="player1"');
+    expect(html).toContain('data-significant-event-loss-row-help');
     expect(html).toContain('function significantEventDisplayedTotalLoss');
     expect(html).not.toContain('event-impact-loss-note">Gather/min fell from 1,000 to 700');
     expect(html).not.toContain('Gather disruption x0');

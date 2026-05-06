@@ -1,4 +1,6 @@
 import fs from 'fs';
+import path from 'path';
+import { createHash } from 'crypto';
 import axios from 'axios';
 import { buildGameSummaryRequest } from '../aoe4world/client';
 
@@ -334,31 +336,184 @@ function fetchErrorMessage(url: string, error: unknown): Error {
   return new GameSummaryFetchError(url, error);
 }
 
-function shouldTrySignedSummary(error: unknown): boolean {
+function shouldTryUnsignedSummary(error: unknown): boolean {
   const status = responseStatus(error);
   return status === 401 || status === 403 || status === 404 || status === 429;
 }
 
-async function requestGameSummary(profileId: number | string, gameId: number, sig?: string): Promise<GameSummary> {
-  const { url, params, headers } = buildGameSummaryRequest(profileId, gameId, sig);
-  const response = await axios.get(url, { params, headers });
-  return parseGameSummary(response.data);
+type GameSummaryRequestIdentity = {
+  profileId: number | string;
+  gameId: number;
+  sig?: string;
+};
+
+const inFlightSummaryRequests = new Map<string, Promise<GameSummary>>();
+
+function hashString(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
 }
 
-export async function fetchGameSummaryFromApi(profileId: number | string, gameId: number, sig?: string): Promise<GameSummary> {
-  const { url: publicUrl } = buildGameSummaryRequest(profileId, gameId);
-  try {
-    return await requestGameSummary(profileId, gameId);
-  } catch (error) {
-    if (sig && shouldTrySignedSummary(error)) {
+function findWorkspaceRoot(startDir: string): string {
+  let current = startDir;
+
+  for (let depth = 0; depth < 6; depth += 1) {
+    const packagePath = path.join(current, 'package.json');
+    if (fs.existsSync(packagePath)) {
       try {
-        return await requestGameSummary(profileId, gameId, sig);
-      } catch (signedError) {
-        const { url: signedUrl } = buildGameSummaryRequest(profileId, gameId, sig);
-        throw fetchErrorMessage(signedUrl, signedError);
+        const parsed = JSON.parse(fs.readFileSync(packagePath, 'utf-8')) as { workspaces?: unknown };
+        if (Array.isArray(parsed.workspaces)) return current;
+      } catch {
+        // Ignore malformed package metadata and keep walking upward.
       }
     }
 
-    throw fetchErrorMessage(publicUrl, error);
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+
+  return startDir;
+}
+
+function configuredSummaryCacheDir(): string | null {
+  const configured = process.env.AOE4_SUMMARY_CACHE_DIR?.trim();
+  if (configured) return path.resolve(configured);
+
+  if (process.env.NODE_ENV === 'development') {
+    return path.join(findWorkspaceRoot(process.cwd()), 'tmp', 'summary-cache');
+  }
+
+  return null;
+}
+
+function configuredSummaryOverrideDir(): string | null {
+  const configured = process.env.AOE4_SUMMARY_OVERRIDE_DIR?.trim();
+  if (configured) return path.resolve(configured);
+
+  if (process.env.NODE_ENV === 'development') {
+    return path.join(findWorkspaceRoot(process.cwd()), 'tmp', 'summary-overrides');
+  }
+
+  return null;
+}
+
+function summaryRequestKey(identity: GameSummaryRequestIdentity): string {
+  const sigKey = identity.sig ? `sig:${hashString(identity.sig)}` : 'public';
+  return JSON.stringify({
+    version: 1,
+    profileId: String(identity.profileId),
+    gameId: identity.gameId,
+    sig: sigKey,
+  });
+}
+
+function summaryCachePath(identity: GameSummaryRequestIdentity): string | null {
+  const cacheDir = configuredSummaryCacheDir();
+  if (!cacheDir) return null;
+
+  return path.join(cacheDir, `${hashString(summaryRequestKey(identity))}.json`);
+}
+
+function summaryOverridePaths(identity: GameSummaryRequestIdentity): string[] {
+  const overrideDir = configuredSummaryOverrideDir();
+  if (!overrideDir) return [];
+
+  const profileSlug = String(identity.profileId).replace(/[^a-zA-Z0-9._-]+/g, '_');
+  return [
+    path.join(overrideDir, `${identity.gameId}.json`),
+    path.join(overrideDir, `${profileSlug}-${identity.gameId}.json`),
+  ];
+}
+
+async function readJsonSummaryFile(filePath: string): Promise<GameSummary | null> {
+  try {
+    const raw = await fs.promises.readFile(filePath, 'utf-8');
+    return parseGameSummary(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+async function readOverrideGameSummary(identity: GameSummaryRequestIdentity): Promise<GameSummary | null> {
+  for (const overridePath of summaryOverridePaths(identity)) {
+    const summary = await readJsonSummaryFile(overridePath);
+    if (summary) return summary;
+  }
+
+  return null;
+}
+
+async function readCachedGameSummary(identity: GameSummaryRequestIdentity): Promise<GameSummary | null> {
+  const cachePath = summaryCachePath(identity);
+  if (!cachePath) return null;
+
+  return readJsonSummaryFile(cachePath);
+}
+
+async function writeCachedGameSummary(identity: GameSummaryRequestIdentity, rawSummary: unknown): Promise<void> {
+  const cachePath = summaryCachePath(identity);
+  if (!cachePath) return;
+
+  await fs.promises.mkdir(path.dirname(cachePath), { recursive: true });
+  await fs.promises.writeFile(cachePath, JSON.stringify(rawSummary), 'utf-8');
+}
+
+async function requestGameSummaryFromApi(identity: GameSummaryRequestIdentity): Promise<GameSummary> {
+  const { profileId, gameId, sig } = identity;
+  const { url, params, headers } = buildGameSummaryRequest(profileId, gameId, sig);
+  const response = await axios.get(url, { params, headers });
+  const summary = parseGameSummary(response.data);
+  await writeCachedGameSummary(identity, response.data);
+  return summary;
+}
+
+async function requestGameSummary(profileId: number | string, gameId: number, sig?: string): Promise<GameSummary> {
+  const identity = { profileId, gameId, sig };
+  const override = await readOverrideGameSummary(identity);
+  if (override) return override;
+
+  const cached = await readCachedGameSummary(identity);
+  if (cached) return cached;
+
+  const key = summaryRequestKey(identity);
+  const existing = inFlightSummaryRequests.get(key);
+  if (existing) return existing;
+
+  const request = requestGameSummaryFromApi(identity)
+    .finally(() => {
+      inFlightSummaryRequests.delete(key);
+    });
+  inFlightSummaryRequests.set(key, request);
+  return request;
+}
+
+export function clearGameSummaryFetchStateForTests(): void {
+  inFlightSummaryRequests.clear();
+}
+
+export async function fetchGameSummaryFromApi(profileId: number | string, gameId: number, sig?: string): Promise<GameSummary> {
+  if (sig) {
+    const { url: signedUrl } = buildGameSummaryRequest(profileId, gameId, sig);
+    try {
+      return await requestGameSummary(profileId, gameId, sig);
+    } catch (error) {
+      if (shouldTryUnsignedSummary(error)) {
+        try {
+          return await requestGameSummary(profileId, gameId);
+        } catch (unsignedError) {
+          const { url: publicUrl } = buildGameSummaryRequest(profileId, gameId);
+          throw fetchErrorMessage(publicUrl, unsignedError);
+        }
+      }
+
+      throw fetchErrorMessage(signedUrl, error);
+    }
+  }
+
+  const { url } = buildGameSummaryRequest(profileId, gameId);
+  try {
+    return await requestGameSummary(profileId, gameId);
+  } catch (error) {
+    throw fetchErrorMessage(url, error);
   }
 }

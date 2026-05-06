@@ -26,7 +26,10 @@ const CACHE_NAMESPACE = 'aoe4-rendered-report-html';
 //   v8: outcome header leads with player label.
 //   v9: significant event encounter losses include gather-disruption detail rows.
 //   v10: event panel impact summary and fight window army-state rendering.
-const CACHE_BASELINE = 'v10';
+//   v11: gather disruption appears in both loss summary and encounter-loss rows.
+//   v12: gather disruption folds into immediate loss and owns the lower-row tooltip.
+//   v13: gather disruption contributes to selected-time opportunity-lost accounting.
+const CACHE_BASELINE = 'v13';
 
 type CacheEnv = Record<string, string | undefined>;
 

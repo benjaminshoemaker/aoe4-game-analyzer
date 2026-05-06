@@ -15,6 +15,7 @@ jest.mock('next/cache', () => ({
 import { GET, clearMatchRouteCacheForTests } from '../../src/app/matches/[profileSlug]/[gameId]/route';
 import { renderPostMatchHtml } from '@aoe4/analyzer-core/formatters/postMatchHtml';
 import {
+  addGatherDisruptionEvent,
   addVerboseOpportunityLostBuckets,
   makeMvpModelFixture,
   makePointInTimeOpportunityLostModel,
@@ -312,7 +313,7 @@ describe('matches route e2e', () => {
     expect(mockUnstableCache).toHaveBeenCalledTimes(1);
     expect(mockUnstableCache.mock.calls[0][1]).toEqual([
       'aoe4-rendered-report-html',
-      expect.stringMatching(/^v10-(?:[a-f0-9]{12}|nobuild)-(?:[a-f0-9]{12}|none)$/),
+      expect.stringMatching(/^v13-(?:[a-f0-9]{12}|nobuild)-(?:[a-f0-9]{12}|none)$/),
       'my-slug',
       '230143339',
       expect.stringMatching(/^sig-sha256:[a-f0-9]{64}$/),
@@ -467,6 +468,11 @@ describe('matches route e2e', () => {
       opponent: 0,
       delta: 1475,
     }));
+    expect(payload[0].opportunityLostComponents.gatherDisruption).toEqual(expect.objectContaining({
+      you: 0,
+      opponent: 0,
+      delta: 0,
+    }));
     expect(payload[0].opportunityLostComponents.lowUnderproduction).toEqual(expect.objectContaining({
       you: 2213,
       opponent: 0,
@@ -492,6 +498,8 @@ describe('matches route e2e', () => {
     expect(body).toContain('<th scope="row">Total</th>');
     expect(body).toContain('data-opportunity-lost-component="underproduction"');
     expect(body).toContain('<span title="Villager underproduction">Under-production</span>');
+    expect(body).toContain('data-opportunity-lost-component="gather-disruption"');
+    expect(body).toContain('<th scope="row">Gather disruption</th>');
     expect(body).toContain('data-opportunity-lost-component="low-underproduction"');
     expect(body).toContain('<span title="Town-center idle seconds behind expected villager production. Resource loss can be much larger because delayed villagers miss gather time after they would have existed.">TC idle seconds</span>');
     expect(body).toContain('data-opportunity-lost-component-low-underproduction-you>2,213s</strong>');
@@ -500,7 +508,7 @@ describe('matches route e2e', () => {
 
   it('returns selected-time opportunity lost values through the match route', async () => {
     parseMatchRouteParams.mockReturnValue({ profileSlug: 'my-slug', gameId: 230143339 });
-    buildMatchHtml.mockResolvedValue(renderPostMatchHtml(makePointInTimeOpportunityLostModel()));
+    buildMatchHtml.mockResolvedValue(renderPostMatchHtml(addGatherDisruptionEvent(makePointInTimeOpportunityLostModel())));
 
     const request = new Request('http://localhost/matches/my-slug/230143339?sig=abc123&t=90');
     const response = await GET(request, {
@@ -527,6 +535,21 @@ describe('matches route e2e', () => {
       opponent: 0,
       delta: 120,
     }));
+    expect(at90.opportunityLostComponents.gatherDisruption).toEqual(expect.objectContaining({
+      you: 0,
+      opponent: 0,
+      delta: 0,
+    }));
+    expect(at180.opportunityLostComponents.gatherDisruption).toEqual(expect.objectContaining({
+      you: 0,
+      opponent: 205,
+      delta: -205,
+    }));
+    expect(at180.allocation.opportunityLost.opponent).toBe(
+      at180.opportunityLostComponents.villagersLost.opponent +
+      at180.opportunityLostComponents.underproduction.opponent +
+      at180.opportunityLostComponents.gatherDisruption.opponent
+    );
     expect(at90.opportunityLostComponents.lowUnderproduction.you).toBe(30);
     expect(at180.opportunityLostComponents.lowUnderproduction.you).toBe(120);
     expect(body).toContain('resources lost by selected time');

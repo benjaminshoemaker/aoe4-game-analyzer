@@ -14,6 +14,11 @@ const fixtureSetup = path.resolve(projectRoot, '__tests__/helpers/setupAnalyzeNo
 const outputPath = path.resolve(projectRoot, 'tmp', 'e2e-post-match.html');
 const upgradedOutputPath = path.resolve(projectRoot, 'tmp', 'e2e-post-match-upgraded-deaths.html');
 
+function childProcessEnv(): NodeJS.ProcessEnv {
+  const { JEST_WORKER_ID: _jestWorkerId, ...env } = process.env;
+  return { ...env, FORCE_COLOR: '0' };
+}
+
 function runCli(args: string[]): SpawnSyncReturns<string> {
   return spawnSync(
     'node',
@@ -21,7 +26,7 @@ function runCli(args: string[]): SpawnSyncReturns<string> {
     {
       cwd: projectRoot,
       encoding: 'utf-8',
-      env: { ...process.env, FORCE_COLOR: '0' }
+      env: childProcessEnv()
     }
   );
 }
@@ -251,8 +256,9 @@ describe('post-match render CLI end-to-end', () => {
       expect.objectContaining({ label: 'Yatai', value: 125, count: 1 }),
       expect.objectContaining({ label: 'Gather disruption', value: 200, showCount: false }),
     ]));
-    expect(html).toContain('data-significant-event-loss-gather-disruption-row="player1"');
-    expect(html).toContain('data-significant-event-loss-gather-disruption-help="player1"');
+    expect(html).not.toContain('data-significant-event-loss-gather-disruption-row="player1"');
+    expect(html).not.toContain('data-significant-event-loss-gather-disruption-help="player1"');
+    expect(html).toContain('data-significant-event-loss-row-help');
     expect(html).toContain('function significantEventDisplayedTotalLoss');
     expect(html).not.toContain('event-impact-loss-note">Gather/min fell from 1,000 to 700');
     expect(html).not.toContain('Gather disruption x0');
