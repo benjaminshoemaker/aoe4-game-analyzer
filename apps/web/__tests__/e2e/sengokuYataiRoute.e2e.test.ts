@@ -10,7 +10,7 @@ jest.mock('@aoe4/analyzer-core/data/fetchStaticData', () => ({
   loadStaticData: (...args: unknown[]) => mockLoadStaticData(...args),
 }));
 
-import { GET } from '../../src/app/matches/[profileSlug]/[gameId]/route';
+import { GET, clearMatchRouteCacheForTests } from '../../src/app/matches/[profileSlug]/[gameId]/route';
 import { GET as GET_HOVER_DATA } from '../../src/app/matches/[profileSlug]/[gameId]/hover-data/route';
 import { parseGameSummary } from '@aoe4/analyzer-core/parser/gameSummaryParser';
 
@@ -64,6 +64,12 @@ function makeDenseResources() {
     technology: zeroes,
     society: zeroes,
   };
+}
+
+function embeddedHoverPayload(body: string): any[] {
+  const match = body.match(/<script id="post-match-hover-data" type="application\/json">([\s\S]*?)<\/script>/);
+  if (!match) throw new Error('Expected embedded hover payload');
+  return JSON.parse(match[1]);
 }
 
 function makeSummary(resourceData = resources) {
@@ -190,6 +196,42 @@ function makeFightWindowSummary() {
         resources: structuredClone(resourceData),
         buildOrder: [
           {
+            id: 'mangonel',
+            icon: 'icons/races/french/units/mangonel',
+            pbgid: 1003,
+            type: 'Unit',
+            finished: [60, 60],
+            constructed: [],
+            destroyed: [],
+          },
+          {
+            id: 'nest-of-bees',
+            icon: 'icons/races/french/units/nest-of-bees',
+            pbgid: 1004,
+            type: 'Unit',
+            finished: [60, 60],
+            constructed: [],
+            destroyed: [],
+          },
+          {
+            id: 'springald',
+            icon: 'icons/races/french/units/springald',
+            pbgid: 1005,
+            type: 'Unit',
+            finished: [60, 60],
+            constructed: [],
+            destroyed: [],
+          },
+          {
+            id: 'palace-guard',
+            icon: 'icons/races/french/units/palace-guard',
+            pbgid: 1006,
+            type: 'Unit',
+            finished: [60, 60],
+            constructed: [],
+            destroyed: [],
+          },
+          {
             id: 'knight',
             icon: 'icons/races/french/units/knight',
             pbgid: 1001,
@@ -207,6 +249,7 @@ function makeFightWindowSummary() {
 describe('Sengoku Yatai match route e2e', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    clearMatchRouteCacheForTests();
     mockLoadStaticData.mockResolvedValue({
       fetchedAt: new Date().toISOString(),
       units: [],
@@ -237,11 +280,60 @@ describe('Sengoku Yatai match route e2e', () => {
           classes: ['archer', 'military'],
           civs: ['en'],
         },
+        {
+          id: 'mangonel',
+          name: 'Mangonel',
+          pbgid: 1003,
+          icon: 'icons/races/french/units/mangonel',
+          costs: { food: 260, wood: 0, gold: 0, stone: 0, total: 260 },
+          classes: ['siege', 'military'],
+          civs: ['fr'],
+        },
+        {
+          id: 'nest-of-bees',
+          name: 'Nest of Bees',
+          pbgid: 1004,
+          icon: 'icons/races/french/units/nest-of-bees',
+          costs: { food: 255, wood: 0, gold: 0, stone: 0, total: 255 },
+          classes: ['siege', 'military'],
+          civs: ['fr'],
+        },
+        {
+          id: 'springald',
+          name: 'Springald',
+          pbgid: 1005,
+          icon: 'icons/races/french/units/springald',
+          costs: { food: 250, wood: 0, gold: 0, stone: 0, total: 250 },
+          classes: ['siege', 'military'],
+          civs: ['fr'],
+        },
+        {
+          id: 'palace-guard',
+          name: 'Palace Guard',
+          pbgid: 1006,
+          icon: 'icons/races/french/units/palace-guard',
+          costs: { food: 245, wood: 0, gold: 0, stone: 0, total: 245 },
+          classes: ['infantry', 'military'],
+          civs: ['fr'],
+        },
       ],
       buildings: [],
       technologies: [],
     });
     mockFetchGameSummaryFromApi.mockImplementation(() => Promise.resolve(makeFightWindowSummary()));
+
+    const pageResponse = await GET(
+      new Request('http://localhost/matches/8139502-Beasty/229727105?sig=b6fc&t=180'),
+      {
+        params: Promise.resolve({
+          profileSlug: '8139502-Beasty',
+          gameId: '229727105',
+        }),
+      }
+    );
+    const pageBody = await pageResponse.text();
+    const embeddedInteriorSnapshot = embeddedHoverPayload(pageBody)
+      .find((point: { timestamp: number }) => point.timestamp === 180);
 
     const hoverResponse = await GET_HOVER_DATA(
       new Request('http://localhost/matches/8139502-Beasty/229727105/hover-data?sig=b6fc'),
@@ -255,6 +347,13 @@ describe('Sengoku Yatai match route e2e', () => {
     const hoverPayload = await hoverResponse.json();
     const interiorSnapshot = hoverPayload.hoverSnapshots.find((point: { timestamp: number }) => point.timestamp === 180);
 
+    expect(pageResponse.status).toBe(200);
+    expect(pageBody).toContain('Event window armies');
+    expect(embeddedInteriorSnapshot?.significantEvent?.preEncounterArmies?.player2?.units).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: 'Knight', count: 2, value: 480 }),
+      ])
+    );
     expect(hoverResponse.status).toBe(200);
     expect(interiorSnapshot?.significantEvent).toEqual(expect.objectContaining({
       kind: 'fight',
@@ -262,12 +361,16 @@ describe('Sengoku Yatai match route e2e', () => {
       windowEnd: 210,
       preEncounterArmies: expect.objectContaining({
         player2: expect.objectContaining({
-          units: [expect.objectContaining({ label: 'Knight', count: 2, value: 480 })],
+          units: expect.arrayContaining([
+            expect.objectContaining({ label: 'Knight', count: 2, value: 480 }),
+          ]),
         }),
       }),
       postEncounterArmies: expect.objectContaining({
         player2: expect.objectContaining({
-          units: [expect.objectContaining({ label: 'Knight', count: 1, value: 240 })],
+          units: expect.arrayContaining([
+            expect.objectContaining({ label: 'Knight', count: 1, value: 240 }),
+          ]),
         }),
       }),
     }));

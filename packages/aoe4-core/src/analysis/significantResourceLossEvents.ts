@@ -354,7 +354,7 @@ function buildMilitarySituationFromActiveCounts(
 
   return {
     totalValue: allUnits.reduce((sum, item) => sum + item.value, 0),
-    units: allUnits.slice(0, 4),
+    units: allUnits,
   };
 }
 

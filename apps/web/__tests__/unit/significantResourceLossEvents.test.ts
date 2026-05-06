@@ -186,4 +186,74 @@ describe('detectSignificantResourceLossEvents (web)', () => {
       },
     }));
   });
+
+  it('keeps lower-ranked active siege units in fight window army states', () => {
+    const blockers = [
+      unit({
+        id: 'mangonel',
+        name: 'Mangonel',
+        totalCost: 620,
+        produced: [0, 0],
+        destroyed: [],
+        classes: ['military', 'siege'],
+      }),
+      unit({
+        id: 'nest-of-bees',
+        name: 'Nest of Bees',
+        totalCost: 610,
+        produced: [0, 0],
+        destroyed: [],
+        classes: ['military', 'siege'],
+      }),
+      unit({
+        id: 'springald',
+        name: 'Springald',
+        totalCost: 600,
+        produced: [0, 0],
+        destroyed: [],
+        classes: ['military', 'siege'],
+      }),
+      unit({
+        id: 'palace-guard',
+        name: 'Palace Guard',
+        totalCost: 590,
+        produced: [0, 0],
+        destroyed: [],
+        classes: ['military', 'infantry'],
+      }),
+    ];
+    const trebuchets = unit({
+      id: 'counterweight-trebuchet',
+      name: 'Counterweight Trebuchet',
+      totalCost: 550,
+      produced: [0, 0],
+      destroyed: [35],
+      classes: ['military', 'siege'],
+    });
+
+    const events = detectSignificantResourceLossEvents({
+      summary: summary(300),
+      deployedResourcePools: pools(300, 1000, 1000),
+      player1Build: build([]),
+      player2Build: build([...blockers, trebuchets]),
+    });
+
+    expect(events[0]).toEqual(expect.objectContaining({
+      kind: 'fight',
+      preEncounterArmies: expect.objectContaining({
+        player2: expect.objectContaining({
+          units: expect.arrayContaining([
+            expect.objectContaining({ label: 'Counterweight Trebuchet', value: 1100, count: 2 }),
+          ]),
+        }),
+      }),
+      postEncounterArmies: expect.objectContaining({
+        player2: expect.objectContaining({
+          units: expect.arrayContaining([
+            expect.objectContaining({ label: 'Counterweight Trebuchet', value: 550, count: 1 }),
+          ]),
+        }),
+      }),
+    }));
+  });
 });
