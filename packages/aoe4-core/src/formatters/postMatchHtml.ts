@@ -3214,7 +3214,7 @@ export function renderPostMatchHtml(
     .event-impact-loss-name {
       min-width: 0;
       text-align: left;
-      overflow-wrap: anywhere;
+      overflow-wrap: break-word;
     }
 
     .event-impact-loss-name .event-impact-inline-help-button {

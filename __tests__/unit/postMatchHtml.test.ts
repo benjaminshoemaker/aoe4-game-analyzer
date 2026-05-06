@@ -916,6 +916,7 @@ describe('renderPostMatchHtml', () => {
     expect(oneSidedHtml).toContain('Hardened Spearman <span class="event-impact-item-count">x19</span>');
     expect(oneSidedHtml).toContain('.event-impact-army-table table {\n      table-layout: fixed;');
     expect(oneSidedHtml).toContain('.event-impact-item-count {\n      white-space: nowrap;');
+    expect(oneSidedHtml).toContain('.event-impact-loss-name {\n      min-width: 0;\n      text-align: left;\n      overflow-wrap: break-word;');
     const otherRowIndex = html.indexOf('data-allocation-category-row="other"');
     const otherDestroyedRowIndex = html.indexOf('data-allocation-category-accounting="other-destroyed"');
     const otherInvestmentRowIndex = html.indexOf('data-allocation-category-accounting="other-investment"');
