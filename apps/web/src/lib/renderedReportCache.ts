@@ -29,7 +29,8 @@ const CACHE_NAMESPACE = 'aoe4-rendered-report-html';
 //   v11: gather disruption appears in both loss summary and encounter-loss rows.
 //   v12: gather disruption folds into immediate loss and owns the lower-row tooltip.
 //   v13: gather disruption contributes to selected-time opportunity-lost accounting.
-const CACHE_BASELINE = 'v13';
+//   v14: event-impact loss and army lists use collapsed table details and stable empty cells.
+const CACHE_BASELINE = 'v14';
 
 type CacheEnv = Record<string, string | undefined>;
 

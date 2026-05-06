@@ -7,7 +7,7 @@ import {
   sigCacheToken,
 } from '../../src/lib/renderedReportCache';
 
-const CACHE_VERSION_PATTERN = /^v13-(?:[a-f0-9]{12}|nobuild)-(?:[a-f0-9]{12}|none)$/;
+const CACHE_VERSION_PATTERN = /^v14-(?:[a-f0-9]{12}|nobuild)-(?:[a-f0-9]{12}|none)$/;
 
 describe('rendered report cache helpers', () => {
   beforeEach(() => {
