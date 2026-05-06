@@ -6,6 +6,9 @@
 
 ## Decisions
 
+- **[2026-05-06]** Keep `api_key` support for AoE4World summary requests, but do not rely on it as the only mitigation. AoE4World clarified the immediate production block was caused by the automated-call User-Agent containing bot-detector text, while `api_key` remains useful as a future legitimacy/bypass signal. *(source: AoE4World stakeholder/conversation/code verification)*
+- **[2026-05-06]** AoE4World automated-call User-Agents must avoid bot-detector substrings such as `fetch`, `spider`, `crawler`, `scraper`, and `bot`. The shared client now uses `aoe4-game-analyzer-core/0.1 summary-client` and `aoe4-game-analyzer-core/0.1 static-data-client`, with unit/integration/e2e coverage preventing regressions. *(source: AoE4World stakeholder/conversation/code verification)*
+- **[2026-05-06]** When manually deploying this repo to the public web app, deploy a clean committed archive with `apps/web/.vercel/project.json` copied to the temp root. The root `.vercel/project.json` points at `aoe4-game-analyzer`, while the public app is `aoe4-game-analyzer-web`; using the wrong linkage deploys the wrong Vercel project. *(source: conversation/tool verification)*
 - **[2026-05-06]** Add a dedicated match-route `429` incident page instead of showing generic `Unable to load match`. Users need to know the match link is valid, AoE4World is rate-limiting, and they can come back later. *(source: conversation/code verification)*
 - **[2026-05-06]** Put durable summary caching, short `429` negative caching, and shared cold-fetch locking in `packages/aoe4-core/src/parser/gameSummaryParser.ts` so both CLI and web share the same AoE4World protection behavior. *(source: conversation/code verification)*
 - **[2026-05-06]** Use Redis REST env vars, especially `KV_REST_API_URL` plus `KV_REST_API_TOKEN`, for production caching. Vercel/Upstash injects these automatically, and the write token is required for summary cache writes, `429` entries, and lock keys. *(source: conversation/tool verification)*
@@ -55,11 +58,12 @@
 
 - [x] **[2026-05-06]** Commit, push, and redeploy the current code changes so production actually uses the new `429` UI and Redis mitigations. Completed during the production mitigation rollout. — Owner: engineering
 - [ ] **[2026-05-06]** Confirm public traffic points to `aoe4-game-analyzer-web.vercel.app` or its custom domain, not `aoe4-game-analyzer.vercel.app`. — Owner: engineering/user
+- [ ] **[2026-05-06]** Fix or document the GitHub-to-Vercel auto-deploy path for `aoe4-game-analyzer-web`; after push `7099f7f`, no Vercel deployment appeared and a manual clean-archive deploy was required. — Owner: engineering
 - [ ] **[2026-05-06]** Optionally run `cd apps/web && vercel env pull .env.local` only if local Redis-path testing is desired. — Owner: engineering
 - [ ] **[2026-05-06]** Monitor production after deploy for continued `429` failures and whether cached reports start recovering on repeat visits. — Owner: engineering
-- [ ] **[2026-05-06]** Push or otherwise publish local `main` commits `a04f0a5 Refine event impact detail tables` and `4c0ed51 Polish event impact loss wrapping` when ready; local `main` was ahead of `origin/main` after the session. — Owner: engineering
-- [ ] **[2026-05-06]** Finish and verify the uncommitted rendered-report cache baseline bump to `v14` in `apps/web/src/lib/renderedReportCache.ts`, including matching route/cache tests and normalizing generated `apps/web/next-env.d.ts` before commit. — Owner: engineering
-- [ ] **[2026-05-06]** Ask AoE4World devs to confirm summary-endpoint rate-limit policy, whether local IP-based `429`s are expected, and whether they recommend an API key, whitelist, or dev workflow for this app. — Owner: user/AoE4World team
+- [ ] **[2026-05-06]** Push local `main` commits `8fc9daa Fix event impact loss accounting and summary layout` and `031c26e Capture production mitigation learnings` when ready; local `main` was ahead of `origin/main` after the timing-check session. — Owner: engineering
+- [x] **[2026-05-06]** Finish and verify the rendered-report cache baseline bump in `apps/web/src/lib/renderedReportCache.ts`, including matching route/cache tests and normalizing generated `apps/web/next-env.d.ts` before commit. Completed in `8fc9daa Fix event impact loss accounting and summary layout`. — Owner: engineering
+- [x] **[2026-05-06]** Ask AoE4World devs to confirm summary-endpoint rate-limit policy, whether local IP-based `429`s are expected, and whether they recommend an API key, whitelist, or dev workflow for this app. They clarified the immediate issue was the `summary-fetcher` User-Agent being caught by bot detection and still plan to support `api_key`. — Owner: user/AoE4World team
 - [ ] **[2026-05-06]** For any additional local-dev match blocked by `429`, save the raw AoE4World summary once into `tmp/summary-overrides/<gameId>.json` or `<profileSlug>-<gameId>.json`. — Owner: engineering
 - [x] **[2026-05-06]** Consider a production-safe, bounded summary cache strategy beyond local dev, with explicit TTL and privacy handling for signed summaries. Implemented with Redis REST summary cache, `429` negative cache, and shared lock/backoff. — Owner: engineering
 - [ ] **[2026-05-06]** Add gather disruption to the villager opportunity section later as a P1 feature; do not include it there yet. — Owner: engineering
@@ -82,6 +86,10 @@
 
 ## Context
 
+- **[2026-05-06]** AoE4World said the overlay URL exposes `apiKey`, but summary requests should pass the same value as query parameter `api_key` on `/players/:profile_id/games/:game_id/summary?camelize=true`. Do not share the key; AoE4World said it grants access to the user's custom games. *(source: AoE4World stakeholder/conversation)*
+- **[2026-05-06]** After the User-Agent fix, production `https://aoe4-game-analyzer-web.vercel.app/matches/8097972-RepleteCactus/231878134?...` returned `200` and rendered the report with `Resource state over time` and `Event impact`; before the fix, the same route returned the new `429` fallback page. *(source: conversation/browser verification)*
+- **[2026-05-06]** API-key performance testing with fresh local caches and Redis disabled showed no meaningful slowdown from `api_key`: direct AoE4World summary requests were about `268-285ms`, full `buildMatchHtml` cold runs were about `826-974ms`, and real `next start` cold page loads were about `3.02-3.10s` with or without the key. *(source: conversation/tool verification)*
+- **[2026-05-06]** Verification for the User-Agent fix passed root `npm test` (46 suites / 305 tests), `npm --prefix apps/web run verify` (42 suites / 144 tests), and `npm --prefix apps/web run build`; browser production verification then confirmed the RepleteCactus match rendered successfully. *(source: conversation/tool verification)*
 - **[2026-05-06]** Vercel CLI showed two linked projects: root `aoe4-game-analyzer` and nested `apps/web` project `aoe4-game-analyzer-web`. *(source: conversation/tool verification)*
 - **[2026-05-06]** Redis env vars are attached to `aoe4-game-analyzer-web` for Production, Preview, and Development: `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `KV_REST_API_READ_ONLY_TOKEN`, `KV_URL`, and `REDIS_URL`. *(source: conversation/tool verification)*
 - **[2026-05-06]** Root project `aoe4-game-analyzer` has no environment variables, so Redis-backed mitigation will not work there unless env vars are also added. *(source: conversation/tool verification)*
@@ -127,6 +135,8 @@
 
 ## Bugs & Issues
 
+- **[2026-05-06]** The production match-route failure was not actually an origin/cloud-provider block after the latest AoE4World check; AoE4World's browser bot detector matched the substring `fetch` in our `summary-fetcher` User-Agent. Fixed in `7099f7f Avoid bot-triggering AoE4World user agent` by renaming shared User-Agent strings and adding bot-substring tests. *(source: AoE4World stakeholder/conversation/code verification)*
+- **[2026-05-06]** Pushing `7099f7f` to `main` did not create a visible Vercel deployment for `aoe4-game-analyzer-web`. Workaround used a clean `git archive HEAD` temp directory plus the `apps/web` Vercel project linkage, then `vercel --prod --yes --cwd <tmp>`. *(source: conversation/tool verification)*
 - **[2026-05-06]** Production users were hitting AoE4World summary `429`s. Fixed in code with a dedicated recovery page, durable Redis cache, negative cache, and shared lock, then deployed during the production mitigation rollout. *(source: conversation/code verification)*
 - **[2026-05-06]** There is a Vercel project ambiguity risk because both root and `apps/web` have `.vercel/project.json`. Redis is configured on `aoe4-game-analyzer-web`, not the root `aoe4-game-analyzer` project. *(source: conversation/tool verification)*
 - **[2026-05-06]** A full `npm run verify` initially failed in `__tests__/e2e/postMatchRender.test.ts` because stale `src/data/staticData.json` state from an earlier run caused fixture-specific static data to be wrong; removing the cache file and rerunning produced a clean full verify. Remaining risk: the root e2e flow still relies on a shared on-disk static-data cache path. *(source: tool verification)*
@@ -162,6 +172,7 @@
 
 ## Deferred Investigations
 
+- **[2026-05-06]** Add lightweight server-side timing/counter instrumentation around summary fetch, rendered-report cache hit/miss, and full match-render duration, with properties for `has_api_key` but never the raw key or `sig`. Manual timing showed `api_key` is not the bottleneck, but production observability would make future regressions easier to diagnose. *(source: conversation/tool verification)*
 - **[2026-05-06]** Add production observability for Redis cache hit/miss, negative-cache hits, and lock waits without leaking `sig` values or tokens. *(source: conversation)*
 - **[2026-05-06]** Consider cleaning up or clearly documenting the root Vercel project if it is no longer the intended production surface. *(source: conversation/tool verification)*
 - **[2026-05-06]** Consider giving root e2e tests an isolated static-data cache path or explicit cache env override instead of sharing `src/data/staticData.json`; this would remove stale-file/order sensitivity from `postMatchRender.test.ts`. *(source: tool verification)*
