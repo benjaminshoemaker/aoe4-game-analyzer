@@ -49,14 +49,25 @@ function extractInspectorTable(html: string): string {
   return match[0];
 }
 
+function removeStaticDataCache(): void {
+  if (fs.existsSync(cachePath)) {
+    fs.unlinkSync(cachePath);
+  }
+}
+
 describe('post-match render CLI end-to-end', () => {
   beforeEach(() => {
+    removeStaticDataCache();
     if (fs.existsSync(outputPath)) {
       fs.unlinkSync(outputPath);
     }
     if (fs.existsSync(upgradedOutputPath)) {
       fs.unlinkSync(upgradedOutputPath);
     }
+  });
+
+  afterAll(() => {
+    removeStaticDataCache();
   });
 
   it('renders a post-match HTML report with required sections', () => {
