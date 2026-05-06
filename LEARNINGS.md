@@ -6,6 +6,10 @@
 
 ## Decisions
 
+- **[2026-05-06]** Add a dedicated match-route `429` incident page instead of showing generic `Unable to load match`. Users need to know the match link is valid, AoE4World is rate-limiting, and they can come back later. *(source: conversation/code verification)*
+- **[2026-05-06]** Put durable summary caching, short `429` negative caching, and shared cold-fetch locking in `packages/aoe4-core/src/parser/gameSummaryParser.ts` so both CLI and web share the same AoE4World protection behavior. *(source: conversation/code verification)*
+- **[2026-05-06]** Use Redis REST env vars, especially `KV_REST_API_URL` plus `KV_REST_API_TOKEN`, for production caching. Vercel/Upstash injects these automatically, and the write token is required for summary cache writes, `429` entries, and lock keys. *(source: conversation/tool verification)*
+- **[2026-05-06]** Local Redis env vars are optional. Local dev can keep using local/in-process cache unless the production durable-cache path specifically needs local testing. *(source: conversation/tool verification)*
 - **[2026-05-06]** Event impact details use a compact table/disclosure structure: a top `Event summary` table, then collapsible `Encounter loss details` and `Event window army lists`. This keeps the hover inspector scannable, removes duplicated wording in headers, and preserves itemized loss/army detail without making the default event section too tall. *(source: conversation/code verification)*
 - **[2026-05-06]** Event-impact loss and army-list counts render as a no-wrap `.event-impact-item-count` span, and one-sided encounter-loss tables use a rowspanned `No losses` cell instead of empty name/value cells. This avoids wrapping/layout jitter and keeps asymmetric encounters readable. *(source: conversation/code verification)*
 - **[2026-05-06]** Signed AoE4World match summaries should try the signed summary URL first, then fall back to unsigned only for `401`/`403`/`404`/`429`. This avoids probing a public summary before using private/signed access while still recovering when signed access is rate-limited. *(source: conversation/code verification)*
@@ -49,11 +53,15 @@
 
 ## Action Items
 
+- [x] **[2026-05-06]** Commit, push, and redeploy the current code changes so production actually uses the new `429` UI and Redis mitigations. Completed during the production mitigation rollout. — Owner: engineering
+- [ ] **[2026-05-06]** Confirm public traffic points to `aoe4-game-analyzer-web.vercel.app` or its custom domain, not `aoe4-game-analyzer.vercel.app`. — Owner: engineering/user
+- [ ] **[2026-05-06]** Optionally run `cd apps/web && vercel env pull .env.local` only if local Redis-path testing is desired. — Owner: engineering
+- [ ] **[2026-05-06]** Monitor production after deploy for continued `429` failures and whether cached reports start recovering on repeat visits. — Owner: engineering
 - [ ] **[2026-05-06]** Push or otherwise publish local `main` commits `a04f0a5 Refine event impact detail tables` and `4c0ed51 Polish event impact loss wrapping` when ready; local `main` was ahead of `origin/main` after the session. — Owner: engineering
 - [ ] **[2026-05-06]** Finish and verify the uncommitted rendered-report cache baseline bump to `v14` in `apps/web/src/lib/renderedReportCache.ts`, including matching route/cache tests and normalizing generated `apps/web/next-env.d.ts` before commit. — Owner: engineering
 - [ ] **[2026-05-06]** Ask AoE4World devs to confirm summary-endpoint rate-limit policy, whether local IP-based `429`s are expected, and whether they recommend an API key, whitelist, or dev workflow for this app. — Owner: user/AoE4World team
 - [ ] **[2026-05-06]** For any additional local-dev match blocked by `429`, save the raw AoE4World summary once into `tmp/summary-overrides/<gameId>.json` or `<profileSlug>-<gameId>.json`. — Owner: engineering
-- [ ] **[2026-05-06]** Consider a production-safe, bounded summary cache strategy beyond local dev, with explicit TTL and privacy handling for signed summaries. — Owner: engineering
+- [x] **[2026-05-06]** Consider a production-safe, bounded summary cache strategy beyond local dev, with explicit TTL and privacy handling for signed summaries. Implemented with Redis REST summary cache, `429` negative cache, and shared lock/backoff. — Owner: engineering
 - [ ] **[2026-05-06]** Add gather disruption to the villager opportunity section later as a P1 feature; do not include it there yet. — Owner: engineering
 - [ ] **[2026-05-04]** Stop hard-coding the PostHog write key as a default in `apps/web/src/lib/posthogAnalytics.ts`. Already captured as P1 in `NEXT_STEPS.md` with full migration steps (flip `DEFAULT_POSTHOG_TOKEN` to `''`, update `posthogAnalytics.test.ts`, confirm Vercel preview/production env wiring). — Owner: engineering
 - [ ] **[2026-05-04]** Extract a single rule list for analytics sanitization (`stripSensitiveQueryParams`, `shouldDropAnalyticsProperty`) so the server-side TypeScript and the inline-client JS-as-string implementations in `posthogAnalytics.ts` can't drift. Skipped this round to keep the review-fix scope small; flagged in code comment. — Owner: engineering
@@ -74,6 +82,10 @@
 
 ## Context
 
+- **[2026-05-06]** Vercel CLI showed two linked projects: root `aoe4-game-analyzer` and nested `apps/web` project `aoe4-game-analyzer-web`. *(source: conversation/tool verification)*
+- **[2026-05-06]** Redis env vars are attached to `aoe4-game-analyzer-web` for Production, Preview, and Development: `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `KV_REST_API_READ_ONLY_TOKEN`, `KV_URL`, and `REDIS_URL`. *(source: conversation/tool verification)*
+- **[2026-05-06]** Root project `aoe4-game-analyzer` has no environment variables, so Redis-backed mitigation will not work there unless env vars are also added. *(source: conversation/tool verification)*
+- **[2026-05-06]** Verification passed after the `429` UI and Redis mitigation implementation: root `npm run verify` passed 46 suites / 303 tests; web `npm --prefix apps/web run verify` passed 42 suites / 139 tests. *(source: conversation/tool verification)*
 - **[2026-05-06]** Event-impact detail-table work was committed locally as `a04f0a5 Refine event impact detail tables`; a small follow-up `4c0ed51 Polish event impact loss wrapping` adjusted the count wrapping. Verification passed with `npm run verify`, `npm --prefix apps/web run verify`, and `npm --prefix apps/web run build`. *(source: conversation/git/tool verification)*
 - **[2026-05-06]** Next 16 can rewrite `apps/web/next-env.d.ts` between `.next/types/routes.d.ts` and `.next/dev/types/routes.d.ts` depending on build/dev state. Treat it as generated churn and re-run `npm --prefix apps/web run build` before committing if it appears dirty. *(source: tool verification)*
 - **[2026-05-06]** Local `localhost:3000` match-route failures were caused by this machine receiving `429 Too Many Requests` from AoE4World summary endpoints, while the production Vercel app still worked for the same match URL. *(source: conversation/tool verification)*
@@ -115,6 +127,8 @@
 
 ## Bugs & Issues
 
+- **[2026-05-06]** Production users were hitting AoE4World summary `429`s. Fixed in code with a dedicated recovery page, durable Redis cache, negative cache, and shared lock, then deployed during the production mitigation rollout. *(source: conversation/code verification)*
+- **[2026-05-06]** There is a Vercel project ambiguity risk because both root and `apps/web` have `.vercel/project.json`. Redis is configured on `aoe4-game-analyzer-web`, not the root `aoe4-game-analyzer` project. *(source: conversation/tool verification)*
 - **[2026-05-06]** A full `npm run verify` initially failed in `__tests__/e2e/postMatchRender.test.ts` because stale `src/data/staticData.json` state from an earlier run caused fixture-specific static data to be wrong; removing the cache file and rerunning produced a clean full verify. Remaining risk: the root e2e flow still relies on a shared on-disk static-data cache path. *(source: tool verification)*
 - **[2026-05-06]** Event-impact table rendering is duplicated between server HTML (`postMatchHtml.ts`) and the inline hover interaction script (`postMatchInteractionScript.ts`); count wrapping and empty-side cells had to be fixed in both places to keep server-rendered and hover-updated states consistent. *(source: code verification)*
 - **[2026-05-06]** Local match pages returned `500`/`429` when AoE4World rate-limited summary requests. Fixed with signed-first fetching, upstream status propagation, persistent development cache, in-flight coalescing, and local summary overrides. *(source: conversation/code verification)*
@@ -148,6 +162,8 @@
 
 ## Deferred Investigations
 
+- **[2026-05-06]** Add production observability for Redis cache hit/miss, negative-cache hits, and lock waits without leaking `sig` values or tokens. *(source: conversation)*
+- **[2026-05-06]** Consider cleaning up or clearly documenting the root Vercel project if it is no longer the intended production surface. *(source: conversation/tool verification)*
 - **[2026-05-06]** Consider giving root e2e tests an isolated static-data cache path or explicit cache env override instead of sharing `src/data/staticData.json`; this would remove stale-file/order sensitivity from `postMatchRender.test.ts`. *(source: tool verification)*
 - **[2026-05-06]** Consider extracting event-impact row/table rendering data or helpers so the server HTML and inline hover script cannot drift on loss count formatting, tooltip placement, or one-sided empty states. *(source: code verification)*
 - **[2026-05-06]** Add a clearer local-dev command or script for fetching one AoE4World summary and installing it into `tmp/summary-overrides/`. *(source: conversation)*
