@@ -9,7 +9,7 @@ import {
 describe('fetchGameSummaryFromApi', () => {
   const fixturePath = path.resolve(__dirname, '..', 'fixtures', 'sampleGameSummary.json');
   const sampleJson = JSON.parse(fs.readFileSync(fixturePath, 'utf-8'));
-  const expectedUserAgent = 'aoe4-game-analyzer-core/0.1 summary-fetcher';
+  const expectedUserAgent = 'aoe4-game-analyzer-core/0.1 summary-client';
   const previousCacheDir = process.env.AOE4_SUMMARY_CACHE_DIR;
   const previousOverrideDir = process.env.AOE4_SUMMARY_OVERRIDE_DIR;
   const previousApiKey = process.env.AOE4WORLD_API_KEY;

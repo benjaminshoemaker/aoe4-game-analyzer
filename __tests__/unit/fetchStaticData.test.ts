@@ -34,7 +34,7 @@ describe('fetchAndCacheStaticData', () => {
     const requestOptions = {
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'aoe4-game-analyzer-core/0.1 static-data-loader',
+        'User-Agent': 'aoe4-game-analyzer-core/0.1 static-data-client',
       },
     };
     expect(mockedAxios.get).toHaveBeenNthCalledWith(1, 'https://data.aoe4world.com/units/all.json', requestOptions);

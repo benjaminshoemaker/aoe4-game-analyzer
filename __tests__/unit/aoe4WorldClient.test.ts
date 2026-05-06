@@ -5,6 +5,8 @@ import {
 } from '../../packages/aoe4-core/src/aoe4world/client';
 
 describe('AoE4World client policy', () => {
+  const botDetectorTerms = /fetch|spider|crawler|scraper|bot/i;
+
   it('centralizes summary endpoint, camelize, sig, and headers', () => {
     const request = buildGameSummaryRequest('8097972-steam', 230143339, 'private-sig');
 
@@ -16,6 +18,7 @@ describe('AoE4World client policy', () => {
     expect(request.headers).toEqual(buildAoe4WorldHeaders('summary'));
     expect(request.headers['User-Agent']).toContain('aoe4-game-analyzer-core');
     expect(request.headers['User-Agent']).not.toContain('Mozilla');
+    expect(request.headers['User-Agent']).not.toMatch(botDetectorTerms);
   });
 
   it('adds the configured AoE4World API key as api_key query param', () => {
@@ -36,6 +39,7 @@ describe('AoE4World client policy', () => {
       buildings: 'https://data.aoe4world.com/buildings/all.json',
       technologies: 'https://data.aoe4world.com/technologies/all.json',
     });
-    expect(buildAoe4WorldHeaders('static-data')['User-Agent']).toContain('static-data-loader');
+    expect(buildAoe4WorldHeaders('static-data')['User-Agent']).toBe('aoe4-game-analyzer-core/0.1 static-data-client');
+    expect(buildAoe4WorldHeaders('static-data')['User-Agent']).not.toMatch(botDetectorTerms);
   });
 });

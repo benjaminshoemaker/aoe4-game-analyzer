@@ -23,7 +23,7 @@ function runCli(args: string[]): SpawnSyncReturns<string> {
     {
       cwd: projectRoot,
       encoding: 'utf-8',
-      env: { ...process.env, FORCE_COLOR: '0' }
+      env: { ...process.env, AOE4WORLD_API_KEY: '', FORCE_COLOR: '0' }
     }
   );
 }
@@ -110,6 +110,14 @@ describe('CLI end-to-end', () => {
     expect(result.stdout).toMatch(/Map: Dry Arabia/i);
     expect(result.stdout).toMatch(/Player 1: .*PlayerOne .*English/i);
     expect(result.stdout).toMatch(/Player 2: .*PlayerTwo .*French/i);
+    expect(result.stdout).toMatch(/Successfully parsed .*build order entries/i);
+  });
+
+  it('fetch-game sends the safe AoE4World summary User-Agent', () => {
+    const result = runCli(['fetch-game', '999', '123456']);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toMatch(/Game ID: 123456/i);
     expect(result.stdout).toMatch(/Successfully parsed .*build order entries/i);
   });
 

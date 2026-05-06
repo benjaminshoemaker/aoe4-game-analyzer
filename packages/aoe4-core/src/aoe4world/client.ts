@@ -7,8 +7,8 @@ export const AOE4WORLD_STATIC_DATA_ENDPOINTS = {
 } as const;
 
 const USER_AGENT_BY_KIND: Record<Aoe4WorldRequestKind, string> = {
-  summary: 'aoe4-game-analyzer-core/0.1 summary-fetcher',
-  'static-data': 'aoe4-game-analyzer-core/0.1 static-data-loader',
+  summary: 'aoe4-game-analyzer-core/0.1 summary-client',
+  'static-data': 'aoe4-game-analyzer-core/0.1 static-data-client',
 };
 
 export interface Aoe4WorldRequest {
