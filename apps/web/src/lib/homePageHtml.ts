@@ -106,7 +106,7 @@ export function renderHomeHtml(errorText?: string | null): string {
     }
     .hero-grid {
       display: grid;
-      grid-template-columns: minmax(0, 0.9fr) minmax(360px, 1.1fr);
+      grid-template-columns: minmax(0, 0.85fr) minmax(420px, 1.15fr);
       gap: 24px;
       align-items: center;
     }
@@ -119,7 +119,7 @@ export function renderHomeHtml(errorText?: string | null): string {
     }
     .hero-panel {
       background: var(--surface);
-      padding: 28px;
+      padding: 32px;
     }
     .eyebrow {
       margin: 0 0 10px;
@@ -130,21 +130,22 @@ export function renderHomeHtml(errorText?: string | null): string {
       text-transform: uppercase;
     }
     h1 {
+      max-width: 420px;
       margin: 0;
       color: var(--text);
-      font-size: clamp(34px, 5vw, 56px);
-      line-height: 0.98;
+      font-size: clamp(34px, 4.8vw, 54px);
+      line-height: 1;
       letter-spacing: 0;
     }
     .lede {
-      max-width: 620px;
-      margin: 16px 0 0;
+      max-width: 450px;
+      margin: 18px 0 0;
       color: var(--muted);
-      font-size: 16px;
-      line-height: 1.55;
+      font-size: 17px;
+      line-height: 1.48;
     }
     .support-note {
-      margin: 16px 0 0;
+      margin: 18px 0 0;
       display: inline-flex;
       max-width: 100%;
       padding: 8px 10px;
@@ -153,11 +154,11 @@ export function renderHomeHtml(errorText?: string | null): string {
       background: var(--surface-alt);
       color: var(--text);
       font-size: 13px;
-      font-weight: 800;
+      font-weight: 850;
       line-height: 1.35;
     }
     .form-card {
-      margin-top: 24px;
+      margin-top: 28px;
       display: grid;
       gap: 12px;
     }
@@ -226,41 +227,25 @@ export function renderHomeHtml(errorText?: string | null): string {
       border-color: var(--report-border);
       background: var(--aoe-color-report-bg);
     }
-    .cta-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
+    .secondary-actions {
+      margin-top: 16px;
+      display: grid;
       gap: 12px;
     }
-    .sample-note {
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.35;
+    .feature-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
     }
-    .proof-grid {
-      margin-top: 24px;
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-    }
-    .proof-card {
-      min-width: 0;
-      padding: 12px;
+    .feature-chip {
+      padding: 6px 9px;
       border: 1px solid var(--report-border);
-      border-radius: var(--aoe-radius-md);
+      border-radius: 999px;
       background: var(--surface-alt);
-    }
-    .proof-label {
-      margin: 0 0 6px;
-      color: var(--text);
-      font-size: 13px;
-      font-weight: 800;
-    }
-    .proof-copy {
-      margin: 0;
       color: var(--muted);
       font-size: 12px;
-      line-height: 1.35;
+      font-weight: 800;
+      line-height: 1.2;
     }
     .preview-panel {
       overflow: hidden;
@@ -268,7 +253,7 @@ export function renderHomeHtml(errorText?: string | null): string {
       font-family: var(--aoe-font-report);
     }
     .preview-header {
-      padding: 16px;
+      padding: 18px;
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
       gap: 16px;
@@ -279,9 +264,9 @@ export function renderHomeHtml(errorText?: string | null): string {
     .preview-title {
       margin: 0;
       color: var(--aoe-color-report-text);
-      font-size: 21px;
+      font-size: 22px;
       line-height: 1.15;
-      font-weight: 800;
+      font-weight: 850;
     }
     .preview-meta {
       margin: 6px 0 0;
@@ -317,7 +302,7 @@ export function renderHomeHtml(errorText?: string | null): string {
       background: #fff;
       color: var(--aoe-color-report-text);
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 750;
       overflow-wrap: anywhere;
     }
     .swatch {
@@ -347,14 +332,14 @@ export function renderHomeHtml(errorText?: string | null): string {
     .metric-label {
       color: var(--aoe-color-report-muted);
       font-size: 11px;
-      font-weight: 800;
+      font-weight: 850;
       letter-spacing: 0;
       text-transform: uppercase;
     }
     .metric-value {
       margin-top: 7px;
       color: var(--aoe-color-report-text);
-      font-size: 22px;
+      font-size: 21px;
       font-weight: 850;
       font-variant-numeric: tabular-nums;
     }
@@ -379,7 +364,7 @@ export function renderHomeHtml(errorText?: string | null): string {
     }
     .chart {
       position: relative;
-      height: 190px;
+      height: 210px;
       border: 1px solid var(--aoe-color-report-border-subtle);
       border-radius: var(--aoe-radius-md);
       background:
@@ -415,29 +400,23 @@ export function renderHomeHtml(errorText?: string | null): string {
       font-weight: 800;
       white-space: nowrap;
     }
-    .selected-summary {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 10px;
-    }
-    .selected-card {
-      min-width: 0;
-      padding: 11px;
+    .insight-card {
+      padding: 12px;
       border: 1px solid var(--report-border);
       border-radius: var(--aoe-radius-md);
-      background: var(--surface-alt);
+      background: #fff;
+      box-shadow: var(--aoe-shadow-panel);
+      display: grid;
+      gap: 4px;
     }
-    .selected-card strong {
-      display: block;
+    .insight-card strong {
       color: var(--aoe-color-report-text);
       font-size: 13px;
       line-height: 1.25;
     }
-    .selected-card span {
-      display: block;
-      margin-top: 5px;
+    .insight-card span {
       color: var(--aoe-color-report-muted);
-      font-size: 12px;
+      font-size: 13px;
       line-height: 1.35;
     }
     .error {
@@ -456,7 +435,7 @@ export function renderHomeHtml(errorText?: string | null): string {
     @media (max-width: 620px) {
       .page-shell {
         padding: 18px;
-        gap: 16px;
+        gap: 14px;
       }
       .topbar {
         align-items: flex-start;
@@ -464,22 +443,27 @@ export function renderHomeHtml(errorText?: string | null): string {
         gap: 8px;
       }
       .hero-panel { padding: 24px; }
-      h1 { font-size: 38px; }
-      .lede { font-size: 15px; }
+      h1 {
+        max-width: 320px;
+        font-size: 38px;
+      }
+      .lede {
+        font-size: 15px;
+        line-height: 1.5;
+      }
       .input-row,
-      .proof-grid,
-      .mini-summary,
-      .selected-summary {
+      .mini-summary {
         grid-template-columns: 1fr;
       }
       button,
       .sample-link {
         width: 100%;
       }
-      .sample-note { width: 100%; }
+      .feature-chips { justify-content: center; }
       .preview-header { grid-template-columns: 1fr; }
       .outcome-badge { justify-self: start; }
       .chart { height: 160px; }
+      .insight-card span { display: none; }
     }
   </style>
 </head>
@@ -495,12 +479,9 @@ export function renderHomeHtml(errorText?: string | null): string {
 
     <main class="hero-grid">
       <section class="hero-panel" aria-labelledby="home-title">
-        <p class="eyebrow">Match recap from real game data</p>
+        <p class="eyebrow">1v1 match report</p>
         <h1 id="home-title">See where the game turned.</h1>
-        <p class="lede">
-          Paste an AoE4World match link and inspect the resource mix, selected-time
-          state, and fight windows that shaped the result.
-        </p>
+        <p class="lede">Paste an AoE4World 1v1 match link. See economy, army, and fight timing in one report.</p>
         <p class="support-note" role="note">Currently supports 1v1 games only.</p>
 
         <form method="get" action="/matches/open" class="form-card" data-analytics-match-form>
@@ -512,23 +493,12 @@ export function renderHomeHtml(errorText?: string | null): string {
           ${escapedError ? `<p class="error">${escapedError}</p>` : ''}
         </form>
 
-        <div class="cta-row" aria-label="Sample report">
+        <div class="secondary-actions" aria-label="Sample report and report contents">
           <a class="sample-link" href="${sampleMatchHref}" data-analytics-sample-report>View sample report</a>
-          <span class="sample-note">Dry Arabia &middot; 25:03 &middot; washed up vs 2k and still no hands</span>
-        </div>
-
-        <div class="proof-grid" aria-label="What the report includes">
-          <div class="proof-card">
-            <p class="proof-label">Match recap</p>
-            <p class="proof-copy">Start with a compact read of map, players, duration, and outcome.</p>
-          </div>
-          <div class="proof-card">
-            <p class="proof-label">Allocation timeline</p>
-            <p class="proof-copy">Compare economy, military, and technology pressure over time.</p>
-          </div>
-          <div class="proof-card">
-            <p class="proof-label">Selected time</p>
-            <p class="proof-copy">Click a timestamp to inspect only that moment's numbers.</p>
+          <div class="feature-chips" aria-label="Report contents">
+            <span class="feature-chip">Recap</span>
+            <span class="feature-chip">Timeline</span>
+            <span class="feature-chip">Selected moment</span>
           </div>
         </div>
       </section>
@@ -537,7 +507,7 @@ export function renderHomeHtml(errorText?: string | null): string {
         <div class="preview-header">
           <div>
             <h2 class="preview-title">Sample report: Dry Arabia</h2>
-            <p class="preview-meta">Ranked 1v1 &middot; 25:03 &middot; investments, fights, outcome</p>
+            <p class="preview-meta">Ranked 1v1 &middot; 25:03</p>
             <div class="player-chips">
               <span class="player-chip"><span class="swatch" style="background: var(--sample-sengoku)"></span>washed up &middot; Sengoku Daimyo</span>
               <span class="player-chip"><span class="swatch" style="background: var(--sample-macedonian)"></span>2k and still no hands &middot; Macedonian Dynasty</span>
@@ -549,43 +519,37 @@ export function renderHomeHtml(errorText?: string | null): string {
         <div class="preview-body">
           <div class="mini-summary" aria-label="Sample highlights">
             <div class="metric-card">
-              <div class="metric-label">Selected time</div>
+              <div class="metric-label">Selected Time</div>
               <div class="metric-value">19:51</div>
-              <div class="metric-copy">State before the late divergence.</div>
+              <div class="metric-copy">Chart focus.</div>
             </div>
             <div class="metric-card">
               <div class="metric-label">Economy</div>
               <div class="metric-value" style="color: var(--sample-sengoku)">Sengoku</div>
-              <div class="metric-copy">Higher economic deployment for most of the game.</div>
+              <div class="metric-copy">Economy edge.</div>
             </div>
             <div class="metric-card">
               <div class="metric-label">Military</div>
               <div class="metric-value" style="color: var(--sample-macedonian)">Macedonian</div>
-              <div class="metric-copy">Military and tech pressure before the final fights.</div>
+              <div class="metric-copy">Army edge.</div>
             </div>
           </div>
 
           <div class="chart-card">
             <p class="chart-title">Resource state over time</p>
             <div class="chart" role="img" aria-label="Mock chart preview showing two players' allocation lines over time">
-              <svg viewBox="0 0 640 190" preserveAspectRatio="none" aria-hidden="true">
-                <path d="M0,130 C70,126 120,102 180,110 C260,122 305,78 360,90 C440,108 500,116 640,82" fill="none" stroke="var(--sample-sengoku)" stroke-width="4" />
-                <path d="M0,118 C84,114 135,96 198,101 C260,106 316,114 382,94 C468,69 530,58 640,44" fill="none" stroke="var(--sample-macedonian)" stroke-width="4" stroke-dasharray="10 7" />
-                <path d="M0,160 C90,156 154,148 234,139 C318,132 415,118 640,108" fill="none" stroke="#58764f" stroke-width="3" opacity="0.85" />
+              <svg viewBox="0 0 640 260" preserveAspectRatio="none" aria-hidden="true">
+                <path d="M0,176 C70,172 120,138 180,150 C260,168 305,105 360,123 C440,148 500,158 640,112" fill="none" stroke="var(--sample-sengoku)" stroke-width="4" />
+                <path d="M0,158 C84,154 135,130 198,137 C260,144 316,154 382,128 C468,94 530,79 640,60" fill="none" stroke="var(--sample-macedonian)" stroke-width="4" stroke-dasharray="10 7" />
+                <path d="M0,218 C90,211 154,202 234,190 C318,180 415,160 640,146" fill="none" stroke="#58764f" stroke-width="3" opacity="0.85" />
               </svg>
               <div class="event-marker"><span>Fight 19:51</span></div>
             </div>
           </div>
 
-          <div class="selected-summary" aria-label="Selected time summary">
-            <div class="selected-card">
-              <strong>What changed after this point</strong>
-              <span>Macedonian military and technology deployment separates before the decisive fight windows.</span>
-            </div>
-            <div class="selected-card">
-              <strong>Why 19:51 matters</strong>
-              <span>Economy and military deployment are almost even here. The next four minutes are where the game opens decisively.</span>
-            </div>
+          <div class="insight-card" aria-label="Selected time summary">
+            <strong>At 19:51, the military line separates.</strong>
+            <span>Macedonian military and tech deployment climbs before the decisive fight windows.</span>
           </div>
         </div>
       </aside>

@@ -17,12 +17,22 @@ describe('home route integration', () => {
       'public, s-maxage=300, stale-while-revalidate=3600'
     );
     expect(body).toContain('See where the game turned.');
+    expect(body).toContain('1v1 match report');
+    expect(body).toContain('Paste an AoE4World 1v1 match link. See economy, army, and fight timing in one report.');
     expect(body).toContain('href="https://aoe4world.com" target="_blank" rel="noopener noreferrer"');
     expect(body).toContain('href="https://www.reddit.com/user/shoe7525/" target="_blank" rel="noopener noreferrer"');
     expect(body).toContain('Feedback? DM me on Reddit');
     expect(body).toContain('View sample report');
     expect(body).toContain('Currently supports 1v1 games only.');
+    expect(body).toContain('Recap');
+    expect(body).toContain('Timeline');
+    expect(body).toContain('Selected moment');
+    expect(body).toContain('Selected Time');
+    expect(body).toContain('Chart focus.');
+    expect(body).toContain('Economy edge.');
+    expect(body).toContain('Army edge.');
     expect(body).toContain('Resource state over time');
+    expect(body).toContain('At 19:51, the military line separates.');
     expect(body).toContain('/matches/8139502/229727104?sig=');
     expect(body).toContain('<form method="get" action="/matches/open"');
     expect(body).toContain('placeholder="https://aoe4world.com/.../games/..."');
@@ -31,6 +41,9 @@ describe('home route integration', () => {
     expect(body).toContain('home sample report opened');
     expect(body).toContain('home outbound link clicked');
     expect(body).toContain('home engagement summary');
+    expect(body).not.toContain('Paste an AoE4World match link and inspect the resource mix');
+    expect(body).not.toContain('State before the late divergence.');
+    expect(body).not.toContain('Why 19:51 matters');
     expect(body).not.toContain('/_next/static/chunks/');
     expect(body).not.toContain('self.__next_f');
 
