@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Workflow guidance for AI agents working in this repository.
+Guidance for AI agents working in this repository.
 
 ## Testing Policy (Non-Negotiable)
 
@@ -68,10 +68,8 @@ Rules:
   `DEFERRED.md`.
 - Completed, removed, or obsolete lightweight items move immediately to
   `archive/work-items/YYYY-MM.md`.
-- Use `/capture-work` to add one lightweight item, `/triage` to rank and
-  organize active bugs and next steps, and `/work-status` to summarize all
-  possible work across features, bugs, next steps, deferred items, and archive
-  history.
+- Update these files directly when capturing or reorganizing work; no copied
+  repository skill or mandatory phase workflow is required.
 
 ## PostHog Analytics
 
@@ -80,7 +78,7 @@ Rules:
 - Analytics may include `has_sig`; never emit raw `sig` values or URLs/referrers
   containing `sig`.
 - Analytics changes require unit, integration, and e2e coverage; verify with
-  PostHog MCP against recent localhost events when possible.
+  recent localhost events when possible.
 
 ## AoE4World API Considerations
 
